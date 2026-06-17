@@ -799,18 +799,29 @@ function renderCharts(){
     document.getElementById('slaChartSub').textContent = 'Last 6 weeks (Mon–Sun) · First response SLA';
   }
 
-  // Volume chart
+  // Volume chart — stacked bar
   var ctx1 = document.getElementById('cVol').getContext('2d');
   if(CHARTS.vol) CHARTS.vol.destroy();
+  // Convert volDatasets from line style to bar style
+  var volBarDatasets = volDatasets.map(function(ds){
+    return {
+      label:ds.label, data:ds.data,
+      backgroundColor:LOB_COLORS[ds.label],
+      borderColor:LOB_COLORS[ds.label],
+      borderWidth:0,
+      borderRadius:2,
+      stack:'vol'
+    };
+  });
   CHARTS.vol = new Chart(ctx1, {
-    type:'line',
-    data:{ labels:labels, datasets:volDatasets },
+    type:'bar',
+    data:{ labels:labels, datasets:volBarDatasets },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
       scales:{
-        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
-        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},callback:function(v){return v>=1000?(v/1000).toFixed(0)+'k':v;}}}
+        x:{stacked:true, grid:{display:false}, ticks:{font:{size:10},maxRotation:30}},
+        y:{stacked:true, grid:{color:'#f1f5f9'}, ticks:{font:{size:11},callback:function(v){return v>=1000?(v/1000).toFixed(0)+'k':v;}}}
       }
     }
   });
