@@ -501,7 +501,7 @@ var DEFAULT_DATA = {
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 var D = null; // parsed data
-var agLOB = 'All', agSort = {col:-1, dir:1}, agSearch = '';
+var agLOB = 'Path Social', agSort = {col:-1, dir:1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 
@@ -899,10 +899,12 @@ function renderAgents(){
 
   if(!agents.length){ document.getElementById('agBody').innerHTML='<tr><td colspan="12"><div class="empty"><strong>No agents found</strong></div></td></tr>'; return; }
 
-  var avgACD = agents.reduce(function(s,a){ return s+(a.avgCustDay||0); },0)/agents.length;
-  var avgLoginUtil = agents.reduce(function(s,a){ return s+(a.loginUtil||0); },0)/agents.length;
-  var avgProd = agents.reduce(function(s,a){ return s+(a.productivity||0); },0)/agents.length;
-  var avgByResp = agents.reduce(function(s,a){ return s+(a.fulfilledByResp||0); },0)/agents.length;
+  var nonEsc = agents.filter(function(a){ return !a.esc; });
+  var avgBase = nonEsc.length ? nonEsc : agents;
+  var avgACD = avgBase.reduce(function(s,a){ return s+(a.avgCustDay||0); },0)/avgBase.length;
+  var avgLoginUtil = avgBase.reduce(function(s,a){ return s+(a.loginUtil||0); },0)/avgBase.length;
+  var avgProd = avgBase.reduce(function(s,a){ return s+(a.productivity||0); },0)/avgBase.length;
+  var avgByResp = avgBase.reduce(function(s,a){ return s+(a.fulfilledByResp||0); },0)/avgBase.length;
   var qaAgents = agents.filter(function(a){ return a.qa!==null; });
   var avgQA = qaAgents.length ? qaAgents.reduce(function(s,a){ return s+a.qa; },0)/qaAgents.length : null;
   var fcrAgents = agents.filter(function(a){ return a.fcr!==null; });
