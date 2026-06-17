@@ -443,34 +443,35 @@ var DEFAULT_DATA = {
   ],
   // Monthly SLA history (Jan–Jun) — used for SLA trend chart (MoM view)
   slaHistory: {
-    months: ['Jan','Feb','Mar','Apr','May','Jun'],
+    months: ['Jan 2026','Feb 2026','Mar 2026','Apr 2026','May 2026','Jun 2026'],
     values: {
-      'Path Social':  [0.75, 0.82, 0.85, 0.86, 0.86, 0.808],
-      'Crowd Ignite': [0.84, 0.89, 0.91, 0.93, 0.93, 0.921],
-      'High Social':  [0.83, 0.89, 0.91, 0.92, 0.91, 0.922],
-      'Plixi':        [0.82, 0.87, 0.89, 0.91, 0.91, 0.998],
-      'Goread':       [0.84, 0.88, 0.90, 0.90, 0.90, 0.954],
-      'Follows':      [0.83, 0.89, 0.92, 0.93, 0.92, 0.933]
+      'Path Social':  [0.750, 0.976, 0.949, 0.875, 0.860, 0.808],
+      'Crowd Ignite': [0.920, 0.955, 0.960, 0.970, 0.940, 0.921],
+      'High Social':  [0.850, 0.920, 0.910, 0.910, 0.920, 0.922],
+      'Plixi':        [0.750, 0.875, 0.985, 0.985, 0.990, 0.998],
+      'Goread':       [0.850, 0.895, 0.910, 0.940, 0.920, 0.954],
+      'Follows':      [0.850, 0.965, 0.950, 0.970, 0.880, 0.933]
     }
   },
-  // Weekly data (last 6 weeks, Mon–Sun) — used for WoW view
+  // Weekly data (Mon–Sun week starts) — sourced from CX Dashboard WoW report
+  // High Social = High Social + Cloutify  |  Goread = Goread + ViralPush  |  Follows = FollowSpy + RecentFollow
   weekly: {
-    weeks: ['May 11-17','May 18-24','May 25-31','Jun 1-7','Jun 8-14','Jun 15-21'],
+    weeks: ['May 18-24','May 25-31','Jun 1-7','Jun 8-14','Jun 15-21'],
     volValues: [
-      [2100, 2010, 1980, 1660, 1650, 715],   // Path Social
-      [ 590,  560,  545,  315,  310, 134],   // Crowd Ignite
-      [1380, 1340, 1310, 1090, 1085, 466],   // High Social
-      [1450, 1400, 1380, 1040, 1035, 445],   // Plixi
-      [ 880,  855,  840,  645,  640, 277],   // Goread
-      [ 460,  450,  440,  258,  255, 110]    // Follows
+      [1883, 1873, 1995, 2030,  0],   // Path Social
+      [ 552,  394,  423,  338,  0],   // Crowd Ignite
+      [1248, 1447, 1358, 1283,  0],   // High Social (506+742, 469+978, 375+983, 413+870)
+      [1443, 1309, 1267, 1252,  0],   // Plixi
+      [ 852,  825,  765,  801,  0],   // Goread (715+137, 630+195, 613+152, 628+173)
+      [ 413,  306,  296,  330,  0]    // Follows (240+173, 169+137, 128+168, 147+183)
     ],
     slaValues: {
-      'Path Social':  [0.85, 0.86, 0.82, 0.81, 0.80, 0.808],
-      'Crowd Ignite': [0.93, 0.94, 0.93, 0.92, 0.92, 0.921],
-      'High Social':  [0.91, 0.92, 0.92, 0.92, 0.92, 0.922],
-      'Plixi':        [0.90, 0.91, 0.95, 0.99, 0.999,0.998],
-      'Goread':       [0.89, 0.90, 0.93, 0.95, 0.95, 0.954],
-      'Follows':      [0.92, 0.93, 0.93, 0.93, 0.93, 0.933]
+      'Path Social':  [0.870, 0.860, 0.850, 0.820, null],
+      'Crowd Ignite': [0.940, 0.935, 0.925, 0.920, null],
+      'High Social':  [0.920, 0.915, 0.920, 0.925, null],
+      'Plixi':        [0.990, 0.995, 0.995, 0.998, null],
+      'Goread':       [0.920, 0.930, 0.945, 0.950, null],
+      'Follows':      [0.880, 0.870, 0.920, 0.930, null]
     }
   }
 };
@@ -783,20 +784,20 @@ function renderCharts(){
       };
     });
     slaDatasets = LOBS.map(function(lob){
-      var vals = (wk.slaValues && wk.slaValues[lob]) ? wk.slaValues[lob].map(function(v){return +(v*100).toFixed(1);}) : [];
+      var vals = (wk.slaValues && wk.slaValues[lob]) ? wk.slaValues[lob].map(function(v){return v!==null?+(v*100).toFixed(1):null;}) : [];
       return {
         label:lob, data:vals,
         borderColor:LOB_COLORS[lob], backgroundColor:'transparent',
-        borderWidth:2, pointRadius:3, tension:.3, fill:false
+        borderWidth:2, pointRadius:3, tension:.3, fill:false, spanGaps:false
       };
     });
     var allTgts2 = D.sla.map(function(r){ return r.slaTgt; });
     avgSLA = allTgts2.length ? (allTgts2.reduce(function(a,b){return a+b;},0)/allTgts2.length*100).toFixed(1)*1 : 85;
     slaDatasets.push({label:'Avg Target',data:new Array(labels.length).fill(avgSLA),type:'line',borderColor:'#64748b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
     document.getElementById('volChartTitle').textContent = 'Weekly Inbound Volume by LOB';
-    document.getElementById('volChartSub').textContent = 'Last 6 weeks (Mon–Sun) · EMAIL + CHAT inbound';
+    document.getElementById('volChartSub').textContent = 'Last 5 weeks (Mon–Sun) · Jun 15-21 = current week';
     document.getElementById('slaChartTitle').textContent = 'Weekly SLA% Trend by LOB';
-    document.getElementById('slaChartSub').textContent = 'Last 6 weeks (Mon–Sun) · First response SLA';
+    document.getElementById('slaChartSub').textContent = 'Last 5 weeks (Mon–Sun) · current week SLA pending';
   }
 
   // Volume chart — stacked bar
