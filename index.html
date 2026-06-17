@@ -413,7 +413,7 @@ function cls(v,tgt,lowerBetter){
   return (lowerBetter ? v<=tgt : v>=tgt) ? 'g' : 'r';
 }
 function lobDot(lob){ return '<span class="ldot" style="background:'+LOB_COLORS[lob]+'"></span>'; }
-function pillClass(lob){ var m={IG Growth:'#3b82f6',Path:'#8b5cf6',Crowd:'#f59e0b',Follows:'#10b981'}; return 'background:'+m[lob]+'22;color:'+m[lob]+';border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700'; }
+function pillClass(lob){ var m={'IG Growth':'#3b82f6','Path':'#8b5cf6','Crowd':'#f59e0b','Follows':'#10b981'}; return 'background:'+m[lob]+'22;color:'+m[lob]+';border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700'; }
 
 // ── FILE UPLOAD ───────────────────────────────────────────────────────────────
 var dz = document.getElementById('dropZone');
