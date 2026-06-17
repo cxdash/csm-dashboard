@@ -183,7 +183,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="logo">CX</div>
     <div>
       <div class="hdr-title">CSM KPI Dashboard</div>
-      <div class="hdr-sub">IG Growth &nbsp;·&nbsp; Path &nbsp;·&nbsp; Crowd &nbsp;·&nbsp; Follows — Email Support</div>
+      <div class="hdr-sub">Path Social &nbsp;·&nbsp; Crowd Ignite &nbsp;·&nbsp; High Social &nbsp;·&nbsp; Plixi &nbsp;·&nbsp; Goread &nbsp;·&nbsp; Follows — Email Support</div>
     </div>
   </div>
   <div class="hdr-right">
@@ -332,7 +332,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 </div>
 
 <footer>
-  CSM KPI Dashboard &nbsp;·&nbsp; IG Growth · Path · Crowd · Follows &nbsp;·&nbsp;
+  CSM KPI Dashboard &nbsp;·&nbsp; Path Social · Crowd Ignite · High Social · Plixi · Goread · Follows &nbsp;·&nbsp;
   <span id="footerSource">Upload xlsx to load data</span> &nbsp;·&nbsp;
   <a href="agent.html" style="color:var(--accent)">Agent View →</a>
 </footer>
@@ -341,63 +341,110 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 'use strict';
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
-var LOB_COLORS = {'IG Growth':'#3b82f6','Path':'#8b5cf6','Crowd':'#f59e0b','Follows':'#10b981'};
-var LOBS = ['IG Growth','Path','Crowd','Follows'];
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
+var LOBS = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var STORAGE_KEY = 'csm_kpi_v1';
 var CHARTS = {};
 
-// ── EMBEDDED DEFAULT DATA (June 2026) ─────────────────────────────────────────
+// ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
   period: 'June 2026',
-  _filename: 'CSM_Dashboard_June2026_FINAL.xlsx',
+  _filename: 'ContactExport_AgentData_June2026.csv',
   inbound: {
-    lobs: ['IG Growth','Path','Crowd','Follows'],
+    lobs: ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'],
     months: ['Jan','Feb','Mar','Apr','May','Jun'],
     values: [
-      [12400,11800,13200,12900,14100,13800],
-      [8200,7900,8800,8600,9200,8900],
-      [5100,4900,5400,5200,5700,5500],
-      [3300,3100,3600,3400,3800,3600]
+      [17672, 13980, 12633, 11239, 11490, 5114],
+      [2018, 1490, 1789, 2394, 2633, 794],
+      [6044, 4795, 5628, 5609, 6489, 2931],
+      [13692, 10963, 9759, 6203, 6737, 2775],
+      [4909, 3957, 3018, 3619, 3906, 1608],
+      [2916, 3130, 3772, 2714, 2398, 731],
     ]
   },
   sla: [
-    {lob:'IG Growth',sla:0.87,slaTgt:0.80,csat:0.91,csatTgt:0.85,nps:42,npsTgt:30,fcr:0.82,fcrTgt:0.75,jun:13800,may:14100},
-    {lob:'Path',     sla:0.76,slaTgt:0.80,csat:0.83,csatTgt:0.85,nps:28,npsTgt:30,fcr:0.71,fcrTgt:0.75,jun:8900, may:9200},
-    {lob:'Crowd',    sla:0.82,slaTgt:0.80,csat:0.88,csatTgt:0.85,nps:35,npsTgt:30,fcr:0.79,fcrTgt:0.75,jun:5500, may:5700},
-    {lob:'Follows',  sla:0.64,slaTgt:0.80,csat:0.79,csatTgt:0.85,nps:18,npsTgt:30,fcr:0.66,fcrTgt:0.75,jun:3600, may:3800}
+    {lob:'Path Social', sla:0.69,slaTgt:0.80,csat:0.88,csatTgt:0.85,nps:29,npsTgt:30,fcr:0.82,fcrTgt:0.75,jun:5114, may:11490},
+    {lob:'Crowd Ignite',sla:0.89,slaTgt:0.85,csat:0.91,csatTgt:0.85,nps:39,npsTgt:30,fcr:0.86,fcrTgt:0.75,jun:794,  may:2633},
+    {lob:'High Social', sla:0.86,slaTgt:0.85,csat:0.90,csatTgt:0.85,nps:37,npsTgt:30,fcr:0.85,fcrTgt:0.75,jun:2931, may:6489},
+    {lob:'Plixi',       sla:0.74,slaTgt:0.85,csat:0.89,csatTgt:0.85,nps:32,npsTgt:30,fcr:0.83,fcrTgt:0.75,jun:2775, may:6737},
+    {lob:'Goread',      sla:0.87,slaTgt:0.85,csat:0.90,csatTgt:0.85,nps:38,npsTgt:30,fcr:0.86,fcrTgt:0.75,jun:1608, may:3906},
+    {lob:'Follows',     sla:0.77,slaTgt:0.80,csat:0.89,csatTgt:0.85,nps:33,npsTgt:30,fcr:0.84,fcrTgt:0.75,jun:731,  may:2398},
   ],
   agents: [
-    {name:'Maria Santos',  lob:'IG Growth',tickets:412,aht:8.2, ahtTgt:10,qa:0.92,qaTgt:0.85,csat:0.90,fcr:0.83,occ:0.88,adh:0.91},
-    {name:'James Okafor',  lob:'IG Growth',tickets:388,aht:9.5, ahtTgt:10,qa:0.88,qaTgt:0.85,csat:0.88,fcr:0.82,occ:0.84,adh:0.87},
-    {name:'Priya Nair',    lob:'IG Growth',tickets:350,aht:11.2,ahtTgt:10,qa:0.72,qaTgt:0.85,csat:0.76,fcr:0.68,occ:0.79,adh:0.82},
-    {name:'Carlos Mendez', lob:'Path',     tickets:295,aht:7.8, ahtTgt:10,qa:0.95,qaTgt:0.85,csat:0.91,fcr:0.85,occ:0.90,adh:0.93},
-    {name:'Aisha Williams',lob:'Path',     tickets:280,aht:13.1,ahtTgt:10,qa:0.68,qaTgt:0.85,csat:0.81,fcr:0.70,occ:0.82,adh:0.79},
-    {name:'Tom Huang',     lob:'Path',     tickets:265,aht:9.0, ahtTgt:10,qa:0.84,qaTgt:0.85,csat:0.83,fcr:0.79,occ:0.86,adh:0.88},
-    {name:'Sophie Larsson',lob:'Crowd',    tickets:220,aht:8.5, ahtTgt:10,qa:0.90,qaTgt:0.85,csat:0.87,fcr:0.82,occ:0.85,adh:0.89},
-    {name:'Dev Patel',     lob:'Crowd',    tickets:198,aht:10.3,ahtTgt:10,qa:0.79,qaTgt:0.85,csat:0.84,fcr:0.76,occ:0.81,adh:0.84},
-    {name:'Nina Torres',   lob:'Follows',  tickets:175,aht:9.8, ahtTgt:10,qa:0.86,qaTgt:0.85,csat:0.88,fcr:0.80,occ:0.83,adh:0.86},
-    {name:"Liam O'Brien",  lob:'Follows',  tickets:142,aht:14.5,ahtTgt:10,qa:0.61,qaTgt:0.85,csat:0.72,fcr:0.58,occ:0.74,adh:0.77}
+    {name:'Zheraine',lob:'Path Social',tickets:25843,aht:4.7,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.76,adh:0.97},
+    {name:'Kaila May Membredo',lob:'Path Social',tickets:22164,aht:5.2,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.74,adh:0.97},
+    {name:'Rockwell De Mesa',lob:'Path Social',tickets:22005,aht:4.4,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.62,adh:0.97},
+    {name:'Mark Lora',lob:'Path Social',tickets:21784,aht:5.6,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.79,adh:0.97},
+    {name:'Jennilen Manosa',lob:'Path Social',tickets:21140,aht:5.2,ahtTgt:7.0,qa:0.84,qaTgt:0.85,csat:0.89,fcr:0.84,occ:0.70,adh:0.97},
+    {name:'Geal Ann Lorico',lob:'Path Social',tickets:20730,aht:5.4,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.71,adh:0.97},
+    {name:'Pherbia',lob:'Path Social',tickets:20455,aht:5.7,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.80,adh:0.97},
+    {name:'Geric Vallar',lob:'Path Social',tickets:20398,aht:6.1,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.77,adh:0.97},
+    {name:'Abigail Aquino',lob:'Path Social',tickets:19332,aht:6.3,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.76,adh:0.97},
+    {name:'Roynalyn Malcampo',lob:'Path Social',tickets:19303,aht:6.5,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.80,adh:0.97},
+    {name:'Benedict Catbagan',lob:'Path Social',tickets:19062,aht:6.1,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.74,adh:0.97},
+    {name:'Rosie Eslao',lob:'Path Social',tickets:18449,aht:4.2,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.47,adh:0.97},
+    {name:'Mariam Riasat',lob:'Path Social',tickets:17579,aht:5.5,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.58,adh:0.97},
+    {name:'Trisha Joy Cads',lob:'Path Social',tickets:16490,aht:6.7,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.74,adh:0.97},
+    {name:'Faye',lob:'Path Social',tickets:14994,aht:6.2,ahtTgt:7.0,qa:0.83,qaTgt:0.85,csat:0.88,fcr:0.83,occ:0.67,adh:0.97},
+    {name:'Olibher Cafirma',lob:'Path Social',tickets:14630,aht:6.8,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.73,adh:0.97},
+    {name:'John Baylon',lob:'Path Social',tickets:14386,aht:6.8,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.73,adh:0.97},
+    {name:'Apple Garrado',lob:'Path Social',tickets:13992,aht:6.2,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.79,adh:0.97},
+    {name:'Elisah Lomarquez',lob:'Path Social',tickets:5729,aht:7.2,ahtTgt:7.0,qa:0.82,qaTgt:0.85,csat:0.88,fcr:0.83,occ:0.76,adh:0.97},
+    {name:'Ricardo Moreno',lob:'Path Social',tickets:5724,aht:6.8,ahtTgt:7.0,qa:0.82,qaTgt:0.85,csat:0.88,fcr:0.83,occ:0.65,adh:0.97},
+    {name:'Cristina Veloza',lob:'Path Social',tickets:3083,aht:6.1,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.71,adh:0.97},
+    {name:'Seyli Aquino',lob:'Path Social',tickets:2983,aht:12.0,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.44,adh:0.97},
+    {name:'Bianca Alegre',lob:'Path Social',tickets:2520,aht:16.6,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.46,adh:0.97},
+    {name:'Jo Kristine Zamora Escabal',lob:'Path Social',tickets:1515,aht:8.7,ahtTgt:7.0,qa:0.82,qaTgt:0.85,csat:0.88,fcr:0.83,occ:0.88,adh:0.97},
+    {name:'Ennalene Perez',lob:'Path Social',tickets:793,aht:6.2,ahtTgt:7.0,qa:0.74,qaTgt:0.85,csat:0.82,fcr:0.77,occ:0.93,adh:0.95},
+    {name:'Janelle Decena',lob:'Crowd Ignite',tickets:2341,aht:19.9,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.26,adh:0.97},
+    {name:'Charito Mencedez',lob:'High Social',tickets:17828,aht:4.9,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.55,adh:0.97},
+    {name:'Polly Yanah Salanatin',lob:'High Social',tickets:17419,aht:5.1,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.55,adh:0.97},
+    {name:'Rafael Antonio Bautista',lob:'High Social',tickets:14123,aht:3.0,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.32,adh:0.97},
+    {name:'Christine Joy M Salvador',lob:'High Social',tickets:13800,aht:3.9,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.37,adh:0.97},
+    {name:'Samantha Mae Parrilla',lob:'High Social',tickets:3233,aht:5.8,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.45,adh:0.97},
+    {name:'Djamillah Maria Abaya',lob:'Plixi',tickets:13468,aht:6.8,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.57,adh:0.97},
+    {name:'Mary Rose Sebastian',lob:'Plixi',tickets:9664,aht:9.1,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.51,adh:0.97},
+    {name:'Rhian de Belen',lob:'Plixi',tickets:7853,aht:6.1,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.53,adh:0.97},
+    {name:'Monica',lob:'Plixi',tickets:7283,aht:10.1,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.42,adh:0.97},
+    {name:'Rushelle',lob:'Plixi',tickets:7220,aht:13.1,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.59,adh:0.97},
+    {name:'Frangelico Canuzo',lob:'Plixi',tickets:5709,aht:4.8,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.53,adh:0.97},
+    {name:'Jaycel Napa',lob:'Plixi',tickets:3844,aht:8.2,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.71,adh:0.97},
+    {name:'Eunice Jeremiah Valiao',lob:'Plixi',tickets:2577,aht:9.3,ahtTgt:7.0,qa:0.87,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.55,adh:0.97},
+    {name:'Anne Nicole Asistio',lob:'Plixi',tickets:2562,aht:10.8,ahtTgt:7.0,qa:0.85,qaTgt:0.85,csat:0.90,fcr:0.85,occ:0.63,adh:0.93},
+    {name:'Moadib Punjabi',lob:'Plixi',tickets:342,aht:12.1,ahtTgt:7.0,qa:0.81,qaTgt:0.85,csat:0.87,fcr:0.82,occ:0.45,adh:0.97},
+    {name:'Moses Eragbai',lob:'Goread',tickets:20052,aht:4.8,ahtTgt:7.0,qa:0.86,qaTgt:0.85,csat:0.91,fcr:0.86,occ:0.58,adh:0.97},
+    {name:'Dencio Almag, Jr.',lob:'Goread',tickets:18049,aht:5.7,ahtTgt:7.0,qa:0.78,qaTgt:0.85,csat:0.85,fcr:0.80,occ:0.59,adh:0.97},
+    {name:'Nay Nuttida',lob:'Goread',tickets:16551,aht:4.9,ahtTgt:7.0,qa:0.78,qaTgt:0.85,csat:0.85,fcr:0.80,occ:0.42,adh:0.96},
+    {name:'Suzette Mejia',lob:'Goread',tickets:13872,aht:7.1,ahtTgt:7.0,qa:0.79,qaTgt:0.85,csat:0.86,fcr:0.81,occ:0.54,adh:0.97},
+    {name:'Shaira Fedelino',lob:'Goread',tickets:7661,aht:6.6,ahtTgt:7.0,qa:0.81,qaTgt:0.85,csat:0.87,fcr:0.82,occ:0.55,adh:0.97},
+    {name:'Charynha Reveche',lob:'Goread',tickets:1290,aht:5.0,ahtTgt:7.0,qa:0.83,qaTgt:0.85,csat:0.89,fcr:0.84,occ:0.79,adh:0.97},
+    {name:'Jessica Ibañez',lob:'Follows',tickets:1443,aht:7.6,ahtTgt:7.0,qa:0.88,qaTgt:0.85,csat:0.92,fcr:0.87,occ:0.59,adh:0.97},
   ],
   escalations: [
-    {id:'ESC-0042',lob:'IG Growth',date:'2026-06-01',cat:'Billing Dispute',   pri:'High',    agent:'Maria Santos',  daysOpen:7,ttr:5,status:'Open',    csat:'—'},
-    {id:'ESC-0043',lob:'Path',     date:'2026-06-01',cat:'Account Access',    pri:'Critical',agent:'Carlos Mendez', daysOpen:7,ttr:3,status:'Resolved', csat:'4.2'},
-    {id:'ESC-0044',lob:'Follows',  date:'2026-06-02',cat:'Content Removal',   pri:'High',    agent:'Nina Torres',   daysOpen:6,ttr:5,status:'Open',    csat:'—'},
-    {id:'ESC-0045',lob:'Crowd',    date:'2026-06-02',cat:'Payout Delay',      pri:'Critical',agent:'Dev Patel',     daysOpen:6,ttr:3,status:'Open',    csat:'—'},
-    {id:'ESC-0046',lob:'IG Growth',date:'2026-06-03',cat:'Policy Violation',  pri:'Medium',  agent:'James Okafor',  daysOpen:5,ttr:7,status:'Resolved', csat:'3.8'},
-    {id:'ESC-0047',lob:'Path',     date:'2026-06-04',cat:'Subscription Issue',pri:'High',    agent:'Tom Huang',     daysOpen:4,ttr:5,status:'Resolved', csat:'4.5'},
-    {id:'ESC-0048',lob:'Follows',  date:'2026-06-05',cat:'Harassment Report', pri:'Critical',agent:'Nina Torres',   daysOpen:3,ttr:2,status:'Open',    csat:'—'},
-    {id:'ESC-0049',lob:'IG Growth',date:'2026-06-05',cat:'Ad Billing',        pri:'Medium',  agent:'Priya Nair',    daysOpen:3,ttr:7,status:'Open',    csat:'—'},
-    {id:'ESC-0050',lob:'Crowd',    date:'2026-06-06',cat:'Feature Bug',       pri:'Low',     agent:'Sophie Larsson',daysOpen:2,ttr:10,status:'Open',   csat:'—'},
-    {id:'ESC-0051',lob:'Path',     date:'2026-06-06',cat:'Verification',      pri:'High',    agent:'Aisha Williams',daysOpen:2,ttr:5,status:'Open',    csat:'—'},
-    {id:'ESC-0052',lob:'IG Growth',date:'2026-06-07',cat:'Billing Dispute',   pri:'High',    agent:'Maria Santos',  daysOpen:1,ttr:5,status:'Open',    csat:'—'},
-    {id:'ESC-0053',lob:'Follows',  date:'2026-06-07',cat:'Account Suspended', pri:'Critical',agent:"Liam O'Brien",  daysOpen:1,ttr:2,status:'Open',    csat:'—'}
+    {id:'CI-001',date:'6/2/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'varundasofficial@gmail.com',     plan:'Standard Annual',   reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Stopped collection'},
+    {id:'CI-002',date:'6/2/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'grech.c@gmail.com',              plan:'Standard Monthly',  reason:'Account',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Ticket created'},
+    {id:'CI-003',date:'6/2/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'cutsbyrobin@gmail.com',          plan:'Standard Annual',   reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Applied credits'},
+    {id:'CI-004',date:'6/3/2026', lob:'Crowd Ignite',agent:'Mark',   customer:'travelindigenously@gmail.com',   plan:'Standard Annual',   reason:'Account',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Fixed/Resolved'},
+    {id:'CI-005',date:'6/3/2026', lob:'Crowd Ignite',agent:'Mark',   customer:'sunniemakeup.au@gmail.com',      plan:'Premium Monthly',   reason:'Service',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Ticket created'},
+    {id:'CI-006',date:'6/6/2026', lob:'Crowd Ignite',agent:'Mark',   customer:'ampoller@gmail.com',             plan:'Professional Mo.',  reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Refunded'},
+    {id:'CI-007',date:'6/6/2026', lob:'Crowd Ignite',agent:'Mark',   customer:'suzikedwards@gmail.com',         plan:'Professional An.',  reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Stopped collection'},
+    {id:'CI-008',date:'6/6/2026', lob:'Crowd Ignite',agent:'Mark',   customer:'charu.suri2003@gmail.com',       plan:'Standard Monthly',  reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Approved refund'},
+    {id:'CI-009',date:'6/6/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'sam.dimopoulosve@gmail.com',     plan:'Premium Monthly',   reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Applied discount'},
+    {id:'CI-010',date:'6/8/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'julian.habib@gmail.com',         plan:'Premium Annual',    reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Fixed/Resolved'},
+    {id:'CI-011',date:'6/9/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'flvibesugc@gmail.com',           plan:'Standard Annual',   reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Approved Refund'},
+    {id:'CI-012',date:'6/9/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'mariskadub@vodamail.co.za',      plan:'Standard Annual',   reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Refunded'},
+    {id:'CI-013',date:'6/14/2026',lob:'Crowd Ignite',agent:'Jennilen',customer:'denali252@gmail.com',           plan:'Standard Monthly',  reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Denied refund request'},
+    {id:'PS-001',date:'06/15/2026',lob:'Path Social', agent:'Abigail',customer:'exxportband@gmail.com',          plan:'Expert Annual',     reason:'Dispute/Chargeback Threats',specialist:'Pherbia',priority:'High',status:'Resolved',action:''},
+    {id:'PS-002',date:'06/15/2026',lob:'Path Social', agent:'Benedict',customer:'sabrinadupontricard@hotmail.com',plan:'Elite Lite',       reason:'Post Renewal Charge',       specialist:'Pherbia',priority:'Medium',status:'Resolved',action:''},
   ],
   staffing: [
-    {lob:'IG Growth',hc:18,openReqs:2,adh:0.954,adhTgt:0.93,abs:0.031,absTgt:0.05,util:0.84,aht:9.1},
-    {lob:'Path',     hc:12,openReqs:1,adh:0.942,adhTgt:0.93,abs:0.042,absTgt:0.05,util:0.81,aht:10.0},
-    {lob:'Crowd',    hc:8, openReqs:0,adh:0.953,adhTgt:0.93,abs:0.035,absTgt:0.05,util:0.79,aht:9.4},
-    {lob:'Follows',  hc:6, openReqs:2,adh:0.875,adhTgt:0.93,abs:0.068,absTgt:0.05,util:0.71,aht:12.1}
+    {lob:'Path Social', hc:25,openReqs:0,adh:0.969,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.71,aht:4.7},
+    {lob:'Crowd Ignite',hc:1, openReqs:0,adh:0.970,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.26,aht:3.5},
+    {lob:'High Social', hc:5, openReqs:0,adh:0.970,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.45,aht:3.3},
+    {lob:'Plixi',       hc:10,openReqs:0,adh:0.966,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.55,aht:5.7},
+    {lob:'Goread',      hc:6, openReqs:0,adh:0.968,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.58,aht:5.4},
+    {lob:'Follows',     hc:1, openReqs:0,adh:0.970,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.59,aht:4.6},
   ]
 };
 
@@ -413,7 +460,7 @@ function cls(v,tgt,lowerBetter){
   return (lowerBetter ? v<=tgt : v>=tgt) ? 'g' : 'r';
 }
 function lobDot(lob){ return '<span class="ldot" style="background:'+LOB_COLORS[lob]+'"></span>'; }
-function pillClass(lob){ var m={'IG Growth':'#3b82f6','Path':'#8b5cf6','Crowd':'#f59e0b','Follows':'#10b981'}; return 'background:'+m[lob]+'22;color:'+m[lob]+';border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700'; }
+function pillClass(lob){ var c=LOB_COLORS[lob]||'#64748b'; return 'background:'+c+'22;color:'+c+';border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700'; }
 
 // ── FILE UPLOAD ───────────────────────────────────────────────────────────────
 var dz = document.getElementById('dropZone');
@@ -445,7 +492,7 @@ function readXLSX(file){
 
 // ── PARSE XLSX ────────────────────────────────────────────────────────────────
 function parseXLSX(wb){
-  var d = {period:'', inbound:{lobs:LOBS,months:[],values:[[],[],[],[]]}, sla:[], agents:[], escalations:[], staffing:[]};
+  var d = {period:'', inbound:{lobs:LOBS,months:[],values:LOBS.map(function(){return [];})}, sla:[], agents:[], escalations:[], staffing:[]};
 
   // Sheet 1: Inbound Volume
   var ws1 = wb.Sheets[wb.SheetNames[0]];
