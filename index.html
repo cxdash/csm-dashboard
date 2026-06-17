@@ -115,19 +115,24 @@ td{padding:7px 10px;vertical-align:middle}
 .qa-fill.g{background:var(--green)}.qa-fill.r{background:var(--red)}
 
 /* LOB CARDS */
-.lob-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px;margin-bottom:14px}
-.lob-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px;border-top-width:3px}
-.lob-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px}
-.lob-card-name{font-size:14px;font-weight:700}
-.lob-card-vol{font-size:11px;color:var(--text3);margin-top:2px}
-.lob-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.lob-m-lbl{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
-.lob-m-val{font-size:19px;font-weight:800}
+.lob-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.lob-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;border-top-width:3px}
+.lob-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.lob-card-name{font-size:13px;font-weight:700}
+.lob-card-vol{font-size:10px;color:var(--text3);margin-top:2px}
+.lob-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lob-m-lbl{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
+.lob-m-val{font-size:15px;font-weight:800}
 .lob-m-val.g{color:var(--green)}.lob-m-val.r{color:var(--red)}
-.lob-m-tgt{font-size:10px;color:var(--text3);margin-top:1px}
+.lob-m-tgt{font-size:9px;color:var(--text3);margin-top:1px}
 .prog{height:4px;background:#e2e8f0;border-radius:99px;margin-top:4px;overflow:hidden}
 .prog-fill{height:100%;border-radius:99px}
 .prog-fill.g{background:var(--green)}.prog-fill.r{background:var(--red)}
+
+/* VIEW TOGGLE */
+.view-toggle{display:flex;gap:3px;background:#f1f5f9;border-radius:6px;padding:2px}
+.view-btn{padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text3);transition:.15s}
+.view-btn.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 
 /* ESCALATIONS */
 .esc-layout{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:start}
@@ -148,7 +153,7 @@ td{padding:7px 10px;vertical-align:middle}
 .overdue{background:var(--red-bg);color:var(--red);padding:1px 5px;border-radius:3px;font-size:10px;font-weight:700;margin-left:4px}
 
 /* STAFFING */
-.staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.staff-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .staff-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;border-top-width:3px}
 .staff-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .staff-name{font-size:13px;font-weight:700}
@@ -172,8 +177,9 @@ td{padding:7px 10px;vertical-align:middle}
 /* FOOTER */
 footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:8px}
 
-@media(max-width:960px){.two-col,.three-col{grid-template-columns:1fr}.esc-layout{grid-template-columns:1fr}}
-@media(max-width:600px){.main,.upload-zone{padding:12px}.kpi-strip{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1200px){.lob-grid{grid-template-columns:repeat(3,1fr)}.staff-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:960px){.two-col,.three-col{grid-template-columns:1fr}.esc-layout{grid-template-columns:1fr}.lob-grid{grid-template-columns:repeat(2,1fr)}.staff-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.main,.upload-zone{padding:12px}.kpi-strip{grid-template-columns:repeat(2,1fr)}.lob-grid{grid-template-columns:1fr}.staff-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -241,15 +247,19 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#8b5cf6"></div>
     <div class="sec-label">3 — Volume &amp; Trends</div>
+    <div class="view-toggle" style="margin-left:auto">
+      <button class="view-btn on" id="btnMoM" onclick="setChartView('mom')">MoM</button>
+      <button class="view-btn" id="btnWoW" onclick="setChartView('wow')">WoW</button>
+    </div>
   </div>
   <div class="two-col">
     <div class="card">
-      <div class="card-hdr"><div><div class="card-title">Monthly Inbound Volume by LOB</div><div class="card-sub">Jan – Jun · total inbound contacts</div></div></div>
+      <div class="card-hdr"><div><div class="card-title" id="volChartTitle">Monthly Inbound Volume by LOB</div><div class="card-sub" id="volChartSub">Jan – Jun · EMAIL + CHAT inbound</div></div></div>
       <div class="card-body"><div class="chart-box"><canvas id="cVol"></canvas></div></div>
     </div>
     <div class="card">
-      <div class="card-hdr"><div><div class="card-title">QA Score by Agent</div><div class="card-sub">vs 85% target · color = met/missed</div></div></div>
-      <div class="card-body"><div class="chart-box tall"><canvas id="cQA"></canvas></div></div>
+      <div class="card-hdr"><div><div class="card-title" id="slaChartTitle">Monthly SLA% Trend by LOB</div><div class="card-sub" id="slaChartSub">Jan – Jun · First response SLA</div></div></div>
+      <div class="card-body"><div class="chart-box"><canvas id="cSLA"></canvas></div></div>
     </div>
   </div>
 
@@ -430,12 +440,45 @@ var DEFAULT_DATA = {
     {lob:'Plixi',       hc:10,openReqs:0,adh:0.966,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.55,aht:5.7},
     {lob:'Goread',      hc:6, openReqs:0,adh:0.968,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.58,aht:5.4},
     {lob:'Follows',     hc:1, openReqs:0,adh:0.970,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.59,aht:4.6},
-  ]
+  ],
+  // Monthly SLA history (Jan–Jun) — used for SLA trend chart (MoM view)
+  slaHistory: {
+    months: ['Jan','Feb','Mar','Apr','May','Jun'],
+    values: {
+      'Path Social':  [0.75, 0.82, 0.85, 0.86, 0.86, 0.87],
+      'Crowd Ignite': [0.84, 0.89, 0.91, 0.93, 0.93, 0.94],
+      'High Social':  [0.83, 0.89, 0.91, 0.92, 0.91, 0.92],
+      'Plixi':        [0.82, 0.87, 0.89, 0.91, 0.91, 0.91],
+      'Goread':       [0.84, 0.88, 0.90, 0.90, 0.90, 0.90],
+      'Follows':      [0.83, 0.89, 0.92, 0.93, 0.92, 0.93]
+    }
+  },
+  // Weekly data (last 6 weeks, Mon–Sun) — used for WoW view
+  weekly: {
+    weeks: ['May 11-17','May 18-24','May 25-31','Jun 1-7','Jun 8-14','Jun 15-21'],
+    volValues: [
+      [2100, 2010, 1980, 1660, 1650, 715],   // Path Social
+      [ 590,  560,  545,  315,  310, 134],   // Crowd Ignite
+      [1380, 1340, 1310, 1090, 1085, 466],   // High Social
+      [1450, 1400, 1380, 1040, 1035, 445],   // Plixi
+      [ 880,  855,  840,  645,  640, 277],   // Goread
+      [ 460,  450,  440,  258,  255, 110]    // Follows
+    ],
+    slaValues: {
+      'Path Social':  [0.85, 0.86, 0.87, 0.87, 0.87, 0.87],
+      'Crowd Ignite': [0.93, 0.94, 0.94, 0.94, 0.94, 0.94],
+      'High Social':  [0.91, 0.92, 0.92, 0.92, 0.92, 0.92],
+      'Plixi':        [0.90, 0.91, 0.91, 0.91, 0.91, 0.91],
+      'Goread':       [0.89, 0.90, 0.90, 0.90, 0.90, 0.90],
+      'Follows':      [0.92, 0.93, 0.93, 0.93, 0.93, 0.93]
+    }
+  }
 };
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 var D = null; // parsed data
 var agLOB = 'All', agSort = {col:-1, dir:1}, agSearch = '';
+var chartView = 'mom'; // 'mom' or 'wow'
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function pct(v,dec){ dec=dec||1; return (v*100).toFixed(dec)+'%'; }
@@ -692,82 +735,111 @@ function lobMetricNull(label, val, tgt, met){
   return lobMetric(label, val, tgt, met);
 }
 
+function setChartView(v){
+  chartView = v;
+  document.getElementById('btnMoM').className = 'view-btn'+(v==='mom'?' on':'');
+  document.getElementById('btnWoW').className = 'view-btn'+(v==='wow'?' on':'');
+  renderCharts();
+}
+
 function renderCharts(){
-  // Volume line chart
+  var isMoM = chartView === 'mom';
+  var labels, volDatasets, slaDatasets, avgSLA;
+
+  if(isMoM){
+    labels = D.inbound.months;
+    volDatasets = LOBS.map(function(lob,i){
+      return {
+        label:lob, data:D.inbound.values[i].slice(0,labels.length),
+        borderColor:LOB_COLORS[lob], backgroundColor:LOB_COLORS[lob]+'20',
+        borderWidth:2, pointRadius:3, tension:.3, fill:false
+      };
+    });
+    var slaHist = D.slaHistory || {};
+    slaDatasets = LOBS.map(function(lob){
+      var vals = (slaHist.values && slaHist.values[lob]) ? slaHist.values[lob].map(function(v){return +(v*100).toFixed(1);}) : [];
+      return {
+        label:lob, data:vals,
+        borderColor:LOB_COLORS[lob], backgroundColor:'transparent',
+        borderWidth:2, pointRadius:3, tension:.3, fill:false
+      };
+    });
+    // Average SLA target line
+    var allTgts = D.sla.map(function(r){ return r.slaTgt; });
+    avgSLA = allTgts.length ? (allTgts.reduce(function(a,b){return a+b;},0)/allTgts.length*100).toFixed(1)*1 : 85;
+    slaDatasets.push({label:'Avg Target',data:new Array(labels.length).fill(avgSLA),type:'line',borderColor:'#64748b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
+    document.getElementById('volChartTitle').textContent = 'Monthly Inbound Volume by LOB';
+    document.getElementById('volChartSub').textContent = 'Jan – Jun · EMAIL + CHAT inbound';
+    document.getElementById('slaChartTitle').textContent = 'Monthly SLA% Trend by LOB';
+    document.getElementById('slaChartSub').textContent = 'Jan – Jun · First response SLA';
+  } else {
+    var wk = D.weekly || {};
+    labels = wk.weeks || [];
+    volDatasets = LOBS.map(function(lob,i){
+      return {
+        label:lob, data:(wk.volValues && wk.volValues[i]) ? wk.volValues[i] : [],
+        borderColor:LOB_COLORS[lob], backgroundColor:LOB_COLORS[lob]+'20',
+        borderWidth:2, pointRadius:3, tension:.3, fill:false
+      };
+    });
+    slaDatasets = LOBS.map(function(lob){
+      var vals = (wk.slaValues && wk.slaValues[lob]) ? wk.slaValues[lob].map(function(v){return +(v*100).toFixed(1);}) : [];
+      return {
+        label:lob, data:vals,
+        borderColor:LOB_COLORS[lob], backgroundColor:'transparent',
+        borderWidth:2, pointRadius:3, tension:.3, fill:false
+      };
+    });
+    var allTgts2 = D.sla.map(function(r){ return r.slaTgt; });
+    avgSLA = allTgts2.length ? (allTgts2.reduce(function(a,b){return a+b;},0)/allTgts2.length*100).toFixed(1)*1 : 85;
+    slaDatasets.push({label:'Avg Target',data:new Array(labels.length).fill(avgSLA),type:'line',borderColor:'#64748b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
+    document.getElementById('volChartTitle').textContent = 'Weekly Inbound Volume by LOB';
+    document.getElementById('volChartSub').textContent = 'Last 6 weeks (Mon–Sun) · EMAIL + CHAT inbound';
+    document.getElementById('slaChartTitle').textContent = 'Weekly SLA% Trend by LOB';
+    document.getElementById('slaChartSub').textContent = 'Last 6 weeks (Mon–Sun) · First response SLA';
+  }
+
+  // Volume chart
   var ctx1 = document.getElementById('cVol').getContext('2d');
   if(CHARTS.vol) CHARTS.vol.destroy();
-  var months = D.inbound.months;
   CHARTS.vol = new Chart(ctx1, {
     type:'line',
-    data:{
-      labels: months,
-      datasets: LOBS.map(function(lob,i){
-        return {
-          label:lob, data:D.inbound.values[i].slice(0,months.length),
-          borderColor:LOB_COLORS[lob], backgroundColor:LOB_COLORS[lob]+'20',
-          borderWidth:2, pointRadius:3, tension:.3, fill:false
-        };
-      })
-    },
+    data:{ labels:labels, datasets:volDatasets },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
       scales:{
-        x:{grid:{display:false},ticks:{font:{size:11}}},
+        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
         y:{grid:{color:'#f1f5f9'},ticks:{font:{size:11},callback:function(v){return v>=1000?(v/1000).toFixed(0)+'k':v;}}}
       }
     }
   });
 
-  // QA horizontal bar chart
-  var ctx2 = document.getElementById('cQA').getContext('2d');
-  if(CHARTS.qa) CHARTS.qa.destroy();
-  var agentsFlt = D.agents;
-  var hasQA = agentsFlt.some(function(a){ return a.qa !== null && a.qa !== undefined; });
-  if(!hasQA){
-    // Show placeholder when QA data not yet available
-    var qaCanvas = document.getElementById('cQA');
-    var qaParent = qaCanvas.parentElement;
-    qaCanvas.style.display = 'none';
-    if(!qaParent.querySelector('.qa-placeholder')){
-      var ph = document.createElement('div');
-      ph.className = 'qa-placeholder';
-      ph.style.cssText = 'display:flex;align-items:center;justify-content:center;height:200px;color:var(--text3);font-size:13px;';
-      ph.textContent = 'QA scores not yet available';
-      qaParent.appendChild(ph);
-    }
-  } else {
-    document.getElementById('cQA').style.display = '';
-    var ph2 = document.getElementById('cQA').parentElement.querySelector('.qa-placeholder');
-    if(ph2) ph2.remove();
-    var labels = agentsFlt.map(function(a){ return a.name.split(' ')[0]; });
-    var vals = agentsFlt.map(function(a){ return a.qa !== null ? +(a.qa*100).toFixed(1) : 0; });
-    var colors = agentsFlt.map(function(a){ return a.qa !== null && a.qa>=a.qaTgt ? '#16a34a' : '#dc2626'; });
-    CHARTS.qa = new Chart(ctx2, {
-      type:'bar',
-      data:{
-        labels:labels,
-        datasets:[
-          {label:'QA Score (%)',data:vals,backgroundColor:colors,borderRadius:3,barThickness:12},
-          {label:'Target 85%',data:new Array(agentsFlt.length).fill(85),type:'line',borderColor:'#64748b',borderDash:[4,3],borderWidth:1.5,pointRadius:0,fill:false}
-        ]
-      },
-      options:{
-        indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
-        scales:{
-          x:{min:50,max:100,grid:{color:'#f1f5f9'},ticks:{font:{size:11},callback:function(v){return v+'%';}}},
-          y:{grid:{display:false},ticks:{font:{size:11}}}
+  // SLA trend chart
+  var ctx2 = document.getElementById('cSLA').getContext('2d');
+  if(CHARTS.sla) CHARTS.sla.destroy();
+  CHARTS.sla = new Chart(ctx2, {
+    type:'line',
+    data:{ labels:labels, datasets:slaDatasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
+        y:{
+          min:65, max:102,
+          grid:{color:'#f1f5f9'},
+          ticks:{font:{size:11},callback:function(v){return v+'%';}}
         }
       }
-    });
-  }
+    }
+  });
 }
 
 function renderAgents(){
   // Build LOB tabs
   var tabs = document.getElementById('agTabs');
-  var allLOBs = ['All'].concat(LOBS);
+  var allLOBs = LOBS.concat(['All']);
   tabs.innerHTML = allLOBs.map(function(lob){
     return '<div class="tab'+(agLOB===lob?' on':'')+'" onclick="setAgLOB(\''+lob+'\')">'+(lob==='All'?'All LOBs':lob)+'</div>';
   }).join('');
