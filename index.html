@@ -501,12 +501,15 @@ var DEFAULT_DATA = {
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 var D = null; // parsed data
-var agLOB = 'Path Social', agSort = {col:-1, dir:1}, agSearch = '';
+var agLOB = 'Path Social', agSort = {col:2, dir:-1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function pct(v,dec){ dec=dec||1; return (v*100).toFixed(dec)+'%'; }
+function parseTime(s){ if(!s) return null; var m=s.match(/(\d+)m\s*(\d+)s/); return m ? parseInt(m[1])*60+parseInt(m[2]) : null; }
+function fmtTime(sec){ if(sec===null||isNaN(sec)) return '—'; var m=Math.floor(sec/60),s=Math.round(sec%60); return m+'m '+(s<10?'0':'')+s+'s'; }
+function avgTime(arr,key){ var vals=arr.map(function(a){ return parseTime(a[key]); }).filter(function(v){ return v!==null; }); return vals.length ? vals.reduce(function(s,v){ return s+v; },0)/vals.length : null; }
 function fmt(v){ return typeof v==='number'&&v>=1000?(v/1000).toFixed(1)+'k':String(v); }
 function cls(v,tgt,lowerBetter){
   if(v==null) return 'n';
@@ -905,6 +908,10 @@ function renderAgents(){
   var avgLoginUtil = avgBase.reduce(function(s,a){ return s+(a.loginUtil||0); },0)/avgBase.length;
   var avgProd = avgBase.reduce(function(s,a){ return s+(a.productivity||0); },0)/avgBase.length;
   var avgByResp = avgBase.reduce(function(s,a){ return s+(a.fulfilledByResp||0); },0)/avgBase.length;
+  var avgMissed = avgBase.reduce(function(s,a){ return s+(a.missedChats||0); },0)/avgBase.length;
+  var avgHandleCust = fmtTime(avgTime(avgBase,'handleCust'));
+  var avgChatAHT = fmtTime(avgTime(avgBase.filter(function(a){ return a.chatAHT; }),'chatAHT'));
+  var avgLogin = fmtTime(avgTime(avgBase,'avgLogin'));
   var qaAgents = agents.filter(function(a){ return a.qa!==null; });
   var avgQA = qaAgents.length ? qaAgents.reduce(function(s,a){ return s+a.qa; },0)/qaAgents.length : null;
   var fcrAgents = agents.filter(function(a){ return a.fcr!==null; });
@@ -941,10 +948,10 @@ function renderAgents(){
       +'</tr>';
   }).join('') + '<tr class="avg-row"><td colspan="2">TEAM AVERAGE</td>'
     +'<td class="r">'+Math.round(avgACD)+'</td>'
-    +'<td class="r">—</td>'
-    +'<td class="r">—</td>'
-    +'<td class="r">—</td>'
-    +'<td class="r">—</td>'
+    +'<td class="r">'+avgHandleCust+'</td>'
+    +'<td class="r">'+avgChatAHT+'</td>'
+    +'<td class="r">'+avgMissed.toFixed(1)+'</td>'
+    +'<td class="r">'+avgLogin+'</td>'
     +'<td class="r" style="border-right:2px solid var(--border)">'+Math.round(avgLoginUtil*100)+'%</td>'
     +'<td class="r">'+Math.round(avgProd*100)+'%</td>'
     +'<td class="r">'+Math.round(avgByResp)+'</td>'
