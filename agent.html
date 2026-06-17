@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Performance — CSM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f1b35;--accent:#3b82f6;
+  --bg:#f1f4f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --green:#16a34a;--red:#dc2626;--amber:#d97706;
+  --green-bg:#f0fdf4;--red-bg:#fef2f2;--amber-bg:#fffbeb;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px}
+
+/* HEADER */
+.header{background:var(--navy);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.logo{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:13px;flex-shrink:0}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-title{color:#fff;font-size:14px;font-weight:600}
+.hdr-sub{color:rgba(255,255,255,.45);font-size:10px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.switch-btn{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;transition:.15s}
+.switch-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+.team-link{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);padding:4px 12px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,.2);text-decoration:none;transition:.15s}
+.team-link:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* PICKER MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(15,27,53,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card);border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.modal-logo{width:44px;height:44px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;margin:0 auto 16px}
+.modal h2{font-size:18px;font-weight:700;text-align:center;margin-bottom:6px}
+.modal p{font-size:12px;color:var(--text3);text-align:center;margin-bottom:22px;line-height:1.5}
+.agent-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
+.agent-btn{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:white;text-align:left;transition:.15s;width:100%}
+.agent-btn:hover{border-color:var(--accent);background:#f0f5ff}
+.agent-btn-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0}
+.agent-btn-name{font-size:13px;font-weight:600;color:var(--text)}
+.agent-btn-lob{font-size:11px;color:var(--text3);margin-top:1px}
+.modal-no-data{text-align:center;padding:32px;color:var(--text3)}
+.modal-no-data strong{display:block;margin-bottom:6px;color:var(--text2)}
+.modal-no-data a{color:var(--accent);font-size:12px}
+
+/* MAIN */
+.main{padding:16px 24px;max-width:1100px;margin:0 auto}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;gap:8px;margin:20px 0 10px}
+.sec-bar{width:3px;height:18px;border-radius:2px}
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+
+/* CARD */
+.card{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden}
+.card-hdr{padding:12px 18px;border-bottom:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:700;color:var(--text)}
+.card-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.card-body{padding:14px 18px}
+.card-body.no-pad{padding:0}
+
+/* SCORECARD GRID */
+.score-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.score-card{background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px;position:relative;overflow:hidden}
+.score-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.score-card.met::before{background:var(--green)}
+.score-card.miss::before{background:var(--red)}
+.score-card.neutral::before{background:#94a3b8}
+.score-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:5px}
+.score-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:5px}
+.score-val.met{color:var(--green)}.score-val.miss{color:var(--red)}.score-val.neutral{color:var(--text)}
+.score-tgt{font-size:11px;color:var(--text3);margin-bottom:5px}
+.vs-avg{font-size:11px;font-weight:600;margin-top:4px}
+.vs-avg.up{color:var(--green)}.vs-avg.dn{color:var(--red)}.vs-avg.flat{color:var(--text3)}
+.score-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-top:4px}
+.score-badge.met{background:#dcfce7;color:#166534}
+.score-badge.miss{background:#fee2e2;color:#991b1b}
+
+/* COACHING FLAGS */
+.coach-list{display:flex;flex-direction:column;gap:8px;padding:14px 18px}
+.coach-flag{padding:10px 14px;border-radius:7px;font-size:12px;border-left:3px solid;display:flex;align-items:flex-start;gap:10px}
+.coach-flag.r{background:var(--red-bg);border-color:var(--red);color:#991b1b}
+.coach-flag.w{background:var(--amber-bg);border-color:var(--amber);color:#92400e}
+.coach-flag.g{background:var(--green-bg);border-color:var(--green);color:#14532d}
+.coach-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.coach-title{font-weight:700;margin-bottom:2px}
+.coach-detail{font-size:11px;opacity:.85}
+
+/* RANKING TABLE */
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th.r,td.r{text-align:right}
+tbody tr{border-bottom:1px solid #f1f5f9}
+tbody tr:last-child{border-bottom:none}
+td{padding:8px 10px;vertical-align:middle}
+tbody tr.highlight-row td{background:#eff6ff;font-weight:700}
+tbody tr.avg-row td{background:#f1f5f9;font-weight:600;color:var(--text2);font-size:11px}
+
+/* RANK BADGE */
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:800;background:#f1f5f9;color:var(--text2)}
+.rank-badge.r1{background:#fef9c3;color:#854d0e}
+.rank-badge.r2{background:#f1f5f9;color:#475569}
+.rank-badge.r3{background:#fef3c7;color:#92400e}
+
+/* CHART */
+.chart-box{position:relative;height:200px}
+
+/* EMPTY / NO DATA */
+.no-data-screen{padding:60px 24px;text-align:center}
+.no-data-icon{font-size:48px;margin-bottom:16px}
+.no-data-title{font-size:17px;font-weight:700;margin-bottom:8px}
+.no-data-sub{font-size:13px;color:var(--text3);line-height:1.6;max-width:360px;margin:0 auto 20px}
+.no-data-link{display:inline-block;padding:9px 20px;background:var(--accent);color:white;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none}
+
+/* PROGRESS BAR */
+.prog{height:5px;background:#e2e8f0;border-radius:99px;margin-top:6px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px}
+.prog-fill.met{background:var(--green)}.prog-fill.miss{background:var(--red)}
+
+footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:8px}
+@media(max-width:600px){.main{padding:12px}.score-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="hdr-left">
+    <div class="logo">CX</div>
+    <div>
+      <div class="hdr-title" id="hdrTitle">My Performance</div>
+      <div class="hdr-sub" id="hdrSub">Loading…</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <button class="switch-btn" onclick="switchAgent()">Switch Agent</button>
+    <a class="team-link" href="index.html">← Team View</a>
+  </div>
+</div>
+
+<!-- AGENT PICKER MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-logo">CX</div>
+    <h2>Who are you?</h2>
+    <p>Select your name to view your personal performance dashboard.<br>Your choice will be remembered on this device.</p>
+    <div class="agent-list" id="agentList">
+      <div class="modal-no-data">
+        <strong>No data available yet</strong>
+        Your manager needs to upload the monthly data file on the <a href="index.html">team dashboard</a> first.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main" id="mainContent" style="display:none">
+
+  <!-- SCORECARD -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:var(--accent)"></div>
+    <div class="sec-label">Your Scorecard</div>
+    <div id="periodTag" style="font-size:11px;color:var(--text2);background:#f1f5f9;padding:2px 10px;border-radius:10px;margin-left:4px"></div>
+  </div>
+  <div class="score-grid" id="scoreGrid"></div>
+
+  <!-- COACHING FLAGS -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:#ef4444"></div>
+    <div class="sec-label">Coaching &amp; Highlights</div>
+  </div>
+  <div class="card">
+    <div id="coachList"></div>
+  </div>
+
+  <!-- PERFORMANCE CHART -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:#8b5cf6"></div>
+    <div class="sec-label">Your Metrics vs Team Average</div>
+  </div>
+  <div class="card">
+    <div class="card-body"><div class="chart-box"><canvas id="cRadar"></canvas></div></div>
+  </div>
+
+  <!-- LOB RANKING -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:#10b981"></div>
+    <div class="sec-label" id="rankTitle">Your LOB Ranking</div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title" id="rankCardTitle">Team Standing</div>
+      <div class="card-sub">Your metrics vs teammates in your LOB · you are highlighted</div>
+    </div>
+    <div class="card-body no-pad">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Rank</th><th>Agent</th>
+            <th class="r">Tickets</th><th class="r">QA Score</th>
+            <th class="r">CSAT</th><th class="r">FCR</th><th class="r">AHT (min)</th>
+          </tr></thead>
+          <tbody id="rankBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NO DATA SCREEN (shown if manager hasn't uploaded yet) -->
+<div id="noDataScreen" style="display:none">
+  <div class="no-data-screen">
+    <div class="no-data-icon">📊</div>
+    <div class="no-data-title">No data loaded yet</div>
+    <div class="no-data-sub">Your manager needs to upload the monthly report on the team dashboard first. Check back after they've uploaded!</div>
+    <a class="no-data-link" href="index.html">Go to Team Dashboard</a>
+  </div>
+</div>
+
+<footer id="footerEl" style="display:none">
+  CSM Agent Performance &nbsp;·&nbsp; <span id="footerPeriod"></span> &nbsp;·&nbsp; View-only personal scorecard
+</footer>
+
+<script>
+'use strict';
+var STORAGE_KEY = 'csm_kpi_v1';
+var AGENT_KEY   = 'csm_agent_name';
+var LOB_COLORS  = {'IG Growth':'#3b82f6','Path':'#8b5cf6','Crowd':'#f59e0b','Follows':'#10b981'};
+var CHART_REF   = null;
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function pct(v, dec){ dec=dec||1; return (v*100).toFixed(dec)+'%'; }
+function cls(v, tgt, lb){ return (lb ? v<=tgt : v>=tgt) ? 'met' : 'miss'; }
+function initials(name){ return name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase(); }
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+function getData(){
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+
+function getSavedAgent(){
+  return localStorage.getItem(AGENT_KEY) || null;
+}
+
+function saveAgent(name){
+  localStorage.setItem(AGENT_KEY, name);
+}
+
+// ── SHOW PICKER ───────────────────────────────────────────────────────────────
+function showPicker(){
+  var D = getData();
+  var list = document.getElementById('agentList');
+  document.getElementById('modalBg').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('noDataScreen').style.display = 'none';
+  document.getElementById('footerEl').style.display = 'none';
+
+  if(!D || !D.agents || !D.agents.length){
+    list.innerHTML = '<div class="modal-no-data"><strong>No data available yet</strong>Your manager needs to upload the monthly data file on the <a href="index.html">team dashboard</a> first.</div>';
+    return;
+  }
+
+  list.innerHTML = D.agents.map(function(a){
+    var color = LOB_COLORS[a.lob] || '#64748b';
+    return '<button class="agent-btn" onclick="selectAgent(\''+escQ(a.name)+'\')">'
+      +'<div class="agent-btn-avatar" style="background:'+color+'">'+initials(a.name)+'</div>'
+      +'<div><div class="agent-btn-name">'+a.name+'</div><div class="agent-btn-lob">'+a.lob+'</div></div>'
+      +'</button>';
+  }).join('');
+}
+
+function escQ(s){ return s.replace(/'/g, "\\'"); }
+
+function selectAgent(name){
+  saveAgent(name);
+  document.getElementById('modalBg').style.display = 'none';
+  loadDashboard(name);
+}
+
+function switchAgent(){
+  localStorage.removeItem(AGENT_KEY);
+  showPicker();
+}
+
+// ── LOAD DASHBOARD ────────────────────────────────────────────────────────────
+function loadDashboard(name){
+  var D = getData();
+  if(!D){ document.getElementById('noDataScreen').style.display='block'; return; }
+
+  var agent = D.agents.find(function(a){ return a.name===name; });
+  if(!agent){ showPicker(); return; }
+
+  document.getElementById('mainContent').style.display = 'block';
+  document.getElementById('footerEl').style.display = 'block';
+  document.getElementById('hdrTitle').textContent = agent.name;
+  document.getElementById('hdrSub').textContent = agent.lob + ' · ' + (D.period||'');
+  document.getElementById('periodTag').textContent = D.period || '';
+  document.getElementById('footerPeriod').textContent = D.period || '';
+
+  // Team averages (all agents)
+  var all = D.agents;
+  var tAvg = function(key){ return all.reduce(function(s,a){return s+a[key];},0)/all.length; };
+  // LOB peers
+  var lobPeers = all.filter(function(a){ return a.lob===agent.lob; });
+  var lAvg = function(key){ return lobPeers.reduce(function(s,a){return s+a[key];},0)/lobPeers.length; };
+
+  renderScorecard(agent, tAvg);
+  renderCoaching(agent);
+  renderChart(agent, tAvg);
+  renderRanking(agent, lobPeers);
+}
+
+// ── SCORECARD ─────────────────────────────────────────────────────────────────
+function renderScorecard(a, tAvg){
+  var cards = [
+    { label:'Tickets Handled', val:a.tickets, tgt:null, tgtLabel:'', met:null, teamAvg:Math.round(tAvg('tickets')), neutral:true, fmt:function(v){return v;} },
+    { label:'AHT (min)', val:a.aht, tgt:a.ahtTgt, tgtLabel:'≤ '+a.ahtTgt+'min', met:a.aht<=a.ahtTgt, teamAvg:tAvg('aht').toFixed(1), neutral:false, fmt:function(v){return v;} },
+    { label:'QA Score', val:a.qa, tgt:a.qaTgt, tgtLabel:'≥ '+pct(a.qaTgt), met:a.qa>=a.qaTgt, teamAvg:pct(tAvg('qa')), neutral:false, fmt:function(v){return pct(v);} },
+    { label:'CSAT', val:a.csat, tgt:0.85, tgtLabel:'≥ 85%', met:a.csat>=0.85, teamAvg:pct(tAvg('csat')), neutral:false, fmt:function(v){return pct(v);} },
+    { label:'FCR', val:a.fcr, tgt:0.75, tgtLabel:'≥ 75%', met:a.fcr>=0.75, teamAvg:pct(tAvg('fcr')), neutral:false, fmt:function(v){return pct(v);} },
+    { label:'Occupancy', val:a.occ, tgt:null, tgtLabel:'', met:null, teamAvg:pct(tAvg('occ')), neutral:true, fmt:function(v){return pct(v);} },
+    { label:'Adherence', val:a.adh, tgt:null, tgtLabel:'', met:null, teamAvg:pct(tAvg('adh')), neutral:true, fmt:function(v){return pct(v);} }
+  ];
+
+  document.getElementById('scoreGrid').innerHTML = cards.map(function(c){
+    var statusClass = c.neutral ? 'neutral' : (c.met ? 'met' : 'miss');
+    var valClass = c.neutral ? 'neutral' : (c.met ? 'met' : 'miss');
+    var displayVal = c.fmt(c.val);
+
+    // vs team avg delta
+    var vsHtml = '';
+    if(!c.neutral && c.teamAvg !== null){
+      var teamNum = typeof c.teamAvg === 'string' ? parseFloat(c.teamAvg) : c.teamAvg;
+      var myNum = c.val * (c.fmt === function(v){return pct(v);} ? 1 : 1); // rough
+      // For pct metrics, compare numerically
+      var delta = '';
+      if(c.label==='AHT (min)'){
+        var d = (a.aht - parseFloat(c.teamAvg)).toFixed(1);
+        var dc = d<0 ? 'up' : 'dn';
+        delta = (d>0?'+':'')+d+'min vs team avg';
+        vsHtml = '<div class="vs-avg '+dc+'">'+delta+'</div>';
+      } else if(!c.neutral){
+        var myPct = parseFloat((c.val*100).toFixed(1));
+        var tPct  = parseFloat((parseFloat(c.teamAvg)));
+        var dd = (myPct - tPct).toFixed(1);
+        var dc2 = c.label==='AHT (min)' ? (dd<0?'up':'dn') : (dd>=0?'up':'dn');
+        vsHtml = '<div class="vs-avg '+dc2+'">'+(dd>0?'+':'')+dd+'pp vs team avg</div>';
+      }
+    }
+
+    var progW = c.neutral ? null : Math.min(parseFloat(displayVal),100);
+    var progHtml = '';
+    if(!c.neutral && progW!==null){
+      progHtml = '<div class="prog"><div class="prog-fill '+statusClass+'" style="width:'+(c.label==='AHT (min)' ? Math.min((a.ahtTgt/a.aht)*100,100) : progW)+'%"></div></div>';
+    }
+
+    return '<div class="score-card '+statusClass+'">'
+      +'<div class="score-lbl">'+c.label+'</div>'
+      +'<div class="score-val '+valClass+'">'+displayVal+'</div>'
+      +(c.tgtLabel ? '<div class="score-tgt">target '+c.tgtLabel+'</div>' : '')
+      +(c.neutral ? '<div class="score-tgt">team avg: '+c.teamAvg+'</div>' : '')
+      +(!c.neutral ? '<span class="score-badge '+statusClass+'">'+(c.met?'✓ Met':'✗ Below')+'</span>' : '')
+      +vsHtml
+      +progHtml
+      +'</div>';
+  }).join('');
+}
+
+// ── COACHING FLAGS ────────────────────────────────────────────────────────────
+function renderCoaching(a){
+  var flags = [];
+
+  if(a.qa < a.qaTgt){
+    flags.push({c:'r', icon:'📋', title:'QA Score needs improvement', detail:'Current: '+pct(a.qa)+' · Target: '+pct(a.qaTgt)+' · Gap: '+(((a.qaTgt-a.qa)*100).toFixed(1))+'pp. Review recent QA feedback and focus on the lowest-scoring categories.'});
+  } else {
+    flags.push({c:'g', icon:'✅', title:'QA Score on target', detail:'Great work! Your QA score of '+pct(a.qa)+' exceeds the '+pct(a.qaTgt)+' target.'});
+  }
+
+  if(a.aht > a.ahtTgt){
+    flags.push({c:'r', icon:'⏱', title:'Handle time above target', detail:'AHT is '+a.aht+'min vs '+a.ahtTgt+'min target. Consider reviewing your workflow for common ticket types or using macros for faster resolution.'});
+  } else {
+    flags.push({c:'g', icon:'⚡', title:'Handle time within target', detail:'Your AHT of '+a.aht+'min is within the '+a.ahtTgt+'min target — keep it up!'});
+  }
+
+  if(a.csat < 0.85){
+    flags.push({c:'r', icon:'😊', title:'CSAT below target', detail:'Current: '+pct(a.csat)+' · Target: 85%. Focus on personalised, empathetic responses and fully resolving the issue on first contact.'});
+  }
+
+  if(a.fcr < 0.75){
+    flags.push({c:'w', icon:'🔁', title:'FCR below target', detail:'Current: '+pct(a.fcr)+' · Target: 75%. First Contact Resolution is low — check if issues are being fully resolved before closing tickets.'});
+  }
+
+  if(flags.filter(function(f){return f.c==='r';}).length === 0 && flags.filter(function(f){return f.c==='w';}).length === 0){
+    flags.unshift({c:'g', icon:'🌟', title:'All key metrics are on target!', detail:'You\'re meeting or exceeding all performance targets. Keep up the great work!'});
+  }
+
+  document.getElementById('coachList').innerHTML = '<div class="coach-list">'+flags.map(function(f){
+    return '<div class="coach-flag '+f.c+'">'
+      +'<div class="coach-icon">'+f.icon+'</div>'
+      +'<div><div class="coach-title">'+f.title+'</div><div class="coach-detail">'+f.detail+'</div></div>'
+      +'</div>';
+  }).join('')+'</div>';
+}
+
+// ── RADAR CHART ───────────────────────────────────────────────────────────────
+function renderChart(a, tAvg){
+  var ctx = document.getElementById('cRadar').getContext('2d');
+  if(CHART_REF) CHART_REF.destroy();
+
+  // Normalise each metric to % of target (100 = exactly at target)
+  var metrics = ['QA Score','CSAT','FCR','Occupancy','Adherence'];
+  var myVals  = [a.qa/a.qaTgt*100, a.csat/0.85*100, a.fcr/0.75*100, a.occ/0.83*100, a.adh/0.93*100].map(function(v){return Math.min(v,130).toFixed(1)*1;});
+  var teamVals= [tAvg('qa')/a.qaTgt*100, tAvg('csat')/0.85*100, tAvg('fcr')/0.75*100, tAvg('occ')/0.83*100, tAvg('adh')/0.93*100].map(function(v){return Math.min(v,130).toFixed(1)*1;});
+
+  CHART_REF = new Chart(ctx, {
+    type: 'radar',
+    data:{
+      labels: metrics,
+      datasets:[
+        {label:'You', data:myVals, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.15)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#3b82f6'},
+        {label:'Team Avg', data:teamVals, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,.08)', borderWidth:1.5, pointRadius:3, borderDash:[4,3], pointBackgroundColor:'#94a3b8'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
+      scales:{r:{
+        min:60, max:130,
+        ticks:{display:false},
+        grid:{color:'#e2e8f0'},
+        pointLabels:{font:{size:11,weight:'600'},color:'#475569'},
+        angleLines:{color:'#e2e8f0'}
+      }}
+    }
+  });
+}
+
+// ── LOB RANKING ───────────────────────────────────────────────────────────────
+function renderRanking(a, lobPeers){
+  document.getElementById('rankTitle').textContent = a.lob + ' Team Ranking';
+  document.getElementById('rankCardTitle').textContent = a.lob + ' — Agent Comparison';
+
+  // Sort by QA desc for ranking
+  var sorted = lobPeers.slice().sort(function(x,y){ return y.qa - x.qa; });
+
+  var rankBadge = function(i){
+    if(i===0) return '<span class="rank-badge r1">1</span>';
+    if(i===1) return '<span class="rank-badge r2">2</span>';
+    if(i===2) return '<span class="rank-badge r3">3</span>';
+    return '<span class="rank-badge">'+(i+1)+'</span>';
+  };
+
+  var avgTickets = lobPeers.reduce(function(s,x){return s+x.tickets;},0)/lobPeers.length;
+  var avgQA      = lobPeers.reduce(function(s,x){return s+x.qa;},0)/lobPeers.length;
+  var avgCSAT    = lobPeers.reduce(function(s,x){return s+x.csat;},0)/lobPeers.length;
+  var avgFCR     = lobPeers.reduce(function(s,x){return s+x.fcr;},0)/lobPeers.length;
+  var avgAHT     = lobPeers.reduce(function(s,x){return s+x.aht;},0)/lobPeers.length;
+
+  document.getElementById('rankBody').innerHTML = sorted.map(function(p, i){
+    var isMe = p.name === a.name;
+    var qaMet = p.qa>=p.qaTgt;
+    return '<tr class="'+(isMe?'highlight-row':'')+'">'
+      +'<td>'+rankBadge(i)+'</td>'
+      +'<td>'+(isMe?'<strong>'+p.name+' (you)</strong>':p.name)+'</td>'
+      +'<td class="r">'+p.tickets+'</td>'
+      +'<td class="r" style="color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(p.qa)+'</td>'
+      +'<td class="r" style="color:'+(p.csat>=0.85?'var(--green)':'var(--red)')+'">'+pct(p.csat)+'</td>'
+      +'<td class="r" style="color:'+(p.fcr>=0.75?'var(--green)':'var(--red)')+'">'+pct(p.fcr)+'</td>'
+      +'<td class="r" style="color:'+(p.aht<=p.ahtTgt?'var(--green)':'var(--red)')+'">'+p.aht+'</td>'
+      +'</tr>';
+  }).join('') + '<tr class="avg-row">'
+    +'<td>—</td><td>LOB Average</td>'
+    +'<td class="r">'+Math.round(avgTickets)+'</td>'
+    +'<td class="r">'+pct(avgQA)+'</td>'
+    +'<td class="r">'+pct(avgCSAT)+'</td>'
+    +'<td class="r">'+pct(avgFCR)+'</td>'
+    +'<td class="r">'+avgAHT.toFixed(1)+'</td>'
+    +'</tr>';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+var saved = getSavedAgent();
+if(saved && getData()){
+  document.getElementById('modalBg').style.display = 'none';
+  loadDashboard(saved);
+} else {
+  showPicker();
+}
+</script>
+</body>
+</html>
