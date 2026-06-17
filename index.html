@@ -437,7 +437,7 @@ var DEFAULT_DATA = {
     {name:'Suzette Mejia',         lob:'Goread',      tickets:1039,aht:7.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.50,adh:0.97, avgCustDay:27, handleCust:'6m 29s', chatAHT:'5m 07s',  missedChats:1,  avgLogin:'7h 47m',loginUtil:0.964,productivity:0.389,fulfilledByResp:199},
     {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:1208,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.60,adh:0.97, avgCustDay:32, handleCust:'5m 59s', chatAHT:'8m 16s',  missedChats:2,  avgLogin:'8h 09m',loginUtil:0.909,productivity:0.428,fulfilledByResp:296},
     {name:'Geal Ann Lorico',       lob:'Follows',     tickets:927, aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97, avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 37s',  missedChats:0,  avgLogin:'8h 02m',loginUtil:0.890,productivity:0.283,fulfilledByResp:184},
-    {name:'Jessica Ibañez',        lob:'Follows',     tickets:281, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.71,adh:0.97, avgCustDay:2,  handleCust:'10m 07s',chatAHT:null,       missedChats:0,  avgLogin:'5h 14m',loginUtil:0.876,productivity:0.092,fulfilledByResp:57},
+    {name:'Jessica Ibañez',        lob:'Follows',     tickets:281, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.71,adh:0.97,partTime:true, avgCustDay:2,  handleCust:'10m 07s',chatAHT:null,       missedChats:0,  avgLogin:'5h 14m',loginUtil:0.876,productivity:0.092,fulfilledByResp:57},
   ],
   escalations: [
     {id:'CI-001',date:'6/2/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'varundasofficial@gmail.com',     plan:'Standard Annual',   reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Stopped collection'},
@@ -907,14 +907,16 @@ function renderAgents(){
 
   var nonEsc = agents.filter(function(a){ return !a.esc; });
   var avgBase = nonEsc.length ? nonEsc : agents;
-  var avgACD = avgBase.reduce(function(s,a){ return s+(a.avgCustDay||0); },0)/avgBase.length;
+  var avgBaseDay = avgBase.filter(function(a){ return !a.partTime; });
+  if(!avgBaseDay.length) avgBaseDay = avgBase;
+  var avgACD = avgBaseDay.reduce(function(s,a){ return s+(a.avgCustDay||0); },0)/avgBaseDay.length;
   var avgLoginUtil = avgBase.reduce(function(s,a){ return s+(a.loginUtil||0); },0)/avgBase.length;
   var avgProd = avgBase.reduce(function(s,a){ return s+(a.productivity||0); },0)/avgBase.length;
   var avgByResp = avgBase.reduce(function(s,a){ return s+(a.fulfilledByResp||0); },0)/avgBase.length;
   var avgMissed = avgBase.reduce(function(s,a){ return s+(a.missedChats||0); },0)/avgBase.length;
   var avgHandleCust = fmtTime(avgTime(avgBase,'handleCust'));
   var avgChatAHT = fmtTime(avgTime(avgBase.filter(function(a){ return a.chatAHT; }),'chatAHT'));
-  var avgLogin = avgHM(avgBase,'avgLogin');
+  var avgLogin = avgHM(avgBaseDay,'avgLogin');
   var qaAgents = agents.filter(function(a){ return a.qa!==null; });
   var avgQA = qaAgents.length ? qaAgents.reduce(function(s,a){ return s+a.qa; },0)/qaAgents.length : null;
   var fcrAgents = agents.filter(function(a){ return a.fcr!==null; });
