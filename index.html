@@ -380,6 +380,21 @@ var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
 var STORAGE_KEY = 'csm_kpi_v1';
 var CHARTS = {};
 
+// ── GOOGLE SHEETS CONFIG ──────────────────────────────────────────────────────
+// Step 1: In Google Sheets → File → Share → Publish to web
+// Step 2: Select the sheet tab → CSV format → Publish
+// Step 3: Paste the URL below and push to GitHub — the dashboard auto-fetches on every load
+//
+// Sheet column order (Row 1 = headers, Row 2+ = data):
+//   Name | LOB | Avg/Day | Handle/Cust | Chat AHT | Missed Chats | Avg Login
+//   Login Util | Productivity | By Resp | QA | FCR | ESC | Part Time
+//
+// Login Util / Productivity: enter as decimal (0.90) or percent (90) — both work
+// Chat AHT, QA, FCR: leave blank if no data
+// ESC / Part Time: enter TRUE or leave blank
+//
+var SHEETS_AGENT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';  // Gladly Agent Reporting — "Data" tab
+
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
   period: 'June 2026',
@@ -687,23 +702,199 @@ function saveData(){
   }catch(e){ console.warn('Storage error:', e.message); }
 }
 
-function loadData(){
+// ── GLADLY RAW SHEET PARSER ───────────────────────────────────────────────────
+// Parses the raw Gladly Agent Reporting CSV (same format as the uploaded file).
+// One fetch → computes both MTD (current calendar month) and 12M (all data) in a single pass.
+function parseGladlyCSV(text){
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+
+  // Minimal CSV row parser (handles quoted fields)
+  function csvRow(line){
+    var r=[],c='',q=false;
+    for(var i=0;i<line.length;i++){
+      if(line[i]==='"'){q=!q;}
+      else if(line[i]===','&&!q){r.push(c);c='';}
+      else c+=line[i];
+    }
+    r.push(c);
+    return r;
+  }
+
+  // Locate header row by scanning for 'Bucket Beginning'
+  var hdrIdx=-1;
+  for(var i=0;i<Math.min(lines.length,5);i++){
+    if(lines[i].indexOf('Bucket Beginning')>=0){hdrIdx=i;break;}
+  }
+  if(hdrIdx<0) return null;
+
+  var hdrs = csvRow(lines[hdrIdx]).map(function(h){return h.toLowerCase().trim();});
+  function C(name){ return hdrs.indexOf(name.toLowerCase()); }
+
+  var COL = {
+    bucket:   C('Bucket Beginning'),
+    email:    C('Email'),
+    name:     C('Name'),
+    inboxes:  C('Inbox(es)'),
+    team:     C('Team(s)'),
+    loggedin: C('Logged in Time in seconds'),
+    active:   C('Active Time in seconds'),
+    fulfilled:C('Contact Fulfilled'),
+    byresp:   C('Contact Fulfilled by Response'),
+    missed:   C('Contact Missed'),
+    handle:   C('Contact Handle Time in seconds'),
+    chatFul:  C('Contact Fulfilled - Chat'),
+    chatHT:   C('Contact Handle Time in seconds - Chat'),
+  };
+
+  // LOB from inboxes + team text
+  function getLOB(inboxes, team){
+    var t=(inboxes+' '+team).toLowerCase();
+    if(t.indexOf('path')>=0)                                    return 'Path Social';
+    if(t.indexOf('crowd')>=0)                                   return 'Crowd Ignite';
+    if(t.indexOf('high social')>=0||t.indexOf('cloutify')>=0)  return 'High Social';
+    if(t.indexOf('plixi')>=0)                                   return 'Plixi';
+    if(t.indexOf('goread')>=0||t.indexOf('viralpush')>=0)      return 'Goread';
+    if(t.indexOf('followspy')>=0||t.indexOf('recentfollow')>=0||t.indexOf('follows')>=0) return 'Follows';
+    return null;
+  }
+
+  // Parse "M/D/YYYY H:MM" bucket date
+  function parseDate(s){
+    if(!s) return null;
+    var p=s.split(' ')[0].split('/');
+    return p.length>=3 ? new Date(+p[2],+p[0]-1,+p[1]) : null;
+  }
+
+  var EXCL = {'matt@pathsocial.com':1};
+  var now=new Date(), curM=now.getMonth(), curY=now.getFullYear();
+
+  // Aggregation buckets keyed by email
+  var mtdMap={}, allMap={};
+
+  function getAg(map,email,name,lob,dt){
+    if(!map[email]){
+      map[email]={name:name,email:email,lob:lob,lastDt:dt,days:new Set(),
+                  fulfilled:0,byresp:0,missed:0,handleSec:0,activeSec:0,loggedinSec:0,chatFul:0,chatHT:0};
+    } else if(dt>map[email].lastDt){
+      // Keep most-recent name/LOB (handles agents who changed teams)
+      map[email].name=name; map[email].lob=lob; map[email].lastDt=dt;
+    }
+    return map[email];
+  }
+
+  function sf(row,i){ return i>=0&&row[i] ? +row[i]||0 : 0; }
+
+  for(var i=hdrIdx+1;i<lines.length;i++){
+    var row=csvRow(lines[i]);
+    if(row.length<10) continue;
+    var email=(row[COL.email]||'').toLowerCase().trim();
+    if(!email||EXCL[email]) continue;
+    var fulfilled=sf(row,COL.fulfilled);
+    if(fulfilled===0) continue;
+    var dt=parseDate(row[COL.bucket]||'');
+    if(!dt) continue;
+    var lob=getLOB(row[COL.inboxes]||'',row[COL.team]||'');
+    if(!lob) continue;
+    var name=row[COL.name]||email;
+    var dayKey=dt.toISOString().slice(0,10);
+
+    function addTo(map){
+      var ag=getAg(map,email,name,lob,dt);
+      ag.days.add(dayKey);
+      ag.fulfilled    +=fulfilled;
+      ag.byresp       +=sf(row,COL.byresp);
+      ag.missed       +=sf(row,COL.missed);
+      ag.handleSec    +=sf(row,COL.handle);
+      ag.activeSec    +=sf(row,COL.active);
+      ag.loggedinSec  +=sf(row,COL.loggedin);
+      ag.chatFul      +=sf(row,COL.chatFul);
+      ag.chatHT       +=sf(row,COL.chatHT);
+    }
+
+    addTo(allMap);
+    if(dt.getMonth()===curM && dt.getFullYear()===curY) addTo(mtdMap);
+  }
+
+  // Carry over esc / partTime flags from embedded DEFAULT_DATA (by name match)
+  var defFlags={};
+  DEFAULT_DATA.agents.forEach(function(a){ defFlags[a.name.toLowerCase()]={esc:!!a.esc,partTime:!!a.partTime}; });
+
+  var LOB_ORDER=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+
+  function buildAgents(map){
+    return Object.keys(map).map(function(k){
+      var ag=map[k];
+      var days=ag.days.size;
+      if(days===0||ag.fulfilled===0) return null;
+      var f=defFlags[ag.name.toLowerCase()]||{};
+      return {
+        name:ag.name, lob:ag.lob,
+        tickets:0, aht:0, ahtTgt:7.0,
+        qa:null, qaTgt:0.85, csat:null, fcr:null, occ:0, adh:0.97,
+        esc:f.esc||false, partTime:f.partTime||false,
+        avgCustDay:      Math.round(ag.fulfilled/days),
+        handleCust:      fmtTime(ag.handleSec/ag.fulfilled),
+        chatAHT:         ag.chatFul>5 ? fmtTime(ag.chatHT/ag.chatFul) : null,
+        missedChats:     Math.round(ag.missed/days),
+        avgLogin:        fmtHM(ag.loggedinSec/days),
+        loginUtil:       ag.loggedinSec>0 ? ag.activeSec/ag.loggedinSec : null,
+        productivity:    ag.activeSec>0   ? ag.handleSec/ag.activeSec  : null,
+        fulfilledByResp: Math.round(ag.byresp/days)
+      };
+    }).filter(Boolean).sort(function(a,b){
+      var la=LOB_ORDER.indexOf(a.lob), lb=LOB_ORDER.indexOf(b.lob);
+      return la!==lb ? la-lb : a.name.localeCompare(b.name);
+    });
+  }
+
+  return { mtd: buildAgents(mtdMap), all: buildAgents(allMap) };
+}
+
+// ── DATA LOADING ──────────────────────────────────────────────────────────────
+function setChip(cls, text){
+  var chip = document.getElementById('fileChip');
+  chip.className='chip '+cls; chip.textContent=text;
+}
+
+function loadFromStorage(){
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
     var ts  = localStorage.getItem(STORAGE_KEY+'_ts');
     if(raw){
       D = JSON.parse(raw);
       if(ts) showUpdBar(ts);
-      var chip = document.getElementById('fileChip');
-      chip.className='chip ok'; chip.textContent='✅ '+(D._filename||'Saved data');
+      setChip('ok','✅ '+(D._filename||'Saved data'));
     } else {
-      // Fall back to embedded default data
       D = JSON.parse(JSON.stringify(DEFAULT_DATA));
-      var chip2 = document.getElementById('fileChip');
-      chip2.className='chip ok'; chip2.textContent='✅ '+DEFAULT_DATA._filename+' (embedded)';
+      setChip('ok','✅ '+DEFAULT_DATA._filename+' (embedded)');
     }
     render();
   }catch(e){ console.warn('Load error:', e.message); }
+}
+
+async function loadFromSheets(){
+  setChip('wait','⏳ Fetching from Google Sheets…');
+  D = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  try{
+    var resp = await fetch(SHEETS_AGENT_URL);
+    if(resp.ok){
+      var result = parseGladlyCSV(await resp.text());
+      if(result){
+        if(result.mtd.length)  D.agents    = result.mtd;
+        if(result.all.length)  D.agents12m = result.all;
+        var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        setChip('ok','🔗 Sheets live · '+ts);
+        render();
+        return;
+      }
+    }
+  }catch(e){ console.warn('Sheets fetch error:', e.message); }
+  setChip('ok','⚠️ Sheets unreachable · showing embedded data');
+  render();
+}
+
+function loadData(){
+  if(SHEETS_AGENT_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
