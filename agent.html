@@ -229,6 +229,24 @@ var AGENT_KEY   = 'csm_agent_name';
 var LOB_COLORS  = {'IG Growth':'#3b82f6','Path':'#8b5cf6','Crowd':'#f59e0b','Follows':'#10b981'};
 var CHART_REF   = null;
 
+// ── EMBEDDED DEFAULT DATA (June 2026) ─────────────────────────────────────────
+var DEFAULT_DATA = {
+  period: 'June 2026',
+  _filename: 'CSM_Dashboard_June2026_FINAL.xlsx',
+  agents: [
+    {name:'Maria Santos',  lob:'IG Growth',tickets:412,aht:8.2, ahtTgt:10,qa:0.92,qaTgt:0.85,csat:0.90,fcr:0.83,occ:0.88,adh:0.91},
+    {name:'James Okafor',  lob:'IG Growth',tickets:388,aht:9.5, ahtTgt:10,qa:0.88,qaTgt:0.85,csat:0.88,fcr:0.82,occ:0.84,adh:0.87},
+    {name:'Priya Nair',    lob:'IG Growth',tickets:350,aht:11.2,ahtTgt:10,qa:0.72,qaTgt:0.85,csat:0.76,fcr:0.68,occ:0.79,adh:0.82},
+    {name:'Carlos Mendez', lob:'Path',     tickets:295,aht:7.8, ahtTgt:10,qa:0.95,qaTgt:0.85,csat:0.91,fcr:0.85,occ:0.90,adh:0.93},
+    {name:'Aisha Williams',lob:'Path',     tickets:280,aht:13.1,ahtTgt:10,qa:0.68,qaTgt:0.85,csat:0.81,fcr:0.70,occ:0.82,adh:0.79},
+    {name:'Tom Huang',     lob:'Path',     tickets:265,aht:9.0, ahtTgt:10,qa:0.84,qaTgt:0.85,csat:0.83,fcr:0.79,occ:0.86,adh:0.88},
+    {name:'Sophie Larsson',lob:'Crowd',    tickets:220,aht:8.5, ahtTgt:10,qa:0.90,qaTgt:0.85,csat:0.87,fcr:0.82,occ:0.85,adh:0.89},
+    {name:'Dev Patel',     lob:'Crowd',    tickets:198,aht:10.3,ahtTgt:10,qa:0.79,qaTgt:0.85,csat:0.84,fcr:0.76,occ:0.81,adh:0.84},
+    {name:'Nina Torres',   lob:'Follows',  tickets:175,aht:9.8, ahtTgt:10,qa:0.86,qaTgt:0.85,csat:0.88,fcr:0.80,occ:0.83,adh:0.86},
+    {name:"Liam O'Brien",  lob:'Follows',  tickets:142,aht:14.5,ahtTgt:10,qa:0.61,qaTgt:0.85,csat:0.72,fcr:0.58,occ:0.74,adh:0.77}
+  ]
+};
+
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function pct(v, dec){ dec=dec||1; return (v*100).toFixed(dec)+'%'; }
 function cls(v, tgt, lb){ return (lb ? v<=tgt : v>=tgt) ? 'met' : 'miss'; }
@@ -238,8 +256,8 @@ function initials(name){ return name.split(' ').map(function(w){return w[0];}).j
 function getData(){
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){ return null; }
+    return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
 
 function getSavedAgent(){

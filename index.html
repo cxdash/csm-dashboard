@@ -347,6 +347,60 @@ var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
 var STORAGE_KEY = 'csm_kpi_v1';
 var CHARTS = {};
 
+// ── EMBEDDED DEFAULT DATA (June 2026) ─────────────────────────────────────────
+var DEFAULT_DATA = {
+  period: 'June 2026',
+  _filename: 'CSM_Dashboard_June2026_FINAL.xlsx',
+  inbound: {
+    lobs: ['IG Growth','Path','Crowd','Follows'],
+    months: ['Jan','Feb','Mar','Apr','May','Jun'],
+    values: [
+      [12400,11800,13200,12900,14100,13800],
+      [8200,7900,8800,8600,9200,8900],
+      [5100,4900,5400,5200,5700,5500],
+      [3300,3100,3600,3400,3800,3600]
+    ]
+  },
+  sla: [
+    {lob:'IG Growth',sla:0.87,slaTgt:0.80,csat:0.91,csatTgt:0.85,nps:42,npsTgt:30,fcr:0.82,fcrTgt:0.75,jun:13800,may:14100},
+    {lob:'Path',     sla:0.76,slaTgt:0.80,csat:0.83,csatTgt:0.85,nps:28,npsTgt:30,fcr:0.71,fcrTgt:0.75,jun:8900, may:9200},
+    {lob:'Crowd',    sla:0.82,slaTgt:0.80,csat:0.88,csatTgt:0.85,nps:35,npsTgt:30,fcr:0.79,fcrTgt:0.75,jun:5500, may:5700},
+    {lob:'Follows',  sla:0.64,slaTgt:0.80,csat:0.79,csatTgt:0.85,nps:18,npsTgt:30,fcr:0.66,fcrTgt:0.75,jun:3600, may:3800}
+  ],
+  agents: [
+    {name:'Maria Santos',  lob:'IG Growth',tickets:412,aht:8.2, ahtTgt:10,qa:0.92,qaTgt:0.85,csat:0.90,fcr:0.83,occ:0.88,adh:0.91},
+    {name:'James Okafor',  lob:'IG Growth',tickets:388,aht:9.5, ahtTgt:10,qa:0.88,qaTgt:0.85,csat:0.88,fcr:0.82,occ:0.84,adh:0.87},
+    {name:'Priya Nair',    lob:'IG Growth',tickets:350,aht:11.2,ahtTgt:10,qa:0.72,qaTgt:0.85,csat:0.76,fcr:0.68,occ:0.79,adh:0.82},
+    {name:'Carlos Mendez', lob:'Path',     tickets:295,aht:7.8, ahtTgt:10,qa:0.95,qaTgt:0.85,csat:0.91,fcr:0.85,occ:0.90,adh:0.93},
+    {name:'Aisha Williams',lob:'Path',     tickets:280,aht:13.1,ahtTgt:10,qa:0.68,qaTgt:0.85,csat:0.81,fcr:0.70,occ:0.82,adh:0.79},
+    {name:'Tom Huang',     lob:'Path',     tickets:265,aht:9.0, ahtTgt:10,qa:0.84,qaTgt:0.85,csat:0.83,fcr:0.79,occ:0.86,adh:0.88},
+    {name:'Sophie Larsson',lob:'Crowd',    tickets:220,aht:8.5, ahtTgt:10,qa:0.90,qaTgt:0.85,csat:0.87,fcr:0.82,occ:0.85,adh:0.89},
+    {name:'Dev Patel',     lob:'Crowd',    tickets:198,aht:10.3,ahtTgt:10,qa:0.79,qaTgt:0.85,csat:0.84,fcr:0.76,occ:0.81,adh:0.84},
+    {name:'Nina Torres',   lob:'Follows',  tickets:175,aht:9.8, ahtTgt:10,qa:0.86,qaTgt:0.85,csat:0.88,fcr:0.80,occ:0.83,adh:0.86},
+    {name:"Liam O'Brien",  lob:'Follows',  tickets:142,aht:14.5,ahtTgt:10,qa:0.61,qaTgt:0.85,csat:0.72,fcr:0.58,occ:0.74,adh:0.77}
+  ],
+  escalations: [
+    {id:'ESC-0042',lob:'IG Growth',date:'2026-06-01',cat:'Billing Dispute',   pri:'High',    agent:'Maria Santos',  daysOpen:7,ttr:5,status:'Open',    csat:'—'},
+    {id:'ESC-0043',lob:'Path',     date:'2026-06-01',cat:'Account Access',    pri:'Critical',agent:'Carlos Mendez', daysOpen:7,ttr:3,status:'Resolved', csat:'4.2'},
+    {id:'ESC-0044',lob:'Follows',  date:'2026-06-02',cat:'Content Removal',   pri:'High',    agent:'Nina Torres',   daysOpen:6,ttr:5,status:'Open',    csat:'—'},
+    {id:'ESC-0045',lob:'Crowd',    date:'2026-06-02',cat:'Payout Delay',      pri:'Critical',agent:'Dev Patel',     daysOpen:6,ttr:3,status:'Open',    csat:'—'},
+    {id:'ESC-0046',lob:'IG Growth',date:'2026-06-03',cat:'Policy Violation',  pri:'Medium',  agent:'James Okafor',  daysOpen:5,ttr:7,status:'Resolved', csat:'3.8'},
+    {id:'ESC-0047',lob:'Path',     date:'2026-06-04',cat:'Subscription Issue',pri:'High',    agent:'Tom Huang',     daysOpen:4,ttr:5,status:'Resolved', csat:'4.5'},
+    {id:'ESC-0048',lob:'Follows',  date:'2026-06-05',cat:'Harassment Report', pri:'Critical',agent:'Nina Torres',   daysOpen:3,ttr:2,status:'Open',    csat:'—'},
+    {id:'ESC-0049',lob:'IG Growth',date:'2026-06-05',cat:'Ad Billing',        pri:'Medium',  agent:'Priya Nair',    daysOpen:3,ttr:7,status:'Open',    csat:'—'},
+    {id:'ESC-0050',lob:'Crowd',    date:'2026-06-06',cat:'Feature Bug',       pri:'Low',     agent:'Sophie Larsson',daysOpen:2,ttr:10,status:'Open',   csat:'—'},
+    {id:'ESC-0051',lob:'Path',     date:'2026-06-06',cat:'Verification',      pri:'High',    agent:'Aisha Williams',daysOpen:2,ttr:5,status:'Open',    csat:'—'},
+    {id:'ESC-0052',lob:'IG Growth',date:'2026-06-07',cat:'Billing Dispute',   pri:'High',    agent:'Maria Santos',  daysOpen:1,ttr:5,status:'Open',    csat:'—'},
+    {id:'ESC-0053',lob:'Follows',  date:'2026-06-07',cat:'Account Suspended', pri:'Critical',agent:"Liam O'Brien",  daysOpen:1,ttr:2,status:'Open',    csat:'—'}
+  ],
+  staffing: [
+    {lob:'IG Growth',hc:18,openReqs:2,adh:0.954,adhTgt:0.93,abs:0.031,absTgt:0.05,util:0.84,aht:9.1},
+    {lob:'Path',     hc:12,openReqs:1,adh:0.942,adhTgt:0.93,abs:0.042,absTgt:0.05,util:0.81,aht:10.0},
+    {lob:'Crowd',    hc:8, openReqs:0,adh:0.953,adhTgt:0.93,abs:0.035,absTgt:0.05,util:0.79,aht:9.4},
+    {lob:'Follows',  hc:6, openReqs:2,adh:0.875,adhTgt:0.93,abs:0.068,absTgt:0.05,util:0.71,aht:12.1}
+  ]
+};
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 var D = null; // parsed data
 var agLOB = 'All', agSort = {col:-1, dir:1}, agSearch = '';
@@ -493,11 +547,17 @@ function loadData(){
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
     var ts  = localStorage.getItem(STORAGE_KEY+'_ts');
-    if(!raw) return;
-    D = JSON.parse(raw);
-    if(ts) showUpdBar(ts);
-    var chip = document.getElementById('fileChip');
-    chip.className='chip ok'; chip.textContent='✅ '+(D._filename||'Saved data');
+    if(raw){
+      D = JSON.parse(raw);
+      if(ts) showUpdBar(ts);
+      var chip = document.getElementById('fileChip');
+      chip.className='chip ok'; chip.textContent='✅ '+(D._filename||'Saved data');
+    } else {
+      // Fall back to embedded default data
+      D = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      var chip2 = document.getElementById('fileChip');
+      chip2.className='chip ok'; chip2.textContent='✅ '+DEFAULT_DATA._filename+' (embedded)';
+    }
     render();
   }catch(e){ console.warn('Load error:', e.message); }
 }
