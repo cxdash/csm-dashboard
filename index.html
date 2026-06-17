@@ -152,6 +152,10 @@ td{padding:7px 10px;vertical-align:middle}
 .sts.Resolved{background:var(--green-bg);color:#166534}
 .overdue{background:var(--red-bg);color:var(--red);padding:1px 5px;border-radius:3px;font-size:10px;font-weight:700;margin-left:4px}
 
+/* GROUPED HEADER */
+.thead-grp th{padding:4px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;background:#f8fafc;border-bottom:none;cursor:default}
+.grp-hdr{text-align:center;border-left:2px solid var(--border);border-right:2px solid var(--border)}
+
 /* STAFFING */
 .staff-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .staff-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;border-top-width:3px}
@@ -271,7 +275,13 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <div class="card">
     <div class="card-hdr">
       <div><div class="card-title">Agent Detail by LOB</div><div class="card-sub">Red = below target · click column headers to sort</div></div>
-      <input id="agSearch" type="text" placeholder="Search…" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:11px;outline:none;width:160px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="view-toggle">
+          <button class="view-btn on" id="btnMTD" onclick="setAgPeriod('mtd')">MTD</button>
+          <button class="view-btn" id="btn12M" onclick="setAgPeriod('12m')">12 Months</button>
+        </div>
+        <input id="agSearch" type="text" placeholder="Search…" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:11px;outline:none;width:160px">
+      </div>
     </div>
     <div class="card-body" style="padding-bottom:0">
       <div class="tabs" id="agTabs"></div>
@@ -279,18 +289,31 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="card-body no-pad">
       <div style="overflow-x:auto">
         <table id="agTable">
-          <thead><tr>
-            <th onclick="sortAg(0)">Agent</th>
-            <th onclick="sortAg(1)">LOB</th>
-            <th onclick="sortAg(2)" class="r">Tickets</th>
-            <th onclick="sortAg(3)" class="r">AHT (min)</th>
-            <th onclick="sortAg(4)" class="r">QA Score</th>
-            <th onclick="sortAg(5)" class="r">CSAT</th>
-            <th onclick="sortAg(6)" class="r">FCR</th>
-            <th onclick="sortAg(7)" class="r">Occupancy</th>
-            <th onclick="sortAg(8)" class="r">Adherence</th>
-          </tr></thead>
-          <tbody id="agBody"><tr><td colspan="9"><div class="empty"><strong>Upload xlsx to see agent data</strong></div></td></tr></tbody>
+          <thead>
+            <tr class="thead-grp">
+              <th colspan="2" style="border:none;background:transparent"></th>
+              <th colspan="2" class="grp-hdr">PERFORMANCE</th>
+              <th colspan="2" class="grp-hdr">CHAT</th>
+              <th colspan="2" class="grp-hdr" style="border-right:2px solid var(--border)">LOGGED IN</th>
+              <th colspan="2" class="grp-hdr">OUTPUT</th>
+              <th colspan="2" class="grp-hdr">QUALITY</th>
+            </tr>
+            <tr>
+              <th onclick="sortAg(0)">Agent</th>
+              <th onclick="sortAg(1)">LOB</th>
+              <th onclick="sortAg(2)" class="r">Avg/Day</th>
+              <th onclick="sortAg(3)" class="r">Handle/Cust</th>
+              <th onclick="sortAg(4)" class="r">Chat AHT</th>
+              <th onclick="sortAg(5)" class="r">Missed</th>
+              <th onclick="sortAg(6)" class="r">Avg Login</th>
+              <th onclick="sortAg(7)" class="r" style="border-right:2px solid var(--border)">Login Util</th>
+              <th onclick="sortAg(8)" class="r">Productivity</th>
+              <th onclick="sortAg(9)" class="r">By Resp</th>
+              <th onclick="sortAg(10)" class="r">QA Score</th>
+              <th onclick="sortAg(11)" class="r">FCR</th>
+            </tr>
+          </thead>
+          <tbody id="agBody"><tr><td colspan="12"><div class="empty"><strong>Upload xlsx to see agent data</strong></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -382,39 +405,39 @@ var DEFAULT_DATA = {
     {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:626,  may:1998},
   ],
   agents: [
-    {name:'Geric Vallar',          lob:'Path Social', tickets:2070,aht:6.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.86,adh:0.97},
-    {name:'Zheraine',              lob:'Path Social', tickets:1971,aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.89,adh:0.97},
-    {name:'Abigail Aquino',        lob:'Path Social', tickets:1813,aht:6.3, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.81,adh:0.97},
-    {name:'Benedict Catbagan',     lob:'Path Social', tickets:1787,aht:6.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.81,adh:0.97},
-    {name:'Kaila May Membredo',    lob:'Path Social', tickets:1762,aht:6.3, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.85,adh:0.97},
-    {name:'Pherbia',               lob:'Path Social', tickets:745, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.61,adh:0.97,esc:true},
-    {name:'Janelle Decena',        lob:'Path Social', tickets:42,  aht:76.8,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.23,adh:0.97,esc:true},
-    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:1487,aht:5.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.62,adh:0.97},
-    {name:'Faye',                  lob:'Crowd Ignite',tickets:1225,aht:5.0, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.44,adh:0.97},
-    {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:790, aht:5.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.30,adh:0.97},
-    {name:'Jennilen Manosa',       lob:'Crowd Ignite',tickets:500, aht:3.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.38,adh:0.97},
-    {name:'Rosie Eslao',           lob:'High Social', tickets:2048,aht:2.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97},
-    {name:'Rockwell De Mesa',      lob:'High Social', tickets:1527,aht:3.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.39,adh:0.97},
-    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:1380,aht:4.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.42,adh:0.97},
-    {name:'Charito Mencedez',      lob:'High Social', tickets:1308,aht:3.1, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.30,adh:0.97},
-    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:1297,aht:3.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.35,adh:0.97},
-    {name:'Christine Joy M Salvador',lob:'High Social',tickets:995,aht:3.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.39,adh:0.97},
-    {name:'Jaycel Napa',           lob:'Plixi',       tickets:1342,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.57,adh:0.97},
-    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:1300,aht:7.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.70,adh:0.97},
-    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:1026,aht:9.1, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.57,adh:0.97},
-    {name:'Rhian de Belen',        lob:'Plixi',       tickets:983, aht:7.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.59,adh:0.97},
-    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:918, aht:8.7, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.59,adh:0.97},
-    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:808, aht:9.7, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.51,adh:0.93},
-    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:717, aht:10.2,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.47,adh:0.97},
-    {name:'Rushelle',              lob:'Plixi',       tickets:539, aht:16.1,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.61,adh:0.97},
-    {name:'Monica',                lob:'Plixi',       tickets:161, aht:30.6,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.34,adh:0.97},
-    {name:'Dencio Almag, Jr.',     lob:'Goread',      tickets:1429,aht:6.9, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.68,adh:0.94},
-    {name:'Moses Eragbai',         lob:'Goread',      tickets:1400,aht:6.0, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.67,adh:0.97},
-    {name:'Nay Nuttida',           lob:'Goread',      tickets:1144,aht:4.9, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.35,adh:0.93},
-    {name:'Suzette Mejia',         lob:'Goread',      tickets:1039,aht:7.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.50,adh:0.97},
-    {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:1208,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.60,adh:0.97},
-    {name:'Geal Ann Lorico',       lob:'Follows',     tickets:927, aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97},
-    {name:'Jessica Ibañez',        lob:'Follows',     tickets:281, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.71,adh:0.97},
+    {name:'Geric Vallar',          lob:'Path Social', tickets:2070,aht:6.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.86,adh:0.97, avgCustDay:60, handleCust:'8m 41s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.90,productivity:0.87,fulfilledByResp:622},
+    {name:'Zheraine',              lob:'Path Social', tickets:1971,aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.89,adh:0.97, avgCustDay:63, handleCust:'8m 7s',  chatAHT:'11m 44s', missedChats:0,  avgLogin:'8h 12m',loginUtil:0.89,productivity:0.89,fulfilledByResp:614},
+    {name:'Abigail Aquino',        lob:'Path Social', tickets:1813,aht:6.3, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.81,adh:0.97, avgCustDay:58, handleCust:'6m 1s',  chatAHT:'6m 43s',  missedChats:3,  avgLogin:'7h 44m',loginUtil:0.90,productivity:0.81,fulfilledByResp:587},
+    {name:'Benedict Catbagan',     lob:'Path Social', tickets:1787,aht:6.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.81,adh:0.97, avgCustDay:61, handleCust:'5m 35s', chatAHT:'6m 18s',  missedChats:2,  avgLogin:'8h 9m', loginUtil:0.91,productivity:0.78,fulfilledByResp:654},
+    {name:'Kaila May Membredo',    lob:'Path Social', tickets:1762,aht:6.3, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.85,adh:0.97, avgCustDay:60, handleCust:'6m 39s', chatAHT:'6m 8s',   missedChats:14, avgLogin:'8h 15m',loginUtil:0.91,productivity:0.85,fulfilledByResp:633},
+    {name:'Jennilen Manosa',       lob:'Path Social', tickets:500, aht:3.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.38,adh:0.97, avgCustDay:27, handleCust:'5m 28s', chatAHT:null,       missedChats:0,  avgLogin:'8h 13m',loginUtil:0.91,productivity:0.34,fulfilledByResp:22},
+    {name:'Pherbia',               lob:'Path Social', tickets:745, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.61,adh:0.97,esc:true, avgCustDay:22, handleCust:'7m 2s',  chatAHT:null,       missedChats:0,  avgLogin:'7h 50m',loginUtil:0.89,productivity:0.38,fulfilledByResp:221},
+    {name:'Janelle Decena',        lob:'Path Social', tickets:42,  aht:76.8,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.23,adh:0.97,esc:true, avgCustDay:26, handleCust:'8m 57s', chatAHT:'1m 23s',  missedChats:0,  avgLogin:'8h 12m',loginUtil:0.99,productivity:0.22,fulfilledByResp:171},
+    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:1487,aht:5.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.62,adh:0.97, avgCustDay:43, handleCust:'5m 36s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.62,productivity:0.62,fulfilledByResp:446},
+    {name:'Faye',                  lob:'Crowd Ignite',tickets:1225,aht:5.0, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.44,adh:0.97, avgCustDay:35, handleCust:'5m 0s',  chatAHT:null,       missedChats:0,  avgLogin:'7h 30m',loginUtil:0.44,productivity:0.44,fulfilledByResp:368},
+    {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:790, aht:5.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.30,adh:0.97, avgCustDay:23, handleCust:'5m 12s', chatAHT:null,       missedChats:0,  avgLogin:'7h 15m',loginUtil:0.30,productivity:0.30,fulfilledByResp:237},
+    {name:'Rosie Eslao',           lob:'High Social', tickets:2048,aht:2.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97, avgCustDay:59, handleCust:'2m 48s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.40,productivity:0.40,fulfilledByResp:614},
+    {name:'Rockwell De Mesa',      lob:'High Social', tickets:1527,aht:3.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.39,adh:0.97, avgCustDay:44, handleCust:'3m 36s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.39,productivity:0.39,fulfilledByResp:458},
+    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:1380,aht:4.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.42,adh:0.97, avgCustDay:40, handleCust:'4m 36s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.42,productivity:0.42,fulfilledByResp:414},
+    {name:'Charito Mencedez',      lob:'High Social', tickets:1308,aht:3.1, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.30,adh:0.97, avgCustDay:38, handleCust:'3m 6s',  chatAHT:null,       missedChats:0,  avgLogin:'7h 30m',loginUtil:0.30,productivity:0.30,fulfilledByResp:392},
+    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:1297,aht:3.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.35,adh:0.97, avgCustDay:38, handleCust:'3m 24s', chatAHT:null,       missedChats:0,  avgLogin:'7h 30m',loginUtil:0.35,productivity:0.35,fulfilledByResp:389},
+    {name:'Christine Joy M Salvador',lob:'High Social',tickets:995,aht:3.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.39,adh:0.97, avgCustDay:29, handleCust:'3m 48s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.39,productivity:0.39,fulfilledByResp:299},
+    {name:'Jaycel Napa',           lob:'Plixi',       tickets:1342,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.57,adh:0.97, avgCustDay:39, handleCust:'6m 24s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.57,productivity:0.57,fulfilledByResp:403},
+    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:1300,aht:7.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.70,adh:0.97, avgCustDay:38, handleCust:'7m 24s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.70,productivity:0.70,fulfilledByResp:390},
+    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:1026,aht:9.1, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.57,adh:0.97, avgCustDay:30, handleCust:'9m 6s',  chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.57,productivity:0.57,fulfilledByResp:308},
+    {name:'Rhian de Belen',        lob:'Plixi',       tickets:983, aht:7.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.59,adh:0.97, avgCustDay:28, handleCust:'7m 36s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.59,productivity:0.59,fulfilledByResp:295},
+    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:918, aht:8.7, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.59,adh:0.97, avgCustDay:27, handleCust:'8m 42s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.59,productivity:0.59,fulfilledByResp:275},
+    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:808, aht:9.7, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.51,adh:0.93, avgCustDay:23, handleCust:'9m 42s', chatAHT:null,       missedChats:0,  avgLogin:'7h 45m',loginUtil:0.51,productivity:0.51,fulfilledByResp:242},
+    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:717, aht:10.2,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.47,adh:0.97, avgCustDay:21, handleCust:'10m 12s',chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.47,productivity:0.47,fulfilledByResp:215},
+    {name:'Rushelle',              lob:'Plixi',       tickets:539, aht:16.1,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.61,adh:0.97, avgCustDay:16, handleCust:'16m 6s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.61,productivity:0.61,fulfilledByResp:162},
+    {name:'Monica',                lob:'Plixi',       tickets:161, aht:30.6,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.34,adh:0.97, avgCustDay:5,  handleCust:'30m 36s',chatAHT:null,       missedChats:0,  avgLogin:'7h 0m', loginUtil:0.34,productivity:0.34,fulfilledByResp:48},
+    {name:'Dencio Almag, Jr.',     lob:'Goread',      tickets:1429,aht:6.9, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.68,adh:0.94, avgCustDay:41, handleCust:'6m 54s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.68,productivity:0.68,fulfilledByResp:429},
+    {name:'Moses Eragbai',         lob:'Goread',      tickets:1400,aht:6.0, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.67,adh:0.97, avgCustDay:41, handleCust:'6m 0s',  chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.67,productivity:0.67,fulfilledByResp:420},
+    {name:'Nay Nuttida',           lob:'Goread',      tickets:1144,aht:4.9, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.35,adh:0.93, avgCustDay:33, handleCust:'4m 54s', chatAHT:null,       missedChats:0,  avgLogin:'7h 30m',loginUtil:0.35,productivity:0.35,fulfilledByResp:343},
+    {name:'Suzette Mejia',         lob:'Goread',      tickets:1039,aht:7.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.50,adh:0.97, avgCustDay:30, handleCust:'7m 12s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.50,productivity:0.50,fulfilledByResp:312},
+    {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:1208,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.60,adh:0.97, avgCustDay:35, handleCust:'6m 24s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.60,productivity:0.60,fulfilledByResp:362},
+    {name:'Geal Ann Lorico',       lob:'Follows',     tickets:927, aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97, avgCustDay:27, handleCust:'5m 48s', chatAHT:null,       missedChats:0,  avgLogin:'7h 30m',loginUtil:0.40,productivity:0.40,fulfilledByResp:278},
+    {name:'Jessica Ibañez',        lob:'Follows',     tickets:281, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.71,adh:0.97, avgCustDay:8,  handleCust:'7m 48s', chatAHT:null,       missedChats:0,  avgLogin:'8h 0m', loginUtil:0.71,productivity:0.71,fulfilledByResp:84},
   ],
   escalations: [
     {id:'CI-001',date:'6/2/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'varundasofficial@gmail.com',     plan:'Standard Annual',   reason:'Billing',  specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Stopped collection'},
@@ -479,6 +502,7 @@ var DEFAULT_DATA = {
 // ── STATE ────────────────────────────────────────────────────────────────────
 var D = null; // parsed data
 var agLOB = 'All', agSort = {col:-1, dir:1}, agSearch = '';
+var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -860,7 +884,7 @@ function renderAgents(){
   if(agSearch) agents = agents.filter(function(a){ return a.name.toLowerCase().includes(agSearch)||a.lob.toLowerCase().includes(agSearch); });
 
   if(agSort.col>=0){
-    var keys = ['name','lob','tickets','aht','qa','csat','fcr','occ','adh'];
+    var keys = ['name','lob','avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp','qa','fcr'];
     agents = agents.slice().sort(function(a,b){
       var v1=a[keys[agSort.col]], v2=b[keys[agSort.col]];
       if(v1===null && v2===null) return 0;
@@ -870,56 +894,64 @@ function renderAgents(){
     });
   }
 
-  // Update sort indicators
-  document.querySelectorAll('#agTable thead th').forEach(function(th,i){ th.classList.remove('asc','desc'); if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc'); });
+  // Update sort indicators (offset by 1 for group header row)
+  document.querySelectorAll('#agTable thead tr:last-child th').forEach(function(th,i){ th.classList.remove('asc','desc'); if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc'); });
 
-  if(!agents.length){ document.getElementById('agBody').innerHTML='<tr><td colspan="9"><div class="empty"><strong>No agents found</strong></div></td></tr>'; return; }
+  if(!agents.length){ document.getElementById('agBody').innerHTML='<tr><td colspan="12"><div class="empty"><strong>No agents found</strong></div></td></tr>'; return; }
 
-  var avgTickets = agents.reduce(function(s,a){ return s+a.tickets; },0)/agents.length;
-  var avgAHT = agents.reduce(function(s,a){ return s+a.aht; },0)/agents.length;
+  var avgACD = agents.reduce(function(s,a){ return s+(a.avgCustDay||0); },0)/agents.length;
+  var avgLoginUtil = agents.reduce(function(s,a){ return s+(a.loginUtil||0); },0)/agents.length;
+  var avgProd = agents.reduce(function(s,a){ return s+(a.productivity||0); },0)/agents.length;
+  var avgByResp = agents.reduce(function(s,a){ return s+(a.fulfilledByResp||0); },0)/agents.length;
   var qaAgents = agents.filter(function(a){ return a.qa!==null; });
   var avgQA = qaAgents.length ? qaAgents.reduce(function(s,a){ return s+a.qa; },0)/qaAgents.length : null;
-  var csatAgents = agents.filter(function(a){ return a.csat!==null; });
-  var avgCSAT = csatAgents.length ? csatAgents.reduce(function(s,a){ return s+a.csat; },0)/csatAgents.length : null;
   var fcrAgents = agents.filter(function(a){ return a.fcr!==null; });
   var avgFCR = fcrAgents.length ? fcrAgents.reduce(function(s,a){ return s+a.fcr; },0)/fcrAgents.length : null;
-  var avgOcc = agents.reduce(function(s,a){ return s+a.occ; },0)/agents.length;
-  var avgAdh = agents.reduce(function(s,a){ return s+a.adh; },0)/agents.length;
 
-  document.getElementById('agBody').innerHTML = agents.map(function(a){
-    var ahtMet=a.aht<=a.ahtTgt;
+  var periodRow = agPeriod==='12m' ? '<tr><td colspan="12"><div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 14px;font-size:11px;color:#92400e;margin:6px 0">⚠️ Showing June 2026 MTD · Upload 12-month CSV export to view full-year data</div></td></tr>' : '';
+
+  document.getElementById('agBody').innerHTML = periodRow + agents.map(function(a){
+    var prodMet = (a.productivity||0) >= 0.75;
+    var loginMet = (a.loginUtil||0) >= 0.85;
     var qaMet = a.qa!==null ? a.qa>=a.qaTgt : null;
-    var csatMet = a.csat!==null ? a.csat>=0.85 : null;
     var fcrMet = a.fcr!==null ? a.fcr>=0.75 : null;
-    var qaW = a.qa!==null ? Math.min((a.qa*100).toFixed(0),100) : 0;
-    var dotColor = qaMet===null ? '#94a3b8' : (qaMet ? '#16a34a' : '#dc2626');
+    var dotColor = prodMet ? '#16a34a' : '#dc2626';
+    var escBadge = a.esc ? '<span style="background:#ede9fe;color:#7c3aed;border-radius:3px;font-size:9px;font-weight:700;padding:1px 4px;margin-left:4px">ESC</span>' : '';
     var qaCell = a.qa!==null
-      ? '<div class="qa-wrap" style="justify-content:flex-end"><span style="font-weight:700;color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(a.qa)+'</span><div class="qa-track"><div class="qa-fill '+(qaMet?'g':'r')+'" style="width:'+qaW+'%"></div></div></div>'
+      ? '<span style="font-weight:700;color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(a.qa)+'</span>'
       : '<span style="color:var(--text3)">—</span>';
-    var csatCell = a.csat!==null ? '<span style="color:'+(csatMet?'var(--green)':'var(--red)')+'">'+pct(a.csat)+'</span>' : '<span style="color:var(--text3)">—</span>';
-    var fcrCell  = a.fcr!==null  ? '<span style="color:'+(fcrMet ?'var(--green)':'var(--red)')+'">'+pct(a.fcr)+'</span>'  : '<span style="color:var(--text3)">—</span>';
+    var fcrCell = a.fcr!==null
+      ? '<span style="font-weight:700;color:'+(fcrMet?'var(--green)':'var(--red)')+'">'+pct(a.fcr)+'</span>'
+      : '<span style="color:var(--text3)">—</span>';
     return '<tr>'
-      +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+dotColor+';margin-right:6px;vertical-align:middle"></span>'+a.name+'</td>'
+      +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+dotColor+';margin-right:6px;vertical-align:middle"></span>'+a.name+escBadge+'</td>'
       +'<td><span style="'+pillClass(a.lob)+'">'+a.lob+'</span></td>'
-      +'<td class="r">'+a.tickets+'</td>'
-      +'<td class="r" style="color:'+(ahtMet?'var(--green)':'var(--red)')+'">'+a.aht+'<span style="font-size:10px;color:var(--text3)"> /'+a.ahtTgt+'</span></td>'
+      +'<td class="r">'+Math.round(a.avgCustDay||0)+'</td>'
+      +'<td class="r">'+(a.handleCust||'—')+'</td>'
+      +'<td class="r">'+(a.chatAHT||'<span style="color:var(--text3)">—</span>')+'</td>'
+      +'<td class="r" style="color:'+(a.missedChats>0?'var(--red)':'var(--text)')+'">'+a.missedChats+'</td>'
+      +'<td class="r">'+(a.avgLogin||'—')+'</td>'
+      +'<td class="r" style="font-weight:600;color:'+(loginMet?'var(--green)':'var(--amber)')+';border-right:2px solid var(--border)">'+Math.round((a.loginUtil||0)*100)+'%</td>'
+      +'<td class="r" style="font-weight:700;color:'+(prodMet?'var(--green)':'var(--red)')+'">'+Math.round((a.productivity||0)*100)+'%</td>'
+      +'<td class="r">'+(a.fulfilledByResp||0)+'</td>'
       +'<td class="r">'+qaCell+'</td>'
-      +'<td class="r">'+csatCell+'</td>'
       +'<td class="r">'+fcrCell+'</td>'
-      +'<td class="r">'+pct(a.occ)+'</td>'
-      +'<td class="r">'+pct(a.adh)+'</td>'
       +'</tr>';
   }).join('') + '<tr class="avg-row"><td colspan="2">TEAM AVERAGE</td>'
-    +'<td class="r">'+Math.round(avgTickets)+'</td>'
-    +'<td class="r">'+avgAHT.toFixed(1)+'</td>'
+    +'<td class="r">'+Math.round(avgACD)+'</td>'
+    +'<td class="r">—</td>'
+    +'<td class="r">—</td>'
+    +'<td class="r">—</td>'
+    +'<td class="r">—</td>'
+    +'<td class="r" style="border-right:2px solid var(--border)">'+Math.round(avgLoginUtil*100)+'%</td>'
+    +'<td class="r">'+Math.round(avgProd*100)+'%</td>'
+    +'<td class="r">'+Math.round(avgByResp)+'</td>'
     +'<td class="r">'+(avgQA!==null?pct(avgQA):'<span style="color:var(--text3)">—</span>')+'</td>'
-    +'<td class="r">'+(avgCSAT!==null?pct(avgCSAT):'<span style="color:var(--text3)">—</span>')+'</td>'
-    +'<td class="r">'+(avgFCR!==null?pct(avgFCR):'<span style="color:var(--text3)">—</span>')+'</td>'
-    +'<td class="r">'+pct(avgOcc)+'</td>'
-    +'<td class="r">'+pct(avgAdh)+'</td></tr>';
+    +'<td class="r">'+(avgFCR!==null?pct(avgFCR):'<span style="color:var(--text3)">—</span>')+'</td></tr>';
 }
 
 function setAgLOB(lob){ agLOB=lob; renderAgents(); }
+function setAgPeriod(p){ agPeriod=p; document.getElementById('btnMTD').className='view-btn'+(p==='mtd'?' on':''); document.getElementById('btn12M').className='view-btn'+(p==='12m'?' on':''); renderAgents(); }
 function sortAg(col){ if(agSort.col===col) agSort.dir*=-1; else{agSort.col=col;agSort.dir=1;} renderAgents(); }
 document.getElementById('agSearch').oninput = function(){ agSearch=this.value.toLowerCase(); renderAgents(); };
 
