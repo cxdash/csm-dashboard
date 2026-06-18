@@ -1181,6 +1181,7 @@ var SHEET_NAME_ALIASES = {
   'Nay Nuttida Thongyai':'Nay Nuttida'
 };
 function resolveSheetName(n){ return SHEET_NAME_ALIASES[normName(n)] || normName(n); }
+var _emailCache = {};
 function parseCSVRow(line){
   var res=[],cur='',inQ=false;
   for(var i=0;i<=line.length;i++){
@@ -1204,21 +1205,23 @@ function parseFCRSheetIdx(text){
     if(f.length<8) continue;
     var name=normName((f[3]||'').trim());
     if(!name) continue;
+    var email=(f[8]||'').trim().toLowerCase();
+    var key=email||name;
     var dp=(f[4]||'').trim().split('/');
     if(dp.length<3) continue;
     var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+dp[0];
     if(months12.indexOf(mon)<0) continue;
     var fc=parseFloat(f[6])||0,el=parseFloat(f[7])||0;
-    if(!byAgent[name]) byAgent[name]={};
-    if(!byAgent[name][mon]) byAgent[name][mon]=[0,0];
-    byAgent[name][mon][0]+=fc; byAgent[name][mon][1]+=el;
+    if(!byAgent[key]) byAgent[key]={name:name,email:email};
+    if(!byAgent[key][mon]) byAgent[key][mon]=[0,0];
+    byAgent[key][mon][0]+=fc; byAgent[key][mon][1]+=el;
   }
   var result=[];
-  for(var nm in byAgent){
-    var mdata=byAgent[nm];
-    var lv=mdata[latestMon];
+  for(var k in byAgent){
+    var meta=byAgent[k];
+    var lv=byAgent[k][latestMon];
     var fcr=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
-    result.push({name:nm,fcr:fcr});
+    result.push({name:meta.name,email:meta.email,fcr:fcr});
   }
   return result;
 }
@@ -1235,25 +1238,29 @@ function parseQASheetIdx(text){
     var qaType=(f[20]||'').trim();
     if(qaType.toLowerCase()!=='qa') continue;
     var name=normName((f[3]||'').trim());
-    if(!name) continue;
+    var email=(f[0]||'').trim().toLowerCase();
+    var key=(email&&email.indexOf('@')>=0)?email:(name||null);
+    if(!key) continue;
     var mon=(f[1]||'').trim();
     if(months12.indexOf(mon)<0) continue;
     var score=parseFloat(f[6]);
     if(isNaN(score)) continue;
     var hasZTP=f.length>21&&(f[21]||'').trim()!=='';
-    if(!byAgent[name]) byAgent[name]={};
-    if(!byAgent[name][mon]) byAgent[name][mon]=[0,0,false];
-    byAgent[name][mon][0]+=score; byAgent[name][mon][1]++;
-    if(hasZTP) byAgent[name][mon][2]=true;
+    if(!byAgent[key]) byAgent[key]={name:name,email:email};
+    else if(name&&!byAgent[key].name) byAgent[key].name=name;
+    if(!byAgent[key][mon]) byAgent[key][mon]=[0,0,false];
+    byAgent[key][mon][0]+=score; byAgent[key][mon][1]++;
+    if(hasZTP) byAgent[key][mon][2]=true;
   }
   var result=[];
-  for(var nm in byAgent){
-    var mdata=byAgent[nm];
+  for(var k in byAgent){
+    var meta=byAgent[k];
+    var mdata=byAgent[k];
     var lv=mdata[latestMon];
     var qa=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10)/1000:null;
-    if(qa===null){for(var mk in mdata){var v=mdata[mk];if(v&&v[1]>0){qa=Math.round(v[0]/v[1]*10)/1000;}}}
+    if(qa===null){for(var mk in mdata){var v=mdata[mk];if(v&&v[1]&&v[1]>0){qa=Math.round(v[0]/v[1]*10)/1000;}}}
     var ztpFlag=(mdata[latestMon]&&mdata[latestMon][2])||(mdata[prevMon]&&mdata[prevMon][2])||false;
-    result.push({name:nm,qa:qa,ztpFlag:ztpFlag});
+    result.push({name:meta.name,email:meta.email,qa:qa,ztpFlag:ztpFlag});
   }
   return result;
 }
@@ -1325,10 +1332,16 @@ async function loadFromSheets(){
       var fcrResult = parseFCRSheetIdx(await resps[3].text());
       if(fcrResult) fcrResult.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
-        var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
-        if(def && lv.fcr !== null) def.fcr = lv.fcr;
-        var def12 = D.agents12m && D.agents12m.find(function(a){ return normName(a.name)===resolved; });
-        if(def12 && lv.fcr !== null) def12.fcr = lv.fcr;
+        var def = D.agents.find(function(a){
+          return normName(a.name)===resolved ||
+            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+        });
+        if(def){ if(lv.fcr!==null) def.fcr=lv.fcr; if(lv.email) _emailCache[lv.email]=normName(def.name); }
+        var def12 = D.agents12m && D.agents12m.find(function(a){
+          return normName(a.name)===resolved ||
+            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+        });
+        if(def12 && lv.fcr!==null) def12.fcr=lv.fcr;
       });
     }
 
@@ -1337,9 +1350,15 @@ async function loadFromSheets(){
       var qaResult = parseQASheetIdx(await resps[4].text());
       if(qaResult) qaResult.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
-        var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
-        if(def){ if(lv.qa!==null) def.qa=lv.qa; def.ztpFlag=lv.ztpFlag; }
-        var def12 = D.agents12m && D.agents12m.find(function(a){ return normName(a.name)===resolved; });
+        var def = D.agents.find(function(a){
+          return normName(a.name)===resolved ||
+            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+        });
+        if(def){ if(lv.qa!==null) def.qa=lv.qa; def.ztpFlag=lv.ztpFlag; if(lv.email) _emailCache[lv.email]=normName(def.name); }
+        var def12 = D.agents12m && D.agents12m.find(function(a){
+          return normName(a.name)===resolved ||
+            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+        });
         if(def12){ if(lv.qa!==null) def12.qa=lv.qa; def12.ztpFlag=lv.ztpFlag; }
       });
     }

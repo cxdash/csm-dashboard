@@ -759,6 +759,9 @@ var SHEET_NAME_ALIASES = {
 };
 function resolveSheetName(n){ return SHEET_NAME_ALIASES[normName(n)] || normName(n); }
 
+// Runtime email → short agent name cache (populated from successful merges)
+var _emailCache = {};
+
 function setChip(msg){
   var el = document.getElementById('sheetChip');
   if(!el) return;
@@ -918,32 +921,35 @@ function parseFCRSheet(text){
   }
   var latestMon = months12[months12.length-1];
 
-  // Aggregate: {name: {mon: [fcr_convs, eligible]}}
+  // Aggregate keyed by email (col I=f[8]) when available, else name
   var byAgent = {};
   for(var i=hIdx+1; i<lines.length; i++){
     var f = parseCSVRow(lines[i]);
     if(f.length<8) continue;
     var name = normName((f[3]||'').trim());
     if(!name) continue;
+    var email = (f[8]||'').trim().toLowerCase();
+    var key = email || name;
     var dp = (f[4]||'').trim().split('/');
     if(dp.length<3) continue;
     var mon = dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+dp[0];
     if(months12.indexOf(mon)<0) continue;
     var fc = parseFloat(f[6])||0, el = parseFloat(f[7])||0;
-    if(!byAgent[name]) byAgent[name]={};
-    if(!byAgent[name][mon]) byAgent[name][mon]=[0,0];
-    byAgent[name][mon][0]+=fc; byAgent[name][mon][1]+=el;
+    if(!byAgent[key]) byAgent[key]={name:name, email:email};
+    if(!byAgent[key][mon]) byAgent[key][mon]=[0,0];
+    byAgent[key][mon][0]+=fc; byAgent[key][mon][1]+=el;
   }
 
   var result = [];
-  for(var nm in byAgent){
-    var mdata = byAgent[nm];
+  for(var key in byAgent){
+    var meta = byAgent[key];
+    var mdata = byAgent[key];
     var fcrH = months12.map(function(mk){
       var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*1000)/1000 : null;
     });
     var lv = mdata[latestMon];
     var fcr = (lv&&lv[1]>0) ? Math.round(lv[0]/lv[1]*1000)/1000 : null;
-    result.push({name:nm, fcr:fcr, fcrH:fcrH});
+    result.push({name:meta.name, email:meta.email, fcr:fcr, fcrH:fcrH});
   }
   return result;
 }
@@ -964,7 +970,7 @@ function parseQASheet(text){
   var latestMon = months12[months12.length-1];
   var prevMon = months12[months12.length-2];
 
-  // byAgent: {name: {months: {mon:[sum,count,ztp]}, rows:[{score,ztpFlag,link}]}}
+  // byAgent keyed by email (col A=f[0]) when available, else name
   var byAgent = {};
   for(var i=hIdx+1; i<lines.length; i++){
     var f = parseCSVRow(lines[i]);
@@ -972,17 +978,20 @@ function parseQASheet(text){
     var qaType = (f[20]||'').trim();
     if(qaType.toLowerCase() !== 'qa') continue;
     var name = normName((f[3]||'').trim());
-    if(!name) continue;
+    var email = (f[0]||'').trim().toLowerCase();
+    var key = (email && email.indexOf('@')>=0) ? email : (name || null);
+    if(!key) continue;
     var mon = (f[1]||'').trim();
     if(months12.indexOf(mon)<0) continue;
     var score = parseFloat(f[6]);
     if(isNaN(score)) continue;
     var hasZTP = f.length>21 && (f[21]||'').trim() !== '';
-    if(!byAgent[name]) byAgent[name]={months:{}, rows:[]};
-    if(!byAgent[name].months[mon]) byAgent[name].months[mon]=[0,0,false];
-    byAgent[name].months[mon][0]+=score;
-    byAgent[name].months[mon][1]++;
-    if(hasZTP) byAgent[name].months[mon][2]=true;
+    if(!byAgent[key]) byAgent[key]={name:name, email:email, months:{}, rows:[]};
+    else if(name && !byAgent[key].name) byAgent[key].name=name;
+    if(!byAgent[key].months[mon]) byAgent[key].months[mon]=[0,0,false];
+    byAgent[key].months[mon][0]+=score;
+    byAgent[key].months[mon][1]++;
+    if(hasZTP) byAgent[key].months[mon][2]=true;
     // Store individual rows for the current month
     if(mon === latestMon){
       var link = '';
@@ -990,13 +999,13 @@ function parseQASheet(text){
         var fv=(f[k]||'').trim();
         if(fv.indexOf('http')===0){ link=fv; break; }
       }
-      byAgent[name].rows.push({score:score/100, ztpFlag:hasZTP, link:link});
+      byAgent[key].rows.push({score:score/100, ztpFlag:hasZTP, link:link});
     }
   }
 
   var result = [];
-  for(var nm in byAgent){
-    var aData = byAgent[nm];
+  for(var k in byAgent){
+    var aData = byAgent[k];
     var mdata = aData.months;
     var qaH = months12.map(function(mk){
       var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*10)/1000 : null;
@@ -1004,7 +1013,7 @@ function parseQASheet(text){
     var qa = null;
     for(var j=qaH.length-1; j>=0; j--){ if(qaH[j]!==null){ qa=qaH[j]; break; } }
     var ztpFlag = (mdata[latestMon]&&mdata[latestMon][2]) || (mdata[prevMon]&&mdata[prevMon][2]) || false;
-    result.push({name:nm, qa:qa, qaH:qaH, ztpFlag:ztpFlag, qaRows:aData.rows});
+    result.push({name:aData.name, email:aData.email, qa:qa, qaH:qaH, ztpFlag:ztpFlag, qaRows:aData.rows});
   }
   return result;
 }
@@ -1045,7 +1054,11 @@ async function loadSheets(){
         var fcrResult = parseFCRSheet(await fr.text());
         if(fcrResult) fcrResult.forEach(function(lv){
           var resolved = resolveSheetName(lv.name);
-          var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
+          var def = D.agents.find(function(a){
+            return normName(a.name)===resolved ||
+              (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+          });
+          if(def && lv.email) _emailCache[lv.email] = normName(def.name);
           if(!def) return;
           if(lv.fcr !== null) def.fcr = lv.fcr;
           if(lv.fcrH) def.fcrH = lv.fcrH;
@@ -1061,7 +1074,11 @@ async function loadSheets(){
         var qaResult = parseQASheet(await qr.text());
         if(qaResult) qaResult.forEach(function(lv){
           var resolved = resolveSheetName(lv.name);
-          var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
+          var def = D.agents.find(function(a){
+            return normName(a.name)===resolved ||
+              (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+          });
+          if(def && lv.email) _emailCache[lv.email] = normName(def.name);
           if(!def) return;
           if(lv.qa !== null) def.qa = lv.qa;
           if(lv.qaH) def.qaH = lv.qaH;
@@ -1074,12 +1091,6 @@ async function loadSheets(){
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     setChip('🔗 Live · '+ts);
-
-    // Re-render dashboard if already open
-    var savedCode = localStorage.getItem(CODE_KEY);
-    if(savedCode && AGENT_CODES[savedCode] && document.getElementById('dashScreen').style.display!=='none'){
-      showDash(AGENT_CODES[savedCode]);
-    }
   }catch(e){
     console.warn('[Agent] Sheet error:',e.message);
     setChip('');
@@ -1087,11 +1098,14 @@ async function loadSheets(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-loadSheets();
-var savedCode = localStorage.getItem(CODE_KEY);
-if(savedCode && AGENT_CODES[savedCode]){
-  showDash(AGENT_CODES[savedCode]);
-}
+// Wait for live sheets before auto-login — prevents scores flickering from defaults to live values
+loadSheets().then(function(){
+  var savedCode = localStorage.getItem(CODE_KEY);
+  if(savedCode && AGENT_CODES[savedCode]) showDash(AGENT_CODES[savedCode]);
+}).catch(function(){
+  var savedCode = localStorage.getItem(CODE_KEY);
+  if(savedCode && AGENT_CODES[savedCode]) showDash(AGENT_CODES[savedCode]);
+});
 </script>
 </body>
 </html>
