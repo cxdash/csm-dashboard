@@ -979,7 +979,7 @@ function parseQASheet(text){
         var fv=(f[k]||'').trim();
         if(fv.indexOf('http')===0){ link=fv; break; }
       }
-      byAgent[name].rows.push({score:score, ztpFlag:hasZTP, link:link});
+      byAgent[name].rows.push({score:score/100, ztpFlag:hasZTP, link:link});
     }
   }
 
@@ -988,7 +988,7 @@ function parseQASheet(text){
     var aData = byAgent[nm];
     var mdata = aData.months;
     var qaH = months12.map(function(mk){
-      var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*1000)/1000 : null;
+      var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*10)/1000 : null;
     });
     var qa = null;
     for(var j=qaH.length-1; j>=0; j--){ if(qaH[j]!==null){ qa=qaH[j]; break; } }

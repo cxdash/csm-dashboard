@@ -291,7 +291,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
         <table id="agTable">
           <thead>
             <tr class="thead-grp">
-              <th colspan="2" style="border:none;background:transparent"></th>
+              <th colspan="3" style="border:none;background:transparent"></th>
               <th colspan="2" class="grp-hdr">PERFORMANCE</th>
               <th colspan="2" class="grp-hdr">CHAT</th>
               <th colspan="2" class="grp-hdr" style="border-right:2px solid var(--border)">LOGGED IN</th>
@@ -300,20 +300,21 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
             </tr>
             <tr>
               <th onclick="sortAg(0)">Agent</th>
-              <th onclick="sortAg(1)">LOB</th>
-              <th onclick="sortAg(2)" class="r">Avg/Day</th>
-              <th onclick="sortAg(3)" class="r">Handle/Cust</th>
-              <th onclick="sortAg(4)" class="r">Chat AHT</th>
-              <th onclick="sortAg(5)" class="r">Missed</th>
-              <th onclick="sortAg(6)" class="r">Avg Login</th>
-              <th onclick="sortAg(7)" class="r" style="border-right:2px solid var(--border)">Login Util</th>
-              <th onclick="sortAg(8)" class="r">Productivity</th>
-              <th onclick="sortAg(9)" class="r">By Resp</th>
-              <th onclick="sortAg(10)" class="r">QA Score</th>
-              <th onclick="sortAg(11)" class="r">FCR</th>
+              <th onclick="sortAg(1)" class="r">Code</th>
+              <th onclick="sortAg(2)">LOB</th>
+              <th onclick="sortAg(3)" class="r">Avg/Day</th>
+              <th onclick="sortAg(4)" class="r">Handle/Cust</th>
+              <th onclick="sortAg(5)" class="r">Chat AHT</th>
+              <th onclick="sortAg(6)" class="r">Missed</th>
+              <th onclick="sortAg(7)" class="r">Avg Login</th>
+              <th onclick="sortAg(8)" class="r" style="border-right:2px solid var(--border)">Login Util</th>
+              <th onclick="sortAg(9)" class="r">Productivity</th>
+              <th onclick="sortAg(10)" class="r">By Resp</th>
+              <th onclick="sortAg(11)" class="r">QA Score</th>
+              <th onclick="sortAg(12)" class="r">FCR</th>
             </tr>
           </thead>
-          <tbody id="agBody"><tr><td colspan="12"><div class="empty"><strong>Upload xlsx to see agent data</strong></div></td></tr></tbody>
+          <tbody id="agBody"><tr><td colspan="13"><div class="empty"><strong>Upload xlsx to see agent data</strong></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -376,6 +377,22 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
 var LOBS = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+
+// ── AGENT CODE LOOKUP (name → unique code) ────────────────────────────────────
+var AGENT_CODE_MAP = {
+  'Geric Vallar':'Geric2824ps',        'Zheraine':'Zheraine1409ps',          'Abigail Aquino':'Abigail5506ps',
+  'Benedict Catbagan':'Benedict5012ps','Kaila May Membredo':'Kaila4657ps',   'Jennilen Manosa':'Jennilen3286ps',
+  'Pherbia':'Pherbia2679ps',           'Janelle Decena':'Janelle9935ps',
+  'Mark Lora':'Mark2424ci',            'Faye':'Faye7912ci',                  'Mariam Riasat':'Mariam1520ci',
+  'Rosie Eslao':'Rosie1488hs',         'Rockwell De Mesa':'Rockwell2535hs',  'Samantha Mae Parrilla':'Samantha4582hs',
+  'Charito Mencedez':'Charito4811hs',  'Polly Yanah Salanatin':'Polly9279hs','Christine Joy M Salvador':'Christine1434hs',
+  'Jaycel Napa':'Jaycel4257pl',        'Trisha Joy Cads':'Trisha9928pl',     'Mary Rose Sebastian':'Mary7873pl',
+  'Rhian de Belen':'Rhian4611pl',      'Djamillah Maria Abaya':'Djamillah8359pl','Anne Nicole Asistio':'Anne5557pl',
+  'Eunice Jeremiah Valiao':'Eunice1106pl','Rushelle':'Rushelle3615pl',       'Monica':'Monica7924pl',
+  'Dencio Almag, Jr.':'Dencio6574gr',  'Moses Eragbai':'Moses5552gr',        'Nay Nuttida':'Nay3547gr',
+  'Suzette Mejia':'Suzette4527gr',
+  'Roynalyn Malcampo':'Roynalyn6514fo','Geal Ann Lorico':'Geal2674fo',       'Jessica Ibañez':'Jessica2519fo'
+};
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var STORAGE_KEY = 'csm_kpi_v1';
 var CHARTS = {};
@@ -1224,8 +1241,8 @@ function parseQASheetIdx(text){
   for(var nm in byAgent){
     var mdata=byAgent[nm];
     var lv=mdata[latestMon];
-    var qa=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
-    if(qa===null){for(var mk in mdata){var v=mdata[mk];if(v&&v[1]>0){qa=Math.round(v[0]/v[1]*1000)/1000;}}}
+    var qa=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10)/1000:null;
+    if(qa===null){for(var mk in mdata){var v=mdata[mk];if(v&&v[1]>0){qa=Math.round(v[0]/v[1]*10)/1000;}}}
     var ztpFlag=(mdata[latestMon]&&mdata[latestMon][2])||(mdata[prevMon]&&mdata[prevMon][2])||false;
     result.push({name:nm,qa:qa,ztpFlag:ztpFlag});
   }
@@ -1552,7 +1569,7 @@ function renderAgents(){
   if(agSearch) agents = agents.filter(function(a){ return a.name.toLowerCase().includes(agSearch)||a.lob.toLowerCase().includes(agSearch); });
 
   if(agSort.col>=0){
-    var keys = ['name','lob','avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp','qa','fcr'];
+    var keys = ['name','code','lob','avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp','qa','fcr'];
     agents = agents.slice().sort(function(a,b){
       var v1=a[keys[agSort.col]], v2=b[keys[agSort.col]];
       if(v1===null && v2===null) return 0;
@@ -1565,7 +1582,7 @@ function renderAgents(){
   // Update sort indicators (offset by 1 for group header row)
   document.querySelectorAll('#agTable thead tr:last-child th').forEach(function(th,i){ th.classList.remove('asc','desc'); if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc'); });
 
-  if(!agents.length){ document.getElementById('agBody').innerHTML='<tr><td colspan="12"><div class="empty"><strong>No agents found</strong></div></td></tr>'; return; }
+  if(!agents.length){ document.getElementById('agBody').innerHTML='<tr><td colspan="13"><div class="empty"><strong>No agents found</strong></div></td></tr>'; return; }
 
   var nonEsc = agents.filter(function(a){ return !a.esc; });
   var avgBase = nonEsc.length ? nonEsc : agents;
@@ -1584,7 +1601,7 @@ function renderAgents(){
   var fcrAgents = agents.filter(function(a){ return a.fcr!==null; });
   var avgFCR = fcrAgents.length ? fcrAgents.reduce(function(s,a){ return s+a.fcr; },0)/fcrAgents.length : null;
 
-  var periodLabel = agPeriod==='12m' ? '<tr><td colspan="12"><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-size:11px;color:#1e40af;margin:4px 0">📅 Jan 2025 – Jun 2026 · 12-month average per working day</div></td></tr>' : '';
+  var periodLabel = agPeriod==='12m' ? '<tr><td colspan="13"><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-size:11px;color:#1e40af;margin:4px 0">📅 Jan 2025 – Jun 2026 · 12-month average per working day</div></td></tr>' : '';
 
   document.getElementById('agBody').innerHTML = periodLabel + agents.map(function(a){
     var prodMet = a.productivity!==null ? a.productivity >= 0.75 : null;
@@ -1599,8 +1616,10 @@ function renderAgents(){
     var fcrCell = a.fcr!==null
       ? '<span style="font-weight:700;color:'+(fcrMet?'var(--green)':'var(--red)')+'">'+pct(a.fcr)+'</span>'
       : '<span style="color:var(--text3)">—</span>';
+    var codeStr = AGENT_CODE_MAP[a.name] || '—';
     return '<tr>'
       +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+dotColor+';margin-right:6px;vertical-align:middle"></span>'+a.name+escBadge+'</td>'
+      +'<td class="r"><span style="font-family:monospace;font-size:10px;color:#2563eb">'+codeStr+'</span></td>'
       +'<td><span style="'+pillClass(a.lob)+'">'+a.lob+'</span></td>'
       +'<td class="r">'+Math.round(a.avgCustDay||0)+'</td>'
       +'<td class="r">'+(a.handleCust||'—')+'</td>'
@@ -1613,7 +1632,7 @@ function renderAgents(){
       +'<td class="r">'+qaCell+'</td>'
       +'<td class="r">'+fcrCell+'</td>'
       +'</tr>';
-  }).join('') + '<tr class="avg-row"><td colspan="2">TEAM AVERAGE</td>'
+  }).join('') + '<tr class="avg-row"><td colspan="3">TEAM AVERAGE</td>'
     +'<td class="r">'+Math.round(avgACD)+'</td>'
     +'<td class="r">'+avgHandleCust+'</td>'
     +'<td class="r">'+avgChatAHT+'</td>'
