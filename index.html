@@ -1218,19 +1218,10 @@ function parseFCRSheetIdx(text){
     if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0];
     byAgent[key].m[mon][0]+=fc; byAgent[key].m[mon][1]+=el;
   }
-  // Debug: log row counts for mismatched agents (remove after diagnosis)
-  for(var i=hIdx+1;i<lines.length;i++){
-    var f=parseCSVRow(lines[i]);
-    if(f.length<8) continue;
-    var name=normName((f[3]||'').trim());
-    if(name==='janelle decena'||name==='mariam riasat'||name==='mark lora'){
-      var dp=(f[4]||'').trim().split('/');
-      if(dp.length<3) continue;
-      var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+parseInt(dp[0]);
-      if(mon!==months12[months12.length-1]) continue;
-      console.log('[FCR-ROW]',name,'date:',f[4],'f[5]:',f[5],'f[6](fc):',f[6],'f[7](el):',f[7],'f[8](email):',f[8],'f[9]:',f[9]);
-    }
-  }
+  // Debug PRE-consolidation: show email-key vs name-key split for mismatched agents
+  var _dbg=['janelle@pathsocial.com','janelle decena','mariam@pathsocial.com','mariam riasat','mark@pathsocial.com','mark lora'];
+  var _lm=months12[months12.length-1];
+  _dbg.forEach(function(k){var a=byAgent[k];if(a&&a.m&&a.m[_lm])console.log('[FCR-PRE] key='+k+' fc='+a.m[_lm][0]+' el='+a.m[_lm][1]);});
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
   for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
