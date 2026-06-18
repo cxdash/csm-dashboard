@@ -534,25 +534,28 @@ var DEFAULT_DATA = {
       'Follows':      [0.850, 0.965, 0.950, 0.970, 0.880, 0.933]
     }
   },
-  // Weekly data (Mon–Sun week starts) — sourced from CX Dashboard WoW report
-  // High Social = High Social + Cloutify  |  Goread = Goread + ViralPush  |  Follows = FollowSpy + RecentFollow
+  // Weekly data (Mon–Sun week starts) — sourced from VolDA tab "WoW" section
+  // High Social = High Social + Cloutify (volume-weighted)
+  // Goread = Goread + ViralPush (volume-weighted)
+  // Follows = FollowSpy + RecentFollow (volume-weighted)
+  // May 11-17 volume = 0 (not in VolDA WoW section); SLA = simple avg of sub-LOBs
   weekly: {
     weeks: ['May 11-17','May 18-24','May 25-31','Jun 1-7','Jun 8-14','Jun 15-21'],
     volValues: [
-      [2145, 1883, 1873, 1995, 2030,  0],   // Path Social
-      [ 657,  552,  394,  423,  338,  0],   // Crowd Ignite
-      [1341, 1248, 1447, 1358, 1283,  0],   // High Social
-      [1444, 1443, 1309, 1267, 1252,  0],   // Plixi
-      [ 879,  852,  825,  765,  801,  0],   // Goread
-      [ 527,  413,  306,  296,  330,  0]    // Follows
+      [   0, 1883, 1873, 1995, 2030, 0],   // Path Social
+      [   0,  552,  394,  423,  338, 0],   // Crowd Ignite
+      [   0, 1248, 1447, 1358, 1283, 0],   // High Social (incl. Cloutify)
+      [   0, 1443, 1309, 1267, 1252, 0],   // Plixi
+      [   0,  852,  825,  765,  801, 0],   // Goread (incl. ViralPush)
+      [   0,  413,  306,  296,  330, 0]    // Follows (incl. RecentFollow)
     ],
     slaValues: {
-      'Path Social':  [0.875, 0.870, 0.860, 0.850, 0.820, null],
-      'Crowd Ignite': [0.945, 0.940, 0.935, 0.925, 0.920, null],
-      'High Social':  [0.925, 0.920, 0.915, 0.920, 0.925, null],
-      'Plixi':        [0.988, 0.990, 0.995, 0.995, 0.998, null],
-      'Goread':       [0.915, 0.920, 0.930, 0.945, 0.950, null],
-      'Follows':      [0.885, 0.880, 0.870, 0.920, 0.930, null]
+      'Path Social':  [0.8382, 0.7931, 0.9069, 0.8007, 0.8067, null],
+      'Crowd Ignite': [0.9623, 0.8934, 0.8908, 0.9037, 0.9277, null],
+      'High Social':  [0.9100, 0.9134, 0.9153, 0.9185, 0.9239, null],
+      'Plixi':        [0.9895, 0.9828, 0.9890, 0.9931, 0.9899, null],
+      'Goread':       [0.9474, 0.9461, 0.9430, 0.9503, 0.9576, null],
+      'Follows':      [0.8369, 0.9056, 0.8627, 0.9155, 0.9485, null]
     }
   }
 };
@@ -962,9 +965,95 @@ function parseVolDaSheet(text){
     return { lob:lob, sla:(w+e)>0?w/(w+e):null, jun:lobVol[lob][0], may:N>1?lobVol[lob][1]:0 };
   });
 
+  // ── WoW section (side-by-side: volume cols 0-5, SLA% cols 7-13) ─────────────
+  var wowResult = null;
+  var wowIdx2 = findSection('WoW');
+  if(wowIdx2 >= 0){
+    var wHdr = rows[wowIdx2];
+    var vWks=[], sWks=[];
+    for(var ci=1;ci<=5;ci++)  if(wHdr[ci]&&wHdr[ci].trim()) vWks.push(wHdr[ci].trim());
+    for(var ci=8;ci<=13;ci++) if(wHdr[ci]&&wHdr[ci].trim()) sWks.push(wHdr[ci].trim());
+
+    // Volume names (full) → merged LOB
+    var VOL_MAP={'Path Social':'Path Social','Goread':'Goread','ViralPush':'Goread',
+      'Plixi':'Plixi','High Social':'High Social','Cloutify':'High Social',
+      'Crowd Ignite':'Crowd Ignite','FollowSpy':'Follows','RecentFollow':'Follows'};
+    // SLA names (abbreviated) → merged LOB
+    var SLA_MAP={'Path':'Path Social','Goread':'Goread','ViralPush':'Goread',
+      'Plixi':'Plixi','High':'High Social','Cloutify':'High Social',
+      'Crowd':'Crowd Ignite','FollowSpy':'Follows','Recent Follow':'Follows'};
+    // SLA name → Volume name (for weight lookup)
+    var SLA2VOL={'Path':'Path Social','Goread':'Goread','ViralPush':'ViralPush',
+      'Plixi':'Plixi','High':'High Social','Cloutify':'Cloutify',
+      'Crowd':'Crowd Ignite','FollowSpy':'FollowSpy','Recent Follow':'RecentFollow'};
+
+    var volRawW={}, slaRawW={};
+    for(var rw=wowIdx2+1;rw<rows.length;rw++){
+      var rr=rows[rw];
+      var rc0=(rr[0]||'').trim(), rc7=(rr[7]||'').trim();
+      if(!rc0&&!rc7) break;
+      if(rc0) volRawW[rc0]=vWks.map(function(_,ii){ return parseNum(rr[ii+1]); });
+      if(rc7&&rc7!=='SLA % WoW') slaRawW[rc7]=sWks.map(function(_,ii){
+        var sv=(rr[ii+8]||'').trim(); return sv ? parsePct(sv) : null;
+      });
+    }
+
+    // Aggregate LOB volumes
+    var lobVolW={};
+    LOB_ORDER.forEach(function(l){ lobVolW[l]=new Array(vWks.length).fill(0); });
+    Object.keys(volRawW).forEach(function(sub){
+      var lob=VOL_MAP[sub]; if(!lob) return;
+      volRawW[sub].forEach(function(v,i){ lobVolW[lob][i]+=v; });
+    });
+
+    // Compute LOB SLA per week (volume-weighted; simple avg when no vol data)
+    var lobSLAW={};
+    LOB_ORDER.forEach(function(l){ lobSLAW[l]=new Array(sWks.length).fill(null); });
+    sWks.forEach(function(wk,wi){
+      var vi=vWks.indexOf(wk);
+      LOB_ORDER.forEach(function(lob){
+        var met=0,tot=0,sum=0,n=0;
+        Object.keys(slaRawW).forEach(function(sub){
+          if(SLA_MAP[sub]!==lob) return;
+          var sv=slaRawW[sub][wi];
+          if(sv===null||isNaN(sv)||sv<=0) return;
+          if(vi>=0){
+            var vol=(volRawW[SLA2VOL[sub]]&&volRawW[SLA2VOL[sub]][vi])||0;
+            met+=sv*vol; tot+=vol;
+          } else { sum+=sv; n++; }
+        });
+        lobSLAW[lob][wi]= tot>0 ? met/tot : (n>0 ? sum/n : null);
+      });
+    });
+
+    // Convert "M/D" → "Mon DD-DD+6"
+    function wkLbl(s){ var p=s.split('/'),mo=parseInt(p[0]),d=parseInt(p[1]);
+      var mn=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return mn[mo]+' '+d+'-'+(d+6); }
+
+    var nSLA=sWks.length;
+    wowResult={
+      weeks: sWks.slice().reverse().map(wkLbl),
+      volValues: LOB_ORDER.map(function(l){
+        var v=lobVolW[l].slice().reverse();
+        while(v.length<nSLA) v.unshift(0); // pad for weeks with no vol data
+        return v;
+      }),
+      slaValues: (function(){
+        var sv={};
+        LOB_ORDER.forEach(function(l){
+          sv[l]=lobSLAW[l].slice().reverse();
+          var a=sv[l]; if(a[a.length-1]===0) a[a.length-1]=null; // current week
+        });
+        return sv;
+      })()
+    };
+  }
+
   return {
     inbound:{ lobs:LOB_ORDER, months:chartLabels, values:LOB_ORDER.map(function(l){ return chartVals[l]; }) },
-    sla: slaResult
+    sla: slaResult,
+    weekly: wowResult
   };
 }
 
@@ -1094,6 +1183,7 @@ async function loadFromSheets(){
           var def = D.sla.find(function(s){ return s.lob===vs.lob; });
           if(def){ def.jun = vs.jun; def.may = vs.may; }
         });
+        if(volResult.weekly) D.weekly = volResult.weekly;
       }
     }
 
