@@ -398,6 +398,7 @@ var SHEETS_AGENT_URL  = '';  // Gladly Agent Reporting — disabled (using embed
 // Step 2: File → Share → Publish to web → select "VolDA" tab → CSV → Publish
 // Step 3: Paste the URL below and push to GitHub
 var SHEETS_VOLUME_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=271621784&single=true&output=csv';  // VolDA tab
+var SHEETS_SLA_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=1007479806&single=true&output=csv';  // SLA tab
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -967,6 +968,80 @@ function parseVolDaSheet(text){
   };
 }
 
+// ── SLA SUMMARY SHEET PARSER ─────────────────────────────────────────────────
+// Parses the "SLA" pivot tab (published as CSV).
+// Format: grouped rows — "YYYY-Mon" in col0 on first row of each month,
+//         inbox name in col1, "AVG of Within SLA %" in col2, "COUNTA" in col3.
+// Computes volume-weighted LOB SLA for the most recent month.
+function parseSLASummarySheet(text){
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  function csvRow(line){
+    var r=[],c='',q=false;
+    for(var i=0;i<line.length;i++){
+      if(line[i]==='"'){q=!q;}
+      else if(line[i]===','&&!q){r.push(c);c='';}
+      else c+=line[i];
+    }
+    r.push(c); return r;
+  }
+  var rows = lines.map(csvRow);
+
+  function inboxLOB(name){
+    var n = name.toLowerCase().replace(/\s+/g,'');
+    if(n.startsWith('path'))         return 'Path Social';
+    if(n.startsWith('crowdignite'))  return 'Crowd Ignite';
+    if(n.startsWith('highsocial'))   return 'High Social';
+    if(n.startsWith('cloutify'))     return 'High Social';
+    if(n.startsWith('plixi'))        return 'Plixi';
+    if(n.startsWith('goread'))       return 'Goread';
+    if(n.startsWith('viralpush'))    return 'Goread';
+    if(n.startsWith('followspy'))    return 'Follows';
+    if(n.startsWith('recentfollow')) return 'Follows';
+    return null;
+  }
+  function parsePct(s){
+    s=(s||'').trim();
+    return s.endsWith('%') ? parseFloat(s)/100 : parseFloat(s)||0;
+  }
+
+  var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+  var monthData = {}, monthOrder = [], curMonth = null;
+
+  for(var i=0;i<rows.length;i++){
+    var c0=(rows[i][0]||'').trim(), c1=(rows[i][1]||'').trim(),
+        c2=(rows[i][2]||'').trim(), c3=(rows[i][3]||'').trim();
+
+    // New month: "2026-Jun" (exact 8-char YYYY-Mon, no "Total")
+    if(/^\d{4}-[A-Za-z]{3}$/.test(c0)){
+      curMonth = c0;
+      if(!monthData[curMonth]){
+        monthData[curMonth]={};
+        monthOrder.push(curMonth);
+        LOB_ORDER.forEach(function(l){ monthData[curMonth][l]={met:0,total:0}; });
+      }
+    }
+    if(!curMonth || c0.indexOf('Total')>=0) continue; // skip totals
+    if(!c1 || c1.toLowerCase().indexOf('inbox')>=0) continue; // blank/header
+
+    var lob = inboxLOB(c1);
+    if(!lob) continue;
+    var sla = parsePct(c2);
+    var cnt = parseFloat((c3||'').replace(/,/g,''))||0;
+    if(cnt<=0) continue;
+    monthData[curMonth][lob].met   += sla * cnt;
+    monthData[curMonth][lob].total += cnt;
+  }
+
+  if(!monthOrder.length) return null;
+  var latest = monthOrder[monthOrder.length-1];
+  return {
+    sla: LOB_ORDER.map(function(lob){
+      var d=monthData[latest][lob];
+      return { lob:lob, sla: d.total>0 ? d.met/d.total : null };
+    })
+  };
+}
+
 // ── DATA LOADING ──────────────────────────────────────────────────────────────
 function setChip(cls, text){
   var chip = document.getElementById('fileChip');
@@ -993,9 +1068,12 @@ async function loadFromSheets(){
   setChip('wait','⏳ Fetching from Google Sheets…');
   D = JSON.parse(JSON.stringify(DEFAULT_DATA));
   try{
-    // Fetch agent and volume sheets in parallel
-    var fetches = [SHEETS_AGENT_URL ? fetch(SHEETS_AGENT_URL) : Promise.resolve(null)];
-    if(SHEETS_VOLUME_URL) fetches.push(fetch(SHEETS_VOLUME_URL));
+    // Fetch all sheets in parallel
+    var fetches = [
+      SHEETS_AGENT_URL  ? fetch(SHEETS_AGENT_URL)  : Promise.resolve(null),
+      SHEETS_VOLUME_URL ? fetch(SHEETS_VOLUME_URL) : Promise.resolve(null),
+      SHEETS_SLA_URL    ? fetch(SHEETS_SLA_URL)    : Promise.resolve(null)
+    ];
     var resps = await Promise.all(fetches);
 
     // Agent reporting (MTD + 12M)
@@ -1007,19 +1085,25 @@ async function loadFromSheets(){
       }
     }
 
-    // Volume + SLA (VolDA tab)
+    // Volume (VolDA tab) — updates inbound chart + jun/may ticket counts
     if(SHEETS_VOLUME_URL && resps[1] && resps[1].ok){
       var volResult = parseVolDaSheet(await resps[1].text());
       if(volResult){
         D.inbound = volResult.inbound;
-        // Merge: update sla/jun/may, preserve targets + csat/nps/fcr from DEFAULT_DATA
         volResult.sla.forEach(function(vs){
           var def = D.sla.find(function(s){ return s.lob===vs.lob; });
-          if(def){
-            if(vs.sla!==null) def.sla = vs.sla;
-            def.jun = vs.jun;
-            def.may = vs.may;
-          }
+          if(def){ def.jun = vs.jun; def.may = vs.may; }
+        });
+      }
+    }
+
+    // SLA % (SLA pivot tab) — volume-weighted per-LOB SLA from Met SLA binary field
+    if(SHEETS_SLA_URL && resps[2] && resps[2].ok){
+      var slaResult = parseSLASummarySheet(await resps[2].text());
+      if(slaResult){
+        slaResult.sla.forEach(function(vs){
+          var def = D.sla.find(function(s){ return s.lob===vs.lob; });
+          if(def && vs.sla!==null) def.sla = vs.sla;
         });
       }
     }
@@ -1033,7 +1117,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
