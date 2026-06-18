@@ -496,6 +496,9 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
       var mon=rawMon;
       var _ym=rawMon.match(/^(\d{4})-(\d{2})$/);if(_ym)mon=_ym[2]+'-'+_ym[1];
       var _dm=rawMon.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);if(_dm)mon=(_dm[1].length<2?'0':'')+_dm[1]+'-'+_dm[2];
+      // Handle text formats: "May 2026" or "May-2026"
+      var _MNAMES={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+      var _tm=rawMon.match(/^([A-Za-z]+)[\s\-](\d{4})$/);if(_tm){var _mn=_MNAMES[_tm[1].toLowerCase()];if(_mn)mon=_mn+'-'+_tm[2];}
       if(months12.indexOf(mon)<0) continue;
       if(isNaN(score)) continue;
       if(!byMon[mon]) byMon[mon]=[0,0,false];
@@ -513,6 +516,7 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
   months12.forEach(function(mk){ var v=byMon[mk]; qaH.push(v&&v[1]>0?Math.round(v[0]/v[1]*100)/10000:null); });
   var ztpFlag=(lv&&lv[2])||false;
   var recentRows=allRows.filter(function(r){return r.mon===latestMon;});
+  if(!recentRows.length) recentRows=allRows.filter(function(r){return r.mon===prevMon;});
   recentRows.sort(function(a,b){return b.score-a.score;});
   return {qaMTD:qaMTD, qaH:qaH, ztpFlag:ztpFlag, qaRows:recentRows};
 }

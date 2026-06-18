@@ -1289,6 +1289,8 @@ function parseQASheetIdx(text, text2, text3){
       var mon=rawMon;
       var _ym=rawMon.match(/^(\d{4})-(\d{2})$/);if(_ym)mon=_ym[2]+'-'+_ym[1];
       var _dm=rawMon.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);if(_dm)mon=(_dm[1].length<2?'0':'')+_dm[1]+'-'+_dm[2];
+      var _MNAMES={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+      var _tm=rawMon.match(/^([A-Za-z]+)[\s\-](\d{4})$/);if(_tm){var _mn=_MNAMES[_tm[1].toLowerCase()];if(_mn)mon=_mn+'-'+_tm[2];}
       if(months12.indexOf(mon)<0) continue;
       if(isNaN(score)) continue;
       if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
@@ -1841,4 +1843,4 @@ function setAgPeriod(p){
 })();
 </script>
 </body>
-</html>
+</ht
