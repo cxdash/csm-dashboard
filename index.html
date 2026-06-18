@@ -417,7 +417,8 @@ var SHEETS_AGENT_URL  = '';  // Gladly Agent Reporting — disabled (using embed
 var SHEETS_VOLUME_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=271621784&single=true&output=csv';  // VolDA tab
 var SHEETS_SLA_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=1007479806&single=true&output=csv';  // SLA tab
 var SHEETS_FCR_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1422680454&single=true&output=csv';  // FCR tab
-var SHEETS_QA_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';  // QA tab
+var SHEETS_QA_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';  // QA tab (main)
+var SHEETS_QA2_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1209230234&single=true&output=csv';  // Goread QA tab
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -1238,38 +1239,47 @@ function parseFCRSheetIdx(text){
   }
   return result;
 }
-function parseQASheetIdx(text){
-  var lines=text.split('\n');
+function parseQASheetIdx(text, text2){
   var hIdx=2;
   var now=new Date(), months12=[];
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());}
   var latestMon=months12[months12.length-1], prevMon=months12[months12.length-2];
   // byAgent: key=email(col A) or name; months nested under .m
   var byAgent={};
-  for(var i=hIdx+1;i<lines.length;i++){
-    var f=parseCSVRow(lines[i]);
-    if(f.length<7) continue;
-    var qaType=(f.length>20?(f[20]||''):'').trim();
-    if(qaType&&qaType.toLowerCase()!=='qa') continue;
-    var name=normName((f[3]||'').trim());
-    var email=(f[0]||'').trim().toLowerCase();
-    var key=(email&&email.indexOf('@')>=0)?email:(name||null);
-    if(!key) continue;
-    var rawMon=(f[1]||'').trim();
-    // Normalize month format: MM-YYYY (canonical), YYYY-MM, MM/DD/YYYY
-    var mon=rawMon;
-    var _ym=rawMon.match(/^(\d{4})-(\d{2})$/);if(_ym)mon=_ym[2]+'-'+_ym[1];
-    var _dm=rawMon.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);if(_dm)mon=(_dm[1].length<2?'0':'')+_dm[1]+'-'+_dm[2];
-    if(months12.indexOf(mon)<0) continue;
-    var score=parseFloat(f[6]);
-    if(isNaN(score)) continue;
-    var hasZTP=f.length>21&&(f[21]||'').trim()!=='';
-    if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
-    else if(name&&!byAgent[key].name) byAgent[key].name=name;
-    if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0,false];
-    byAgent[key].m[mon][0]+=score; byAgent[key].m[mon][1]++;
-    if(hasZTP) byAgent[key].m[mon][2]=true;
+  function parseInto(txt){
+    var lines=txt.split('\n');
+    for(var i=hIdx+1;i<lines.length;i++){
+      var f=parseCSVRow(lines[i]);
+      if(f.length<7) continue;
+      // Type column: f[20] for main QA sheet; f[23] for Goread sheet (f[20] = Average Score there).
+      // Only treat f[20] as a type if it looks like 'QA' or 'Calibration'; otherwise fall back to f[23].
+      var t20=(f.length>20?(f[20]||''):'').trim();
+      var t23=(f.length>23?(f[23]||''):'').trim();
+      var qaType=/^(qa|calibration)$/i.test(t20)?t20:t23;
+      if(qaType&&qaType.toLowerCase()!=='qa') continue;
+      var name=normName((f[3]||'').trim());
+      var email=(f[0]||'').trim().toLowerCase();
+      var key=(email&&email.indexOf('@')>=0)?email:(name||null);
+      if(!key) continue;
+      var rawMon=(f[1]||'').trim();
+      // Normalize month format: MM-YYYY (canonical), YYYY-MM, MM/DD/YYYY
+      var mon=rawMon;
+      var _ym=rawMon.match(/^(\d{4})-(\d{2})$/);if(_ym)mon=_ym[2]+'-'+_ym[1];
+      var _dm=rawMon.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);if(_dm)mon=(_dm[1].length<2?'0':'')+_dm[1]+'-'+_dm[2];
+      if(months12.indexOf(mon)<0) continue;
+      var score=parseFloat(f[6]);
+      if(isNaN(score)) continue;
+      // ZTP flag at f[21] — skip if it's an email address (Goread sheet stores reviewer email there)
+      var hasZTP=f.length>21&&(f[21]||'').trim()!==''&&(f[21]||'').indexOf('@')<0;
+      if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
+      else if(name&&!byAgent[key].name) byAgent[key].name=name;
+      if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0,false];
+      byAgent[key].m[mon][0]+=score; byAgent[key].m[mon][1]++;
+      if(hasZTP) byAgent[key].m[mon][2]=true;
+    }
   }
+  parseInto(text);
+  if(text2) parseInto(text2);
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
   for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
@@ -1309,7 +1319,8 @@ async function loadFromSheets(){
       safeFetch(SHEETS_VOLUME_URL),
       safeFetch(SHEETS_SLA_URL),
       safeFetch(SHEETS_FCR_URL),
-      safeFetch(SHEETS_QA_URL)
+      safeFetch(SHEETS_QA_URL),
+      safeFetch(SHEETS_QA2_URL)
     ]);
 
     // Agent reporting (MTD + 12M)
@@ -1373,9 +1384,10 @@ async function loadFromSheets(){
       });
     }
 
-    // QA sheet
+    // QA sheets (main + Goread)
     if(SHEETS_QA_URL && resps[4] && resps[4].ok){
-      var qaResult = parseQASheetIdx(await resps[4].text());
+      var qa2Text = (SHEETS_QA2_URL && resps[5] && resps[5].ok) ? await resps[5].text() : null;
+      var qaResult = parseQASheetIdx(await resps[4].text(), qa2Text);
       if(qaResult) qaResult.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
         function findAgent(arr){
@@ -1408,7 +1420,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){

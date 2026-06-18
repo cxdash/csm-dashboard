@@ -200,6 +200,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 var SHEETS_AGENT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';
 var SHEETS_FCR_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1422680454&single=true&output=csv';
 var SHEETS_QA_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';
+var SHEETS_QA2_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1209230234&single=true&output=csv'; // Goread QA tab
 
 // ── AGENT CODES ───────────────────────────────────────────────────────────────
 // Each agent gets one unique code. Share individually — do not share the full list.
@@ -398,7 +399,295 @@ document.getElementById('codeInput').addEventListener('keydown', function(e){
   if(e.key === 'Enter') doLogin();
 });
 
+// ── UTILITIES ────────────────────────────────────────────────────────────────
+function pct(v, dec){ if(v===null||v===undefined||isNaN(v)) return '—'; return (v*100).toFixed(dec===undefined?1:dec)+'%'; }
+function normName(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function parseCSVRow(line){
+  var r=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+    else if(c===','&&!inQ){r.push(cur);cur='';}
+    else cur+=c;
+  }
+  r.push(cur); return r;
+}
+
+// ── FCR PARSER ────────────────────────────────────────────────────────────────
+// Uses f[5] = pre-computed daily FCR rate; AVERAGE across days (matches pivot formula)
+function parseFCRSheetAg(text, agentEmail, agentName){
+  var lines=text.split('\n'), hIdx=2;
+  var now=new Date(), months12=[];
+  for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push(d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1));}
+  var latestMon=months12[months12.length-1];
+  var byMon={};
+  var normEmail=(agentEmail||'').toLowerCase().trim();
+  var normAg=normName(agentName);
+  for(var i=hIdx+1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<9) continue;
+    var rowEmail=(f[8]||'').trim().toLowerCase();
+    var rowName=normName((f[3]||'').trim());
+    if(rowEmail!==normEmail&&rowName!==normAg) continue;
+    var dp=(f[4]||'').trim().split('/');
+    if(dp.length<3) continue;
+    var mon=dp[2]+'-'+(dp[0].length<2?'0':'')+dp[0];
+    if(months12.indexOf(mon)<0) continue;
+    var rate=parseFloat(f[5]);
+    if(isNaN(rate)) continue;
+    if(!byMon[mon]) byMon[mon]=[0,0];
+    byMon[mon][0]+=rate; byMon[mon][1]++;
+  }
+  var fcrH=[];
+  months12.forEach(function(mk){ var v=byMon[mk]; fcrH.push(v&&v[1]>0?Math.round(v[0]/v[1]*10000)/10000:null); });
+  var lv=byMon[latestMon];
+  return {fcrMTD:(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10000)/10000:null, fcrH:fcrH};
+}
+
+// ── QA PARSER ─────────────────────────────────────────────────────────────────
+// Handles both main QA sheet (type at f[20]) and Goread sheet (type at f[23])
+// ZTP at f[21] — skip if f[21] contains '@' (Goread has reviewer email there)
+function parseQASheetAg(text, text2, agentEmail, agentName){
+  var hIdx=2;
+  var now=new Date(), months12=[];
+  for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());}
+  var latestMon=months12[months12.length-1], prevMon=months12[months12.length-2];
+  var byMon={}, allRows=[];
+  var normEmail=(agentEmail||'').toLowerCase().trim();
+  var normAg=normName(agentName);
+  function parseInto(txt){
+    var lines=txt.split('\n');
+    for(var i=hIdx+1;i<lines.length;i++){
+      var f=parseCSVRow(lines[i]);
+      if(f.length<7) continue;
+      var t20=(f.length>20?(f[20]||''):'').trim();
+      var t23=(f.length>23?(f[23]||''):'').trim();
+      var qaType=/^(qa|calibration)$/i.test(t20)?t20:t23;
+      if(qaType&&qaType.toLowerCase()!=='qa') continue;
+      var rowEmail=(f[0]||'').trim().toLowerCase();
+      var rowName=normName((f[3]||'').trim());
+      if(rowEmail!==normEmail&&rowName!==normAg) continue;
+      var rawMon=(f[1]||'').trim();
+      var mon=rawMon;
+      var _ym=rawMon.match(/^(\d{4})-(\d{2})$/);if(_ym)mon=_ym[2]+'-'+_ym[1];
+      var _dm=rawMon.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);if(_dm)mon=(_dm[1].length<2?'0':'')+_dm[1]+'-'+_dm[2];
+      if(months12.indexOf(mon)<0) continue;
+      var score=parseFloat(f[6]);
+      if(isNaN(score)) continue;
+      var hasZTP=f.length>21&&(f[21]||'').trim()!==''&&(f[21]||'').indexOf('@')<0;
+      var link=(f[4]||'').trim();
+      if(!byMon[mon]) byMon[mon]=[0,0,false];
+      byMon[mon][0]+=score; byMon[mon][1]++;
+      if(hasZTP) byMon[mon][2]=true;
+      allRows.push({mon:mon,score:score,hasZTP:hasZTP,link:link});
+    }
+  }
+  parseInto(text);
+  if(text2) parseInto(text2);
+  var lv=byMon[latestMon];
+  var qaMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*100)/10000:null;
+  var qaH=[];
+  months12.forEach(function(mk){ var v=byMon[mk]; qaH.push(v&&v[1]>0?Math.round(v[0]/v[1]*100)/10000:null); });
+  var ztpFlag=(lv&&lv[2])||false;
+  var recentRows=allRows.filter(function(r){return r.mon===latestMon||r.mon===prevMon;});
+  recentRows.sort(function(a,b){return b.score-a.score;});
+  return {qaMTD:qaMTD, qaH:qaH, ztpFlag:ztpFlag, qaRows:recentRows};
+}
+
+// ── LIVE SHEET LOADING ────────────────────────────────────────────────────────
+async function loadFromSheets(agentName, agentEmail){
+  var cb='&_cb='+Date.now();
+  function sf(url){ if(!url) return Promise.resolve(null); return fetch(url+cb,{credentials:'omit',cache:'no-store'}).catch(function(){return null;}); }
+  var chip=document.getElementById('sheetChip');
+  chip.style.display=''; chip.textContent='⏳ Updating…';
+  try{
+    var resps=await Promise.all([sf(SHEETS_FCR_URL), sf(SHEETS_QA_URL), sf(SHEETS_QA2_URL)]);
+    var a=D.agents.find(function(x){return normName(x.name)===normName(agentName);});
+    if(!a) return;
+    if(resps[0]&&resps[0].ok){
+      var fr=parseFCRSheetAg(await resps[0].text(), agentEmail, agentName);
+      if(fr.fcrMTD!==null) a.fcr=fr.fcrMTD;
+      if(fr.fcrH.some(function(v){return v!==null;})) a.fcrH=fr.fcrH;
+    }
+    if(resps[1]&&resps[1].ok){
+      var qa2text=(SHEETS_QA2_URL&&resps[2]&&resps[2].ok)?await resps[2].text():null;
+      var qr=parseQASheetAg(await resps[1].text(), qa2text, agentEmail, agentName);
+      if(qr.qaMTD!==null) a.qa=qr.qaMTD;
+      if(qr.qaH.some(function(v){return v!==null;})) a.qaH=qr.qaH;
+      a.ztpFlag=qr.ztpFlag;
+      a.qaRows=qr.qaRows;
+    }
+    chip.textContent='🔗 Live';
+    renderDash(a);
+  }catch(e){ chip.textContent='⚠️ Offline'; }
+}
+
+// ── RENDER: TREND CHART ───────────────────────────────────────────────────────
+var _chart=null;
+function renderChart(a){
+  var labels=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+  var ctx=document.getElementById('trendChart').getContext('2d');
+  if(_chart){_chart.destroy(); _chart=null;}
+  _chart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:labels,
+      datasets:[
+        {label:'FCR %',data:(a.fcrH||[]).map(function(v){return v===null?null:+(v*100).toFixed(2);}),borderColor:'#3b82f6',backgroundColor:'transparent',pointRadius:3,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y'},
+        {label:'QA %',data:(a.qaH||[]).map(function(v){return v===null?null:+(v*100).toFixed(2);}),borderColor:'#16a34a',backgroundColor:'transparent',pointRadius:3,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y'},
+        {label:'Avg/Day',data:(a.avgDayH||[]),borderColor:'#f59e0b',backgroundColor:'transparent',pointRadius:3,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y2',borderDash:[4,3]}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:24,padding:10}}},
+      scales:{
+        y:{position:'left',min:0,max:100,ticks:{callback:function(v){return v+'%'},font:{size:10}},grid:{color:'#f1f5f9'}},
+        y2:{position:'right',min:0,ticks:{font:{size:10}},grid:{display:false}}
+      }
+    }
+  });
+  document.getElementById('trendHdr').style.display='';
+  document.getElementById('trendCard').style.display='';
+}
+
+// ── RENDER: METRIC CARDS ──────────────────────────────────────────────────────
+function renderMetrics(a){
+  function card(lbl,val,tgt,cls,badge,sub){
+    return '<div class="metric-card '+cls+'">'
+      +'<div class="metric-lbl">'+lbl+'</div>'
+      +'<div class="metric-val '+cls+'">'+(val||'—')+'</div>'
+      +(sub?'<div class="tkt-sub">'+sub+'</div>':'')
+      +(tgt?'<div class="metric-tgt">Target: '+tgt+'</div>':'')
+      +(badge?'<div class="metric-badge '+cls+'">'+badge+'</div>':'')
+      +'</div>';
+  }
+  var tktSub='';
+  if((a.emailTkts||0)>0||(a.chatTkts||0)>0){
+    var parts=[];
+    if((a.emailTkts||0)>0) parts.push('📧 '+a.emailTkts);
+    if((a.chatTkts||0)>0) parts.push('💬 '+a.chatTkts);
+    tktSub=parts.join(' &nbsp; ');
+  }
+  var fcrV=a.fcr!==null&&a.fcr!==undefined?pct(a.fcr,2):'—';
+  var fcrTgt=pct(a.fcrTgt||0.75,0);
+  var fcrCls=a.fcr===null||a.fcr===undefined?'neutral':a.fcr>=(a.fcrTgt||0.75)?'met':'miss';
+  var fcrBadge=a.fcr!==null&&a.fcr!==undefined?(a.fcr>=(a.fcrTgt||0.75)?'✓ On target':'↓ Below target'):null;
+  var qaV=a.qa!==null&&a.qa!==undefined?pct(a.qa,2)+(a.ztpFlag?' ⚠️':''):'—';
+  var qaTgt=pct(a.qaTgt||0.90,0);
+  var qaCls=a.qa===null||a.qa===undefined?'neutral':a.qa>=0.95?'met':a.qa>=(a.qaTgt||0.90)?'neutral':'miss';
+  var qaBadge=a.qa!==null&&a.qa!==undefined?(a.qa>=0.95?'🌟 Excellent':a.qa>=(a.qaTgt||0.90)?'✓ On target':'↓ Below target'):null;
+  var ahtCls=a.aht&&a.ahtTgt?(a.aht<=a.ahtTgt?'met':'miss'):'neutral';
+  var ahtBadge=a.aht&&a.ahtTgt?(a.aht<=a.ahtTgt?'✓ On target':'↓ Over target'):null;
+  document.getElementById('metricGrid').innerHTML=
+    card('MTD Tickets',a.tickets>0?a.tickets.toLocaleString():'—',null,'neutral',null,tktSub)
+    +card('FCR',fcrV,fcrTgt,fcrCls,fcrBadge)
+    +card('QA Score',qaV,qaTgt,qaCls,qaBadge)
+    +card('Handle Time',a.handleCust||'—',(a.ahtTgt||5)+'m',ahtCls,ahtBadge);
+}
+
+// ── RENDER: COACHING FLAGS ────────────────────────────────────────────────────
+function renderCoaching(a){
+  var flags=[];
+  if(a.ztpFlag) flags.push({cls:'r',icon:'🚨',title:'ZTP Flag Active',detail:'A Zero Tolerance Policy violation was recorded. Please connect with your manager.'});
+  if(a.fcr!==null&&a.fcr!==undefined){
+    if(a.fcr>=(a.fcrTgt||0.75)) flags.push({cls:'g',icon:'✅',title:'FCR on target',detail:'FCR is '+pct(a.fcr,2)+' — meeting the '+pct(a.fcrTgt||0.75,0)+' target.'});
+    else flags.push({cls:'w',icon:'📉',title:'FCR below target',detail:'FCR is '+pct(a.fcr,2)+' vs '+pct(a.fcrTgt||0.75,0)+' target. Focus on resolving tickets in first contact.'});
+  }
+  if(a.qa!==null&&a.qa!==undefined){
+    if(a.qa>=0.95) flags.push({cls:'g',icon:'🌟',title:'Excellent QA',detail:'QA score of '+pct(a.qa,2)+' — outstanding performance!'});
+    else if(a.qa>=(a.qaTgt||0.90)) flags.push({cls:'g',icon:'✅',title:'QA on target',detail:'QA is '+pct(a.qa,2)+' — meeting the '+pct(a.qaTgt||0.90,0)+' target.'});
+    else flags.push({cls:'w',icon:'📋',title:'QA below target',detail:'QA is '+pct(a.qa,2)+' vs '+pct(a.qaTgt||0.90,0)+' target. Review evaluation feedback.'});
+  }
+  if(a.aht&&a.ahtTgt&&a.aht>a.ahtTgt) flags.push({cls:'w',icon:'⏱️',title:'Handle time over target',detail:'AHT '+a.handleCust+' vs '+a.ahtTgt+'m target. Look for efficiency opportunities.'});
+  if((a.missedChats||0)>10) flags.push({cls:'w',icon:'💬',title:'Missed chats',detail:a.missedChats+' missed chats this period.'});
+  if(!flags.length) flags.push({cls:'g',icon:'✅',title:'All metrics on track',detail:'Great job keeping performance in a healthy range!'});
+  document.getElementById('coachList').innerHTML='<div class="coach-list">'+flags.map(function(f){
+    return '<div class="coach-flag '+f.cls+'"><div class="coach-icon">'+f.icon+'</div><div><div class="coach-title">'+f.title+'</div><div class="coach-detail">'+f.detail+'</div></div></div>';
+  }).join('')+'</div>';
+}
+
+// ── RENDER: QA INSIGHTS ───────────────────────────────────────────────────────
+function renderQAInsights(a){
+  var rows=a.qaRows||[];
+  var hdr=document.getElementById('qaInsightHdr'), card=document.getElementById('qaInsightCard');
+  var list=document.getElementById('qaInsightList'), meta=document.getElementById('qaInsightMeta'), badge=document.getElementById('qaAuditBadge');
+  hdr.style.display=''; card.style.display='';
+  if(!rows.length){
+    list.innerHTML='<div class="qa-nodata">No recent evaluations in the last 2 months.</div>';
+    meta.textContent=''; badge.style.display='none'; return;
+  }
+  meta.textContent=rows.length+' evaluation'+(rows.length!==1?'s':'');
+  var avg=rows.reduce(function(s,r){return s+r.score;},0)/rows.length;
+  badge.textContent='Avg '+pct(avg/100,2); badge.style.display='';
+  var wins=rows.filter(function(r){return r.score>=95;}), opps=rows.filter(function(r){return r.score<90;});
+  function rowHtml(r){
+    var sc=r.score>=95?'win':r.score>=90?'ok':r.score>=80?'opp':'crit';
+    var lnk=r.link?'<a href="'+r.link+'" target="_blank">View →</a>':'';
+    return '<tr><td class="col-score qa-eval-score '+sc+'">'+r.score.toFixed(1)+'%'+(r.hasZTP?'<span class="qa-eval-ztp">ZTP</span>':'')+'</td><td>'+r.mon+'</td><td class="col-link">'+lnk+'</td></tr>';
+  }
+  var html='<div class="qa-insight-summary">Recent evaluations &nbsp;·&nbsp; Avg <strong>'+pct(avg/100,2)+'</strong></div>';
+  if(wins.length) html+='<div class="qa-section-hdr wins-hdr">✅ Wins (≥95%)</div><table class="qa-table">'+wins.map(rowHtml).join('')+'</table>';
+  if(wins.length&&opps.length) html+='<div class="qa-section-divider"></div>';
+  if(opps.length) html+='<div class="qa-section-hdr opps-hdr">⚠️ Opportunities (&lt;90%)</div><table class="qa-table">'+opps.map(rowHtml).join('')+'</table>';
+  list.innerHTML=html;
+}
+
+// ── RENDER: FULL DASHBOARD ────────────────────────────────────────────────────
+function renderDash(a){
+  document.getElementById('hdrName').textContent=a.name;
+  document.getElementById('hdrLob').innerHTML='<span style="font-size:11px;color:rgba(255,255,255,.6)">'+a.lob+'</span>';
+  document.getElementById('hdrPeriod').textContent=D.period;
+  document.getElementById('periodTag').textContent=D.period;
+  document.getElementById('footerPeriod').textContent=D.period;
+  renderChart(a);
+  renderMetrics(a);
+  renderCoaching(a);
+  renderQAInsights(a);
+}
+
 // ── SHOW DASHBOARD ────────────────────────────────────────────────────────────
+var EMAIL_MAP={
+  'Geric Vallar':'geric@pathsocial.com','Zheraine':'zheraine@pathsocial.com',
+  'Abigail Aquino':'abigailaquino@pathsocial.com','Benedict Catbagan':'benedict@pathsocial.com',
+  'Kaila May Membredo':'kaila@pathsocial.com','Jennilen Manosa':'jennilen@pathsocial.com',
+  'Pherbia':'pherbia@pathsocial.com','Janelle Decena':'janelle@pathsocial.com',
+  'Mark Lora':'mark@pathsocial.com','Faye':'faye@pathsocial.com','Mariam Riasat':'mariam@pathsocial.com',
+  'Rosie Eslao':'rosie@highsocial.com','Rockwell De Mesa':'rockwell@pathsocial.com',
+  'Samantha Mae Parrilla':'samantha@highsocial.com','Charito Mencedez':'Charito@pathsocial.com',
+  'Polly Yanah Salanatin':'polly@highsocial.com','Christine Joy M Salvador':'christine@highsocial.com',
+  'Jaycel Napa':'jaycel@plixi.com','Trisha Joy Cads':'trisha@plixi.com','Mary Rose Sebastian':'mary@plixi.com',
+  'Rhian de Belen':'rhian@plixi.com','Djamillah Maria Abaya':'djamillah@plixi.com',
+  'Anne Nicole Asistio':'annenicole@plixi.com','Eunice Jeremiah Valiao':'eunice@plixi.com',
+  'Rushelle':'rushelle@plixi.com','Monica':'monica@plixi.com',
+  'Dencio Almag, Jr.':'dencio@adly.com','Moses Eragbai':'moses@adly.com',
+  'Nay Nuttida':'nay@adly.com','Suzette Mejia':'suzette@adly.com',
+  'Roynalyn Malcampo':'Roynalyn@pathsocial.com','Geal Ann Lorico':'geal@pathsocial.com',
+  'Jessica Ibanez':'jessica@pathsocial.com'
+};
+
+function showDash(name){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('dashScreen').style.display='block';
+  var a=D.agents.find(function(x){return normName(x.name)===normName(name);});
+  if(!a){document.getElementById('dashScreen').innerHTML='<p style="padding:40px;color:red">Agent not found: '+name+'</p>'; return;}
+  renderDash(a);
+  if(SHEETS_FCR_URL||SHEETS_QA_URL||SHEETS_QA2_URL) loadFromSheets(name, EMAIL_MAP[name]||'');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(function init(){
+  var saved=localStorage.getItem(CODE_KEY);
+  if(saved&&AGENT_CODES[saved]) showDash(AGENT_CODES[saved]);
+})();
+</script>
+</body>
+</html>
+GENT_CODES[saved]) showDash(AGENT_CODES[saved]);
+})();
+</script>
+</body>
+</html>───────────────────────────────────────
 function showDash(name){
   var agent = D.agents.find(function(a){ return a.name === name; });
   if(!agent){ doLogout(); return; }
