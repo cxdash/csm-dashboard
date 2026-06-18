@@ -1172,6 +1172,15 @@ function loadFromStorage(){
 function normName(s){
   return (s||'').trim().replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').replace(/Ã¡/g,'á').replace(/Ã³/g,'ó');
 }
+var SHEET_NAME_ALIASES = {
+  'Zheraine Velasquez':'Zheraine',
+  'Sonja Faye Regodon Lomarquez':'Faye',
+  'Pherbia Mayor':'Pherbia',
+  'Rushelle Vino':'Rushelle',
+  'Monica Cruz':'Monica',
+  'Nay Nuttida Thongyai':'Nay Nuttida'
+};
+function resolveSheetName(n){ return SHEET_NAME_ALIASES[normName(n)] || normName(n); }
 function parseCSVRow(line){
   var res=[],cur='',inQ=false;
   for(var i=0;i<=line.length;i++){
@@ -1315,9 +1324,10 @@ async function loadFromSheets(){
     if(SHEETS_FCR_URL && resps[3] && resps[3].ok){
       var fcrResult = parseFCRSheetIdx(await resps[3].text());
       if(fcrResult) fcrResult.forEach(function(lv){
-        var def = D.agents.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        var resolved = resolveSheetName(lv.name);
+        var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
         if(def && lv.fcr !== null) def.fcr = lv.fcr;
-        var def12 = D.agents12m && D.agents12m.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        var def12 = D.agents12m && D.agents12m.find(function(a){ return normName(a.name)===resolved; });
         if(def12 && lv.fcr !== null) def12.fcr = lv.fcr;
       });
     }
@@ -1326,9 +1336,10 @@ async function loadFromSheets(){
     if(SHEETS_QA_URL && resps[4] && resps[4].ok){
       var qaResult = parseQASheetIdx(await resps[4].text());
       if(qaResult) qaResult.forEach(function(lv){
-        var def = D.agents.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        var resolved = resolveSheetName(lv.name);
+        var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
         if(def){ if(lv.qa!==null) def.qa=lv.qa; def.ztpFlag=lv.ztpFlag; }
-        var def12 = D.agents12m && D.agents12m.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        var def12 = D.agents12m && D.agents12m.find(function(a){ return normName(a.name)===resolved; });
         if(def12){ if(lv.qa!==null) def12.qa=lv.qa; def12.ztpFlag=lv.ztpFlag; }
       });
     }

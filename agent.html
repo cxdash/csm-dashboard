@@ -748,6 +748,17 @@ function normName(s){
   return (s||'').trim().replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').replace(/Ã¡/g,'á').replace(/Ã³/g,'ó');
 }
 
+// Maps full sheet names → short DEFAULT_DATA names for agents stored by first name only
+var SHEET_NAME_ALIASES = {
+  'Zheraine Velasquez':'Zheraine',
+  'Sonja Faye Regodon Lomarquez':'Faye',
+  'Pherbia Mayor':'Pherbia',
+  'Rushelle Vino':'Rushelle',
+  'Monica Cruz':'Monica',
+  'Nay Nuttida Thongyai':'Nay Nuttida'
+};
+function resolveSheetName(n){ return SHEET_NAME_ALIASES[normName(n)] || normName(n); }
+
 function setChip(msg){
   var el = document.getElementById('sheetChip');
   if(!el) return;
@@ -1033,7 +1044,8 @@ async function loadSheets(){
       if(fr.ok){
         var fcrResult = parseFCRSheet(await fr.text());
         if(fcrResult) fcrResult.forEach(function(lv){
-          var def = D.agents.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+          var resolved = resolveSheetName(lv.name);
+          var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
           if(!def) return;
           if(lv.fcr !== null) def.fcr = lv.fcr;
           if(lv.fcrH) def.fcrH = lv.fcrH;
@@ -1048,7 +1060,8 @@ async function loadSheets(){
       if(qr.ok){
         var qaResult = parseQASheet(await qr.text());
         if(qaResult) qaResult.forEach(function(lv){
-          var def = D.agents.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+          var resolved = resolveSheetName(lv.name);
+          var def = D.agents.find(function(a){ return normName(a.name)===resolved; });
           if(!def) return;
           if(lv.qa !== null) def.qa = lv.qa;
           if(lv.qaH) def.qaH = lv.qaH;
