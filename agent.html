@@ -86,16 +86,23 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 /* QA INSIGHTS */
 .qa-insight-summary{padding:12px 18px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
 .qa-insight-summary strong{color:var(--text)}
-.qa-eval-list{display:flex;flex-direction:column}
-.qa-eval-row{display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid #f1f5f9;font-size:12px}
-.qa-eval-row:last-child{border-bottom:none}
-.qa-eval-score{font-weight:800;font-size:13px;min-width:52px}
+.qa-section-hdr{display:flex;align-items:center;gap:8px;padding:10px 18px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+.qa-section-hdr.wins-hdr{color:#15803d}
+.qa-section-hdr.opps-hdr{color:#b45309}
+.qa-section-divider{height:1px;background:var(--border);margin:8px 18px}
+.qa-table{width:100%;border-collapse:collapse;font-size:12px}
+.qa-table td{padding:7px 18px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.qa-table tr:last-child td{border-bottom:none}
+.qa-table .col-score{font-weight:800;font-size:13px;width:70px}
+.qa-table .col-link{text-align:right;white-space:nowrap}
+.qa-table .col-link a{color:var(--accent);text-decoration:none;font-size:11px}
+.qa-table .col-link a:hover{text-decoration:underline}
+.qa-coaching{font-size:11px;color:#92400e;background:#fefce8;border-left:3px solid #d97706;padding:6px 12px;border-radius:0 5px 5px 0;margin:-2px 18px 6px 36px;line-height:1.55}
+.qa-coaching.crit-coaching{color:#991b1b;background:#fff7f7;border-color:#dc2626}
 .qa-eval-score.win{color:#16a34a}
 .qa-eval-score.ok{color:#2563eb}
 .qa-eval-score.opp{color:#d97706}
 .qa-eval-score.crit{color:#dc2626}
-.qa-eval-link{color:var(--accent);text-decoration:none;font-size:11px;margin-left:auto;white-space:nowrap}
-.qa-eval-link:hover{text-decoration:underline}
 .qa-eval-ztp{background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;margin-left:4px}
 .qa-insight-box{margin:10px 18px 12px;padding:10px 14px;background:#f0fdf4;border-radius:7px;font-size:11.5px;color:#14532d;border-left:3px solid #16a34a;line-height:1.6}
 .qa-insight-box.mixed{background:#fefce8;border-color:#d97706;color:#78350f}
@@ -681,6 +688,22 @@ function renderChart(agent){
 }
 
 // ── QA INSIGHTS ───────────────────────────────────────────────────────────────
+function qaCoachingTip(score, ztpFlag){
+  var gap = Math.round((0.90 - score) * 100);
+  var tip = '';
+  if(score >= 0.85){
+    tip = 'Just ' + gap + ' point' + (gap!==1?'s':'') + ' below passing. Open the evaluation and identify the specific deduction — often a single missed step in SOP adherence or resolution accuracy. Correcting one habit can push this to a pass.';
+  } else if(score >= 0.75){
+    tip = gap + ' points below passing. Review the evaluation for deduction categories. Common gaps at this range: SOP adherence, incomplete resolution, or tone/empathy markers. Schedule a self-review or peer feedback session.';
+  } else if(score >= 0.65){
+    tip = 'Significant gap (' + gap + ' points). Priority areas to revisit: SOP adherence, communication quality, and resolution completeness. Recommend reviewing the QA rubric and comparing against a high-scoring evaluation.';
+  } else {
+    tip = 'Critical — ' + gap + ' points below passing. Immediate coaching required. Review SOP guidelines from scratch, identify recurring failure patterns across evaluations, and set a 2-week improvement target with your manager.';
+  }
+  if(ztpFlag) tip += ' ⚠️ This evaluation has a Zero Tolerance Policy flag — a ZTP violation overrides the score and requires mandatory review.';
+  return tip;
+}
+
 function renderQAInsights(agent){
   var hdr  = document.getElementById('qaInsightHdr');
   var card = document.getElementById('qaInsightCard');
@@ -702,45 +725,80 @@ function renderQAInsights(agent){
     return;
   }
 
-  // Sort by score desc
-  var sorted = rows.slice().sort(function(a,b){ return b.score - a.score; });
-  var wins = rows.filter(function(r){ return r.score >= 0.95; }).length;
-  var ok   = rows.filter(function(r){ return r.score >= 0.90 && r.score < 0.95; }).length;
-  var opps = rows.filter(function(r){ return r.score < 0.90; }).length;
+  var winRows  = rows.filter(function(r){ return r.score >= 0.90; }).sort(function(a,b){ return b.score-a.score; });
+  var oppRows  = rows.filter(function(r){ return r.score <  0.90; }).sort(function(a,b){ return a.score-b.score; });
+  var topWins  = winRows.filter(function(r){ return r.score >= 0.95; }).length;
+  var avg      = rows.reduce(function(s,r){ return s+r.score; },0) / rows.length;
 
-  meta.textContent = rows.length + ' evaluation' + (rows.length!==1?'s':'') + ' · ' + wins + ' win' + (wins!==1?'s':'') + (opps>0?' · '+opps+' need'+' attention':'');
+  meta.textContent = rows.length + ' evaluation' + (rows.length!==1?'s':'')
+    + ' · ' + winRows.length + ' win' + (winRows.length!==1?'s':'')
+    + (oppRows.length > 0 ? ' · ' + oppRows.length + ' opportunit' + (oppRows.length!==1?'ies':'y') : '');
 
-  // Insight text
-  var avg = rows.reduce(function(s,r){ return s+r.score; }, 0) / rows.length;
-  var insightClass = opps > 0 ? (opps >= rows.length/2 ? 'needs-work' : 'mixed') : '';
-  var insightText = '';
-  if(wins === rows.length){
-    insightText = '🌟 All evaluations this period scored 95%+ — outstanding quality work!';
-  } else if(opps === 0){
-    insightText = '✅ All evaluations met the 90% passing threshold. Avg: ' + pct(avg) + '. Push for 95%+ to reach excellence.';
-  } else if(opps === rows.length){
-    insightText = '⚠️ All evaluations fell below the 90% passing threshold this period. Avg: ' + pct(avg) + '. Review QA feedback carefully and focus on the lowest-scoring categories.';
+  // Overall insight banner
+  var insightClass = oppRows.length === 0 ? '' : (oppRows.length >= rows.length/2 ? 'needs-work' : 'mixed');
+  var insightText  = '';
+  if(oppRows.length === 0 && topWins === rows.length){
+    insightText = '🌟 All evaluations scored 95%+ this period — outstanding quality work!';
+  } else if(oppRows.length === 0){
+    insightText = '✅ All evaluations passed (≥90%). Avg: ' + pct(avg) + '. Push for 95%+ to reach excellence tier.';
+  } else if(oppRows.length === rows.length){
+    insightText = '⚠️ All evaluations fell below the 90% passing threshold. Avg: ' + pct(avg) + '. Open each evaluation link, review the deductions, and focus on SOP adherence as a first priority.';
   } else {
-    insightText = 'Avg: ' + pct(avg) + ' — ' + wins + ' win' + (wins!==1?'s':'') + ', ' + ok + ' passing, ' + opps + ' below threshold. Review ' + (opps===1?'the':'each') + ' below-threshold evaluation and identify improvement areas.';
+    insightText = 'Avg: ' + pct(avg) + ' — ' + winRows.length + ' passing, ' + oppRows.length
+      + ' below threshold. Review each opportunity evaluation and target the specific deduction categories before the next QA cycle.';
   }
 
-  var rowsHtml = sorted.map(function(r, i){
-    var sc = r.score;
-    var cls = sc >= 0.95 ? 'win' : (sc >= 0.90 ? 'ok' : (sc >= 0.75 ? 'opp' : 'crit'));
-    var label = sc >= 0.95 ? '✓ Win' : (sc >= 0.90 ? 'Passing' : 'Needs attention');
-    var ztpBadge = r.ztpFlag ? '<span class="qa-eval-ztp">ZTP</span>' : '';
-    var linkHtml = r.link ? '<a class="qa-eval-link" href="'+r.link+'" target="_blank" rel="noopener">View →</a>' : '';
-    return '<div class="qa-eval-row">'
-      +'<span style="color:var(--text3);font-size:11px;min-width:20px">'+(i+1)+'.</span>'
-      +'<span class="qa-eval-score '+cls+'">'+pct(sc)+'</span>'
-      +'<span style="font-size:11px;color:var(--text2)">'+label+'</span>'
-      +ztpBadge
-      +linkHtml
-      +'</div>';
-  }).join('');
+  // Build wins table
+  function buildRow(r){
+    var sc  = r.score;
+    var cls = sc >= 0.95 ? 'win' : 'ok';
+    var ztp = r.ztpFlag ? '<span class="qa-eval-ztp" style="margin-left:6px">ZTP</span>' : '';
+    var lnk = r.link
+      ? '<a href="'+r.link+'" target="_blank" rel="noopener">View →</a>'
+      : '<span style="color:var(--text3);font-size:11px">—</span>';
+    return '<tr>'
+      +'<td class="col-score qa-eval-score '+cls+'">'+pct(sc)+ztp+'</td>'
+      +'<td class="col-link">'+lnk+'</td>'
+      +'</tr>';
+  }
+
+  function buildOppRow(r){
+    var sc   = r.score;
+    var cls  = sc >= 0.75 ? 'opp' : 'crit';
+    var ztp  = r.ztpFlag ? '<span class="qa-eval-ztp" style="margin-left:6px">ZTP</span>' : '';
+    var lnk  = r.link
+      ? '<a href="'+r.link+'" target="_blank" rel="noopener">View →</a>'
+      : '<span style="color:var(--text3);font-size:11px">—</span>';
+    var tip  = qaCoachingTip(sc, r.ztpFlag);
+    var tipCls = sc < 0.75 ? 'crit-coaching' : '';
+    return '<tr>'
+      +'<td class="col-score qa-eval-score '+cls+'">'+pct(sc)+ztp+'</td>'
+      +'<td class="col-link">'+lnk+'</td>'
+      +'</tr>'
+      +'<tr><td colspan="2" style="padding:0 0 4px 0;border:none">'
+      +'<div class="qa-coaching '+tipCls+'">💡 '+tip+'</div>'
+      +'</td></tr>';
+  }
+
+  var winsHtml = '';
+  if(winRows.length){
+    winsHtml = '<div class="qa-section-hdr wins-hdr">✓ Wins &amp; Passes <span style="font-weight:400;margin-left:4px">('+winRows.length+')</span></div>'
+      +'<table class="qa-table"><tbody>'
+      + winRows.map(buildRow).join('')
+      +'</tbody></table>';
+  }
+
+  var oppsHtml = '';
+  if(oppRows.length){
+    oppsHtml = (winRows.length ? '<div class="qa-section-divider"></div>' : '')
+      +'<div class="qa-section-hdr opps-hdr">⚠ Opportunities <span style="font-weight:400;margin-left:4px">('+oppRows.length+')</span></div>'
+      +'<table class="qa-table"><tbody>'
+      + oppRows.map(buildOppRow).join('')
+      +'</tbody></table>';
+  }
 
   list.innerHTML = '<div class="qa-insight-box '+insightClass+'">'+insightText+'</div>'
-    +'<div class="qa-eval-list">'+rowsHtml+'</div>';
+    + winsHtml + oppsHtml;
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────

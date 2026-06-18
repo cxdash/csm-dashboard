@@ -1199,6 +1199,7 @@ function parseFCRSheetIdx(text){
   var now=new Date(), months12=[];
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push(d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1));}
   var latestMon=months12[months12.length-1];
+  // byAgent: key=email(col I) or name; months nested under .m
   var byAgent={};
   for(var i=hIdx+1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
@@ -1206,22 +1207,28 @@ function parseFCRSheetIdx(text){
     var name=normName((f[3]||'').trim());
     if(!name) continue;
     var email=(f[8]||'').trim().toLowerCase();
-    var key=email||name;
+    var key=(email&&email.indexOf('@')>=0)?email:name;
     var dp=(f[4]||'').trim().split('/');
     if(dp.length<3) continue;
     var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+dp[0];
     if(months12.indexOf(mon)<0) continue;
     var fc=parseFloat(f[6])||0,el=parseFloat(f[7])||0;
-    if(!byAgent[key]) byAgent[key]={name:name,email:email};
-    if(!byAgent[key][mon]) byAgent[key][mon]=[0,0];
-    byAgent[key][mon][0]+=fc; byAgent[key][mon][1]+=el;
+    if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
+    else if(!byAgent[key].name&&name) byAgent[key].name=name;
+    if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0];
+    byAgent[key].m[mon][0]+=fc; byAgent[key].m[mon][1]+=el;
   }
   var result=[];
   for(var k in byAgent){
-    var meta=byAgent[k];
-    var lv=byAgent[k][latestMon];
-    var fcr=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
-    result.push({name:meta.name,email:meta.email,fcr:fcr});
+    var ag=byAgent[k]; var mons=ag.m;
+    // MTD: current month only
+    var lv=mons[latestMon];
+    var fcrMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
+    // 12m: weighted aggregate across all months
+    var t12=[0,0];
+    months12.forEach(function(mk){var v=mons[mk];if(v&&v[1]>0){t12[0]+=v[0];t12[1]+=v[1];}});
+    var fcr12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*1000)/1000:null;
+    result.push({name:ag.name,email:ag.email,fcrMTD:fcrMTD,fcr12m:fcr12m});
   }
   return result;
 }
@@ -1231,6 +1238,7 @@ function parseQASheetIdx(text){
   var now=new Date(), months12=[];
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());}
   var latestMon=months12[months12.length-1], prevMon=months12[months12.length-2];
+  // byAgent: key=email(col A) or name; months nested under .m
   var byAgent={};
   for(var i=hIdx+1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
@@ -1246,21 +1254,24 @@ function parseQASheetIdx(text){
     var score=parseFloat(f[6]);
     if(isNaN(score)) continue;
     var hasZTP=f.length>21&&(f[21]||'').trim()!=='';
-    if(!byAgent[key]) byAgent[key]={name:name,email:email};
+    if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
     else if(name&&!byAgent[key].name) byAgent[key].name=name;
-    if(!byAgent[key][mon]) byAgent[key][mon]=[0,0,false];
-    byAgent[key][mon][0]+=score; byAgent[key][mon][1]++;
-    if(hasZTP) byAgent[key][mon][2]=true;
+    if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0,false];
+    byAgent[key].m[mon][0]+=score; byAgent[key].m[mon][1]++;
+    if(hasZTP) byAgent[key].m[mon][2]=true;
   }
   var result=[];
   for(var k in byAgent){
-    var meta=byAgent[k];
-    var mdata=byAgent[k];
-    var lv=mdata[latestMon];
-    var qa=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10)/1000:null;
-    if(qa===null){for(var mk in mdata){var v=mdata[mk];if(v&&v[1]&&v[1]>0){qa=Math.round(v[0]/v[1]*10)/1000;}}}
-    var ztpFlag=(mdata[latestMon]&&mdata[latestMon][2])||(mdata[prevMon]&&mdata[prevMon][2])||false;
-    result.push({name:meta.name,email:meta.email,qa:qa,ztpFlag:ztpFlag});
+    var ag=byAgent[k]; var mons=ag.m;
+    // MTD: current month average
+    var lv=mons[latestMon];
+    var qaMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10)/1000:null;
+    // 12m: weighted average across all months
+    var t12=[0,0];
+    months12.forEach(function(mk){var v=mons[mk];if(v&&v[1]>0){t12[0]+=v[0];t12[1]+=v[1];}});
+    var qa12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*10)/1000:null;
+    var ztpFlag=(mons[latestMon]&&mons[latestMon][2])||(mons[prevMon]&&mons[prevMon][2])||false;
+    result.push({name:ag.name,email:ag.email,qaMTD:qaMTD,qa12m:qa12m,ztpFlag:ztpFlag});
   }
   return result;
 }
@@ -1332,16 +1343,19 @@ async function loadFromSheets(){
       var fcrResult = parseFCRSheetIdx(await resps[3].text());
       if(fcrResult) fcrResult.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
-        var def = D.agents.find(function(a){
-          return normName(a.name)===resolved ||
-            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
-        });
-        if(def){ if(lv.fcr!==null) def.fcr=lv.fcr; if(lv.email) _emailCache[lv.email]=normName(def.name); }
-        var def12 = D.agents12m && D.agents12m.find(function(a){
-          return normName(a.name)===resolved ||
-            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
-        });
-        if(def12 && lv.fcr!==null) def12.fcr=lv.fcr;
+        function findAgent(arr){
+          return arr && arr.find(function(a){
+            return normName(a.name)===resolved ||
+              (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+          });
+        }
+        var def   = findAgent(D.agents);
+        var def12 = findAgent(D.agents12m);
+        if(def){
+          if(lv.fcrMTD!==null) def.fcr=lv.fcrMTD;
+          if(lv.email) _emailCache[lv.email]=normName(def.name);
+        }
+        if(def12 && lv.fcr12m!==null) def12.fcr=lv.fcr12m;
       });
     }
 
@@ -1350,16 +1364,23 @@ async function loadFromSheets(){
       var qaResult = parseQASheetIdx(await resps[4].text());
       if(qaResult) qaResult.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
-        var def = D.agents.find(function(a){
-          return normName(a.name)===resolved ||
-            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
-        });
-        if(def){ if(lv.qa!==null) def.qa=lv.qa; def.ztpFlag=lv.ztpFlag; if(lv.email) _emailCache[lv.email]=normName(def.name); }
-        var def12 = D.agents12m && D.agents12m.find(function(a){
-          return normName(a.name)===resolved ||
-            (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
-        });
-        if(def12){ if(lv.qa!==null) def12.qa=lv.qa; def12.ztpFlag=lv.ztpFlag; }
+        function findAgent(arr){
+          return arr && arr.find(function(a){
+            return normName(a.name)===resolved ||
+              (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+          });
+        }
+        var def   = findAgent(D.agents);
+        var def12 = findAgent(D.agents12m);
+        if(def){
+          if(lv.qaMTD!==null) def.qa=lv.qaMTD;
+          def.ztpFlag=lv.ztpFlag;
+          if(lv.email) _emailCache[lv.email]=normName(def.name);
+        }
+        if(def12){
+          if(lv.qa12m!==null) def12.qa=lv.qa12m;
+          def12.ztpFlag=lv.ztpFlag;
+        }
       });
     }
 
