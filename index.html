@@ -1154,8 +1154,9 @@ function loadFromStorage(){
 }
 
 async function loadFromSheets(){
-  setChip('wait','⏳ Fetching from Google Sheets…');
   D = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  setChip('wait','⏳ Updating from Sheets…');
+  render(); // show embedded data immediately while sheets load
   try{
     // Fetch all sheets in parallel
     var fetches = [
