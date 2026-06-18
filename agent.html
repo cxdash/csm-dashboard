@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Performance — CSM</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<title>My Scorecard — CX Performance</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -15,68 +14,60 @@
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px}
 
+/* ── LOGIN SCREEN ── */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--navy)}
+.login-wrap{background:var(--card);border-radius:16px;padding:36px 32px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.4)}
+.login-logo{width:52px;height:52px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:20px;margin:0 auto 20px}
+.login-wrap h1{font-size:20px;font-weight:800;text-align:center;color:var(--text);margin-bottom:6px}
+.login-wrap p{font-size:12px;color:var(--text3);text-align:center;margin-bottom:24px;line-height:1.6}
+.login-error{background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:9px 14px;font-size:12px;color:#991b1b;margin-bottom:14px;font-weight:600;text-align:center}
+.code-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:8px;font-size:18px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;text-align:center;outline:none;transition:.2s;color:var(--text);background:#f8fafc;margin-bottom:12px}
+.code-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.code-input::placeholder{font-size:13px;font-weight:400;letter-spacing:0;color:var(--text3)}
+.login-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;margin-bottom:16px}
+.login-btn:hover{background:#2563eb}
+.login-hint{font-size:11px;color:var(--text3);text-align:center;line-height:1.5}
+
+/* ── DASHBOARD ── */
+#dashScreen{display:none}
+
 /* HEADER */
 .header{background:var(--navy);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .logo{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:13px;flex-shrink:0}
 .hdr-left{display:flex;align-items:center;gap:10px}
-.hdr-title{color:#fff;font-size:14px;font-weight:600}
-.hdr-sub{color:rgba(255,255,255,.45);font-size:10px;margin-top:1px}
-.hdr-right{display:flex;align-items:center;gap:10px}
-.switch-btn{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;transition:.15s}
-.switch-btn:hover{background:rgba(255,255,255,.2);color:#fff}
-.team-link{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);padding:4px 12px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,.2);text-decoration:none;transition:.15s}
-.team-link:hover{background:rgba(255,255,255,.2);color:#fff}
-
-/* PICKER MODAL */
-.modal-bg{position:fixed;inset:0;background:rgba(15,27,53,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:var(--card);border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.modal-logo{width:44px;height:44px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;margin:0 auto 16px}
-.modal h2{font-size:18px;font-weight:700;text-align:center;margin-bottom:6px}
-.modal p{font-size:12px;color:var(--text3);text-align:center;margin-bottom:22px;line-height:1.5}
-.agent-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
-.agent-btn{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:white;text-align:left;transition:.15s;width:100%}
-.agent-btn:hover{border-color:var(--accent);background:#f0f5ff}
-.agent-btn-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0}
-.agent-btn-name{font-size:13px;font-weight:600;color:var(--text)}
-.agent-btn-lob{font-size:11px;color:var(--text3);margin-top:1px}
-.modal-no-data{text-align:center;padding:32px;color:var(--text3)}
-.modal-no-data strong{display:block;margin-bottom:6px;color:var(--text2)}
-.modal-no-data a{color:var(--accent);font-size:12px}
+.hdr-title{color:#fff;font-size:14px;font-weight:700}
+.hdr-sub{margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.period-pill{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);padding:4px 10px;border-radius:4px;font-size:11px;border:1px solid rgba(255,255,255,.15)}
+.logout-btn{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);padding:5px 12px;border-radius:4px;font-size:11px;cursor:pointer;transition:.15s}
+.logout-btn:hover{background:rgba(255,255,255,.2);color:#fff}
 
 /* MAIN */
-.main{padding:16px 24px;max-width:1100px;margin:0 auto}
+.main{padding:16px 24px;max-width:860px;margin:0 auto}
 
 /* SECTION HEADER */
 .sec-hdr{display:flex;align-items:center;gap:8px;margin:20px 0 10px}
 .sec-bar{width:3px;height:18px;border-radius:2px}
 .sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
 
-/* CARD */
-.card{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden}
-.card-hdr{padding:12px 18px;border-bottom:1px solid var(--border)}
-.card-title{font-size:13px;font-weight:700;color:var(--text)}
-.card-sub{font-size:10px;color:var(--text3);margin-top:1px}
-.card-body{padding:14px 18px}
-.card-body.no-pad{padding:0}
-
-/* SCORECARD GRID */
-.score-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px}
-.score-card{background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px;position:relative;overflow:hidden}
-.score-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-.score-card.met::before{background:var(--green)}
-.score-card.miss::before{background:var(--red)}
-.score-card.neutral::before{background:#94a3b8}
-.score-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:5px}
-.score-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:5px}
-.score-val.met{color:var(--green)}.score-val.miss{color:var(--red)}.score-val.neutral{color:var(--text)}
-.score-tgt{font-size:11px;color:var(--text3);margin-bottom:5px}
-.vs-avg{font-size:11px;font-weight:600;margin-top:4px}
-.vs-avg.up{color:var(--green)}.vs-avg.dn{color:var(--red)}.vs-avg.flat{color:var(--text3)}
-.score-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-top:4px}
-.score-badge.met{background:#dcfce7;color:#166534}
-.score-badge.miss{background:#fee2e2;color:#991b1b}
+/* METRIC GRID */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.metric-card{background:var(--card);border-radius:10px;border:1px solid var(--border);padding:16px 14px;position:relative;overflow:hidden}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.metric-card.met::before{background:var(--green)}
+.metric-card.miss::before{background:var(--red)}
+.metric-card.neutral::before{background:#cbd5e1}
+.metric-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
+.metric-val{font-size:24px;font-weight:800;line-height:1;margin-bottom:4px}
+.metric-val.met{color:var(--green)}.metric-val.miss{color:var(--red)}.metric-val.neutral{color:var(--text)}
+.metric-tgt{font-size:11px;color:var(--text3);margin-bottom:4px}
+.metric-badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;margin-top:2px}
+.metric-badge.met{background:#dcfce7;color:#166534}
+.metric-badge.miss{background:#fee2e2;color:#991b1b}
+.metric-card.na .metric-val{font-size:18px;color:var(--text3)}
 
 /* COACHING FLAGS */
+.card{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden}
 .coach-list{display:flex;flex-direction:column;gap:8px;padding:14px 18px}
 .coach-flag{padding:10px 14px;border-radius:7px;font-size:12px;border-left:3px solid;display:flex;align-items:flex-start;gap:10px}
 .coach-flag.r{background:var(--red-bg);border-color:var(--red);color:#991b1b}
@@ -86,330 +77,266 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .coach-title{font-weight:700;margin-bottom:2px}
 .coach-detail{font-size:11px;opacity:.85}
 
-/* RANKING TABLE */
-table{width:100%;border-collapse:collapse;font-size:12px}
-thead th{background:#f8fafc;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-th.r,td.r{text-align:right}
-tbody tr{border-bottom:1px solid #f1f5f9}
-tbody tr:last-child{border-bottom:none}
-td{padding:8px 10px;vertical-align:middle}
-tbody tr.highlight-row td{background:#eff6ff;font-weight:700}
-tbody tr.avg-row td{background:#f1f5f9;font-weight:600;color:var(--text2);font-size:11px}
-
-/* RANK BADGE */
-.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:800;background:#f1f5f9;color:var(--text2)}
-.rank-badge.r1{background:#fef9c3;color:#854d0e}
-.rank-badge.r2{background:#f1f5f9;color:#475569}
-.rank-badge.r3{background:#fef3c7;color:#92400e}
-
-/* CHART */
-.chart-box{position:relative;height:200px}
-
-/* EMPTY / NO DATA */
-.no-data-screen{padding:60px 24px;text-align:center}
-.no-data-icon{font-size:48px;margin-bottom:16px}
-.no-data-title{font-size:17px;font-weight:700;margin-bottom:8px}
-.no-data-sub{font-size:13px;color:var(--text3);line-height:1.6;max-width:360px;margin:0 auto 20px}
-.no-data-link{display:inline-block;padding:9px 20px;background:var(--accent);color:white;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none}
-
-/* PROGRESS BAR */
-.prog{height:5px;background:#e2e8f0;border-radius:99px;margin-top:6px;overflow:hidden}
-.prog-fill{height:100%;border-radius:99px}
-.prog-fill.met{background:var(--green)}.prog-fill.miss{background:var(--red)}
-
 footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:8px}
-@media(max-width:600px){.main{padding:12px}.score-grid{grid-template-columns:repeat(2,1fr)}}
+
+@media(max-width:680px){
+  .metric-grid{grid-template-columns:repeat(2,1fr)}
+  .main{padding:12px}
+  .hdr-title{font-size:13px}
+}
+@media(max-width:340px){
+  .metric-grid{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="hdr-left">
-    <div class="logo">CX</div>
-    <div>
-      <div class="hdr-title" id="hdrTitle">My Performance</div>
-      <div class="hdr-sub" id="hdrSub">Loading…</div>
-    </div>
-  </div>
-  <div class="hdr-right">
-    <button class="switch-btn" onclick="switchAgent()">Switch Agent</button>
-    <a class="team-link" href="index.html">← Team View</a>
+<!-- ── LOGIN SCREEN ── -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-logo">CX</div>
+    <h1>Agent Scorecard</h1>
+    <p>Enter your unique access code to view your personal performance dashboard.</p>
+    <div id="loginError" class="login-error" style="display:none">Invalid code. Please check with your manager.</div>
+    <input id="codeInput" class="code-input" type="text" placeholder="e.g. PS01" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <button class="login-btn" onclick="doLogin()">View My Scorecard →</button>
+    <div class="login-hint">Your access code was shared by your CSM.<br>Keep it private — it shows only your data.</div>
   </div>
 </div>
 
-<!-- AGENT PICKER MODAL -->
-<div class="modal-bg" id="modalBg">
-  <div class="modal">
-    <div class="modal-logo">CX</div>
-    <h2>Who are you?</h2>
-    <p>Select your name to view your personal performance dashboard.<br>Your choice will be remembered on this device.</p>
-    <div class="agent-list" id="agentList">
-      <div class="modal-no-data">
-        <strong>No data available yet</strong>
-        Your manager needs to upload the monthly data file on the <a href="index.html">team dashboard</a> first.
+<!-- ── DASHBOARD ── -->
+<div id="dashScreen">
+  <div class="header">
+    <div class="hdr-left">
+      <div class="logo">CX</div>
+      <div>
+        <div class="hdr-title" id="hdrName">—</div>
+        <div class="hdr-sub" id="hdrLob"></div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- MAIN CONTENT -->
-<div class="main" id="mainContent" style="display:none">
-
-  <!-- SCORECARD -->
-  <div class="sec-hdr">
-    <div class="sec-bar" style="background:var(--accent)"></div>
-    <div class="sec-label">Your Scorecard</div>
-    <div id="periodTag" style="font-size:11px;color:var(--text2);background:#f1f5f9;padding:2px 10px;border-radius:10px;margin-left:4px"></div>
-  </div>
-  <div class="score-grid" id="scoreGrid"></div>
-
-  <!-- COACHING FLAGS -->
-  <div class="sec-hdr">
-    <div class="sec-bar" style="background:#ef4444"></div>
-    <div class="sec-label">Coaching &amp; Highlights</div>
-  </div>
-  <div class="card">
-    <div id="coachList"></div>
-  </div>
-
-  <!-- PERFORMANCE CHART -->
-  <div class="sec-hdr">
-    <div class="sec-bar" style="background:#8b5cf6"></div>
-    <div class="sec-label">Your Metrics vs Team Average</div>
-  </div>
-  <div class="card">
-    <div class="card-body"><div class="chart-box"><canvas id="cRadar"></canvas></div></div>
-  </div>
-
-  <!-- LOB RANKING -->
-  <div class="sec-hdr">
-    <div class="sec-bar" style="background:#10b981"></div>
-    <div class="sec-label" id="rankTitle">Your LOB Ranking</div>
-  </div>
-  <div class="card">
-    <div class="card-hdr">
-      <div class="card-title" id="rankCardTitle">Team Standing</div>
-      <div class="card-sub">Your metrics vs teammates in your LOB · you are highlighted</div>
-    </div>
-    <div class="card-body no-pad">
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Rank</th><th>Agent</th>
-            <th class="r">Tickets</th><th class="r">QA Score</th>
-            <th class="r">CSAT</th><th class="r">FCR</th><th class="r">AHT (min)</th>
-          </tr></thead>
-          <tbody id="rankBody"></tbody>
-        </table>
-      </div>
+    <div class="hdr-right">
+      <div class="period-pill" id="hdrPeriod"></div>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
   </div>
 
-</div>
+  <div class="main">
+    <div class="sec-hdr">
+      <div class="sec-bar" style="background:var(--accent)"></div>
+      <div class="sec-label">MTD Performance</div>
+      <div id="periodTag" style="font-size:11px;color:var(--text2);background:#f1f5f9;padding:2px 10px;border-radius:10px;margin-left:4px"></div>
+    </div>
+    <div class="metric-grid" id="metricGrid"></div>
 
-<!-- NO DATA SCREEN (shown if manager hasn't uploaded yet) -->
-<div id="noDataScreen" style="display:none">
-  <div class="no-data-screen">
-    <div class="no-data-icon">📊</div>
-    <div class="no-data-title">No data loaded yet</div>
-    <div class="no-data-sub">Your manager needs to upload the monthly report on the team dashboard first. Check back after they've uploaded!</div>
-    <a class="no-data-link" href="index.html">Go to Team Dashboard</a>
+    <div class="sec-hdr">
+      <div class="sec-bar" style="background:#ef4444"></div>
+      <div class="sec-label">Highlights &amp; Coaching</div>
+    </div>
+    <div class="card">
+      <div id="coachList"></div>
+    </div>
   </div>
-</div>
 
-<footer id="footerEl" style="display:none">
-  CSM Agent Performance &nbsp;·&nbsp; <span id="footerPeriod"></span> &nbsp;·&nbsp; View-only personal scorecard
-</footer>
+  <footer>CX Agent Scorecard &nbsp;·&nbsp; <span id="footerPeriod"></span> &nbsp;·&nbsp; Personal view only</footer>
+</div>
 
 <script>
 'use strict';
-var STORAGE_KEY = 'csm_kpi_v1';
-var AGENT_KEY   = 'csm_agent_name';
-var LOB_COLORS  = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
-var CHART_REF   = null;
 
-// ── EMBEDDED DEFAULT DATA (June 2026 — sourced from AgentReporting CSV) ─────────
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+// Paste a published-CSV URL here when your agent sheet is ready.
+// The sheet should have columns: Name, Tickets, DailyAvg, AHT, ChatAHT,
+// MissedChats, QA%, FCR%, LoginUtil%
+var SHEETS_AGENT_URL = '';
+
+// ── AGENT CODES ───────────────────────────────────────────────────────────────
+// Each agent gets one code. Share individually — do not share the full list.
+var AGENT_CODES = {
+  // Path Social
+  'PS01':'Geric Vallar',           'PS02':'Zheraine',              'PS03':'Abigail Aquino',
+  'PS04':'Benedict Catbagan',      'PS05':'Kaila May Membredo',    'PS06':'Jennilen Manosa',
+  'PS07':'Pherbia',                'PS08':'Janelle Decena',
+  // Crowd Ignite
+  'CI01':'Mark Lora',              'CI02':'Faye',                  'CI03':'Mariam Riasat',
+  // High Social
+  'HS01':'Rosie Eslao',            'HS02':'Rockwell De Mesa',      'HS03':'Samantha Mae Parrilla',
+  'HS04':'Charito Mencedez',       'HS05':'Polly Yanah Salanatin', 'HS06':'Christine Joy M Salvador',
+  // Plixi
+  'PL01':'Jaycel Napa',            'PL02':'Trisha Joy Cads',       'PL03':'Mary Rose Sebastian',
+  'PL04':'Rhian de Belen',         'PL05':'Djamillah Maria Abaya', 'PL06':'Anne Nicole Asistio',
+  'PL07':'Eunice Jeremiah Valiao', 'PL08':'Rushelle',              'PL09':'Monica',
+  // Goread
+  'GR01':'Dencio Almag, Jr.',      'GR02':'Moses Eragbai',         'GR03':'Nay Nuttida',
+  'GR04':'Suzette Mejia',
+  // Follows
+  'FO01':'Roynalyn Malcampo',      'FO02':'Geal Ann Lorico',       'FO03':'Jessica Ibañez'
+};
+
+// ── DEFAULT DATA (June 2026 · sourced from Agent Reporting CSV) ───────────────
 var DEFAULT_DATA = {
   period: 'June 2026',
-  _filename: 'ContactExport_AgentData_June2026.csv',
   agents: [
-    {name:'Geric Vallar',          lob:'Path Social', tickets:2070,aht:6.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.86,adh:0.97},
-    {name:'Zheraine',              lob:'Path Social', tickets:1971,aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.89,adh:0.97},
-    {name:'Abigail Aquino',        lob:'Path Social', tickets:1813,aht:6.3, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.81,adh:0.97},
-    {name:'Benedict Catbagan',     lob:'Path Social', tickets:1787,aht:6.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.81,adh:0.97},
-    {name:'Kaila May Membredo',    lob:'Path Social', tickets:1762,aht:6.3, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.85,adh:0.97},
-    {name:'Pherbia',               lob:'Path Social', tickets:745, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.61,adh:0.97,esc:true},
-    {name:'Janelle Decena',        lob:'Path Social', tickets:42,  aht:76.8,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.23,adh:0.97,esc:true},
-    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:1487,aht:5.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.62,adh:0.97},
-    {name:'Faye',                  lob:'Crowd Ignite',tickets:1225,aht:5.0, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.44,adh:0.97},
-    {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:790, aht:5.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.30,adh:0.97},
-    {name:'Jennilen Manosa',       lob:'Path Social', tickets:500, aht:3.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.38,adh:0.97},
-    {name:'Rosie Eslao',           lob:'High Social', tickets:2048,aht:2.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97},
-    {name:'Rockwell De Mesa',      lob:'High Social', tickets:1527,aht:3.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.39,adh:0.97},
-    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:1380,aht:4.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.42,adh:0.97},
-    {name:'Charito Mencedez',      lob:'High Social', tickets:1308,aht:3.1, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.30,adh:0.97},
-    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:1297,aht:3.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.35,adh:0.97},
-    {name:'Christine Joy M Salvador',lob:'High Social',tickets:995,aht:3.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.39,adh:0.97},
-    {name:'Jaycel Napa',           lob:'Plixi',       tickets:1342,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.57,adh:0.97},
-    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:1300,aht:7.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.70,adh:0.97},
-    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:1026,aht:9.1, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.57,adh:0.97},
-    {name:'Rhian de Belen',        lob:'Plixi',       tickets:983, aht:7.6, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.59,adh:0.97},
-    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:918, aht:8.7, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.59,adh:0.97},
-    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:808, aht:9.7, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.51,adh:0.93},
-    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:717, aht:10.2,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.47,adh:0.97},
-    {name:'Rushelle',              lob:'Plixi',       tickets:539, aht:16.1,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.61,adh:0.97},
-    {name:'Monica',                lob:'Plixi',       tickets:161, aht:30.6,ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.34,adh:0.97},
-    {name:'Dencio Almag, Jr.',     lob:'Goread',      tickets:1429,aht:6.9, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.68,adh:0.94},
-    {name:'Moses Eragbai',         lob:'Goread',      tickets:1400,aht:6.0, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.67,adh:0.97},
-    {name:'Nay Nuttida',           lob:'Goread',      tickets:1144,aht:4.9, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.35,adh:0.93},
-    {name:'Suzette Mejia',         lob:'Goread',      tickets:1039,aht:7.2, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.50,adh:0.97},
-    {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:1208,aht:6.4, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.60,adh:0.97},
-    {name:'Geal Ann Lorico',       lob:'Follows',     tickets:927, aht:5.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.40,adh:0.97},
-    {name:'Jessica Ibañez',        lob:'Follows',     tickets:281, aht:7.8, ahtTgt:7.0,qa:null,qaTgt:0.85,csat:null,fcr:null,occ:0.71,adh:0.97},
+    {name:'Geric Vallar',            lob:'Path Social', tickets:2070, avgCustDay:60, handleCust:'8m 41s', chatAHT:'9m 11s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.90,  aht:6.2,  ahtTgt:7.0},
+    {name:'Zheraine',                lob:'Path Social', tickets:1971, avgCustDay:63, handleCust:'8m 7s',  chatAHT:'11m 44s', missedChats:0,  qa:null, fcr:null, loginUtil:0.89,  aht:5.8,  ahtTgt:7.0},
+    {name:'Abigail Aquino',          lob:'Path Social', tickets:1813, avgCustDay:58, handleCust:'6m 1s',  chatAHT:'6m 43s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.90,  aht:6.3,  ahtTgt:7.0},
+    {name:'Benedict Catbagan',       lob:'Path Social', tickets:1787, avgCustDay:61, handleCust:'5m 35s', chatAHT:'6m 18s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.91,  aht:6.2,  ahtTgt:7.0},
+    {name:'Kaila May Membredo',      lob:'Path Social', tickets:1762, avgCustDay:60, handleCust:'6m 39s', chatAHT:'6m 8s',   missedChats:14, qa:null, fcr:null, loginUtil:0.91,  aht:6.3,  ahtTgt:7.0},
+    {name:'Jennilen Manosa',         lob:'Path Social', tickets:500,  avgCustDay:27, handleCust:'5m 28s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.91,  aht:3.8,  ahtTgt:7.0},
+    {name:'Pherbia',                 lob:'Path Social', tickets:745,  avgCustDay:22, handleCust:'7m 2s',  chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.89,  aht:7.8,  ahtTgt:7.0},
+    {name:'Janelle Decena',          lob:'Path Social', tickets:42,   avgCustDay:26, handleCust:'8m 57s', chatAHT:'1m 23s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.99,  aht:76.8, ahtTgt:7.0},
+    {name:'Mark Lora',               lob:'Crowd Ignite',tickets:1487, avgCustDay:30, handleCust:'6m 08s', chatAHT:'20m 48s', missedChats:0,  qa:null, fcr:null, loginUtil:0.901, aht:5.6,  ahtTgt:7.0},
+    {name:'Faye',                    lob:'Crowd Ignite',tickets:1225, avgCustDay:22, handleCust:'4m 01s', chatAHT:'10m 13s', missedChats:1,  qa:null, fcr:null, loginUtil:0.930, aht:5.0,  ahtTgt:7.0},
+    {name:'Mariam Riasat',           lob:'Crowd Ignite',tickets:790,  avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.877, aht:5.2,  ahtTgt:7.0},
+    {name:'Rosie Eslao',             lob:'High Social', tickets:2048, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 15s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.952, aht:2.8,  ahtTgt:7.0},
+    {name:'Rockwell De Mesa',        lob:'High Social', tickets:1527, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 20s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.918, aht:3.6,  ahtTgt:7.0},
+    {name:'Samantha Mae Parrilla',   lob:'High Social', tickets:1380, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 24s',  missedChats:5,  qa:null, fcr:null, loginUtil:0.929, aht:4.6,  ahtTgt:7.0},
+    {name:'Charito Mencedez',        lob:'High Social', tickets:1308, avgCustDay:43, handleCust:'3m 05s', chatAHT:'5m 37s',  missedChats:8,  qa:null, fcr:null, loginUtil:0.926, aht:3.1,  ahtTgt:7.0},
+    {name:'Polly Yanah Salanatin',   lob:'High Social', tickets:1297, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 31s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.940, aht:3.4,  ahtTgt:7.0},
+    {name:'Christine Joy M Salvador',lob:'High Social', tickets:995,  avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 04s',  missedChats:4,  qa:null, fcr:null, loginUtil:0.917, aht:3.8,  ahtTgt:7.0},
+    {name:'Jaycel Napa',             lob:'Plixi',       tickets:1342, avgCustDay:39, handleCust:'6m 10s', chatAHT:'6m 12s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.941, aht:6.4,  ahtTgt:7.0},
+    {name:'Trisha Joy Cads',         lob:'Plixi',       tickets:1300, avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 16s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.935, aht:7.4,  ahtTgt:7.0},
+    {name:'Mary Rose Sebastian',     lob:'Plixi',       tickets:1026, avgCustDay:25, handleCust:'7m 45s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.941, aht:9.1,  ahtTgt:7.0},
+    {name:'Rhian de Belen',          lob:'Plixi',       tickets:983,  avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 41s',  missedChats:6,  qa:null, fcr:null, loginUtil:0.906, aht:7.6,  ahtTgt:7.0},
+    {name:'Djamillah Maria Abaya',   lob:'Plixi',       tickets:918,  avgCustDay:25, handleCust:'9m 42s', chatAHT:'8m 12s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.938, aht:8.7,  ahtTgt:7.0},
+    {name:'Anne Nicole Asistio',     lob:'Plixi',       tickets:808,  avgCustDay:27, handleCust:'8m 37s', chatAHT:'48m 38s', missedChats:2,  qa:null, fcr:null, loginUtil:0.973, aht:9.7,  ahtTgt:7.0},
+    {name:'Eunice Jeremiah Valiao',  lob:'Plixi',       tickets:717,  avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 36s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.939, aht:10.2, ahtTgt:7.0},
+    {name:'Rushelle',                lob:'Plixi',       tickets:539,  avgCustDay:17, handleCust:'15m 31s',chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.933, aht:16.1, ahtTgt:7.0},
+    {name:'Monica',                  lob:'Plixi',       tickets:161,  avgCustDay:13, handleCust:'9m 22s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.939, aht:30.6, ahtTgt:7.0},
+    {name:'Dencio Almag, Jr.',       lob:'Goread',      tickets:1429, avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 21s',  missedChats:40, qa:null, fcr:null, loginUtil:0.929, aht:6.9,  ahtTgt:7.0},
+    {name:'Moses Eragbai',           lob:'Goread',      tickets:1400, avgCustDay:52, handleCust:'5m 16s', chatAHT:'3m 41s',  missedChats:7,  qa:null, fcr:null, loginUtil:0.926, aht:6.0,  ahtTgt:7.0},
+    {name:'Nay Nuttida',             lob:'Goread',      tickets:1144, avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, qa:null, fcr:null, loginUtil:0.968, aht:4.9,  ahtTgt:7.0},
+    {name:'Suzette Mejia',           lob:'Goread',      tickets:1039, avgCustDay:27, handleCust:'6m 29s', chatAHT:'5m 07s',  missedChats:1,  qa:null, fcr:null, loginUtil:0.964, aht:7.2,  ahtTgt:7.0},
+    {name:'Roynalyn Malcampo',       lob:'Follows',     tickets:1208, avgCustDay:32, handleCust:'5m 59s', chatAHT:'8m 16s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.909, aht:6.4,  ahtTgt:7.0},
+    {name:'Geal Ann Lorico',         lob:'Follows',     tickets:927,  avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 37s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.890, aht:5.8,  ahtTgt:7.0},
+    {name:'Jessica Ibañez',          lob:'Follows',     tickets:281,  avgCustDay:2,  handleCust:'10m 07s',chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.876, aht:7.8,  ahtTgt:7.0}
   ]
 };
 
-// ── HELPERS ──────────────────────────────────────────────────────────────────
-function pct(v, dec){ dec=dec||1; return (v*100).toFixed(dec)+'%'; }
-function cls(v, tgt, lb){ return (lb ? v<=tgt : v>=tgt) ? 'met' : 'miss'; }
-function initials(name){ return name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase(); }
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var CODE_KEY = 'csm_agent_code';
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
+var D = DEFAULT_DATA;
 
-// ── LOAD DATA ─────────────────────────────────────────────────────────────────
-function getData(){
-  try{
-    var raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_DATA));
-  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
-}
-
-function getSavedAgent(){
-  return localStorage.getItem(AGENT_KEY) || null;
-}
-
-function saveAgent(name){
-  localStorage.setItem(AGENT_KEY, name);
-}
-
-// ── SHOW PICKER ───────────────────────────────────────────────────────────────
-function showPicker(){
-  var D = getData();
-  var list = document.getElementById('agentList');
-  document.getElementById('modalBg').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'none';
-  document.getElementById('noDataScreen').style.display = 'none';
-  document.getElementById('footerEl').style.display = 'none';
-
-  if(!D || !D.agents || !D.agents.length){
-    list.innerHTML = '<div class="modal-no-data"><strong>No data available yet</strong>Your manager needs to upload the monthly data file on the <a href="index.html">team dashboard</a> first.</div>';
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function doLogin(){
+  var code = (document.getElementById('codeInput').value||'').trim().toUpperCase();
+  var name = AGENT_CODES[code];
+  if(!name){
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('codeInput').focus();
     return;
   }
-
-  list.innerHTML = D.agents.map(function(a){
-    var color = LOB_COLORS[a.lob] || '#64748b';
-    return '<button class="agent-btn" onclick="selectAgent(\''+escQ(a.name)+'\')">'
-      +'<div class="agent-btn-avatar" style="background:'+color+'">'+initials(a.name)+'</div>'
-      +'<div><div class="agent-btn-name">'+a.name+'</div><div class="agent-btn-lob">'+a.lob+'</div></div>'
-      +'</button>';
-  }).join('');
+  document.getElementById('loginError').style.display = 'none';
+  localStorage.setItem(CODE_KEY, code);
+  showDash(name);
 }
 
-function escQ(s){ return s.replace(/'/g, "\\'"); }
-
-function selectAgent(name){
-  saveAgent(name);
-  document.getElementById('modalBg').style.display = 'none';
-  loadDashboard(name);
+function doLogout(){
+  localStorage.removeItem(CODE_KEY);
+  document.getElementById('dashScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('codeInput').value = '';
 }
 
-function switchAgent(){
-  localStorage.removeItem(AGENT_KEY);
-  showPicker();
-}
+document.getElementById('codeInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') doLogin();
+});
 
-// ── LOAD DASHBOARD ────────────────────────────────────────────────────────────
-function loadDashboard(name){
-  var D = getData();
-  if(!D){ document.getElementById('noDataScreen').style.display='block'; return; }
+// ── SHOW DASHBOARD ────────────────────────────────────────────────────────────
+function showDash(name){
+  var agent = D.agents.find(function(a){ return a.name === name; });
+  if(!agent){ doLogout(); return; }
 
-  var agent = D.agents.find(function(a){ return a.name===name; });
-  if(!agent){ showPicker(); return; }
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashScreen').style.display = 'block';
 
-  document.getElementById('mainContent').style.display = 'block';
-  document.getElementById('footerEl').style.display = 'block';
-  document.getElementById('hdrTitle').textContent = agent.name;
-  document.getElementById('hdrSub').textContent = agent.lob + ' · ' + (D.period||'');
-  document.getElementById('periodTag').textContent = D.period || '';
-  document.getElementById('footerPeriod').textContent = D.period || '';
+  var color = LOB_COLORS[agent.lob] || '#3b82f6';
+  document.getElementById('hdrName').textContent = agent.name;
+  document.getElementById('hdrLob').innerHTML =
+    '<span style="display:inline-block;background:'+color+'33;color:'+color+';padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.04em">'+agent.lob+'</span>';
+  document.getElementById('hdrPeriod').textContent = D.period;
+  document.getElementById('periodTag').textContent = D.period;
+  document.getElementById('footerPeriod').textContent = D.period;
 
-  // Team averages (all agents)
-  var all = D.agents;
-  var tAvg = function(key){
-    var valid = all.filter(function(a){ return a[key]!==null && a[key]!==undefined; });
-    return valid.length ? valid.reduce(function(s,a){return s+a[key];},0)/valid.length : null;
-  };
-  // LOB peers
-  var lobPeers = all.filter(function(a){ return a.lob===agent.lob; });
-  var lAvg = function(key){ return lobPeers.reduce(function(s,a){return s+a[key];},0)/lobPeers.length; };
-
-  renderScorecard(agent, tAvg);
+  renderMetrics(agent);
   renderCoaching(agent);
-  renderChart(agent, tAvg);
-  renderRanking(agent, lobPeers);
 }
 
-// ── SCORECARD ─────────────────────────────────────────────────────────────────
-function renderScorecard(a, tAvg){
-  var cards = [
-    { label:'Tickets Handled', val:a.tickets, tgt:null, tgtLabel:'', met:null, teamAvg:Math.round(tAvg('tickets')), neutral:true, fmt:function(v){return v;} },
-    { label:'AHT (min)', val:a.aht, tgt:a.ahtTgt, tgtLabel:'≤ '+a.ahtTgt+'min', met:a.aht<=a.ahtTgt, teamAvg:tAvg('aht').toFixed(1), neutral:false, fmt:function(v){return v;} },
-    { label:'QA Score', val:a.qa, tgt:a.qaTgt, tgtLabel:'≥ '+pct(a.qaTgt), met:(a.qa!==null?a.qa>=a.qaTgt:null), teamAvg:(tAvg('qa')!==null?pct(tAvg('qa')):'—'), neutral:(a.qa===null), fmt:function(v){return v!==null?pct(v):'—';} },
-    { label:'CSAT', val:a.csat, tgt:0.85, tgtLabel:'≥ 85%', met:(a.csat!==null?a.csat>=0.85:null), teamAvg:(tAvg('csat')!==null?pct(tAvg('csat')):'—'), neutral:(a.csat===null), fmt:function(v){return v!==null?pct(v):'—';} },
-    { label:'FCR', val:a.fcr, tgt:0.75, tgtLabel:'≥ 75%', met:(a.fcr!==null?a.fcr>=0.75:null), teamAvg:(tAvg('fcr')!==null?pct(tAvg('fcr')):'—'), neutral:(a.fcr===null), fmt:function(v){return v!==null?pct(v):'—';} },
-    { label:'Occupancy', val:a.occ, tgt:null, tgtLabel:'', met:null, teamAvg:pct(tAvg('occ')), neutral:true, fmt:function(v){return pct(v);} },
-    { label:'Adherence', val:a.adh, tgt:null, tgtLabel:'', met:null, teamAvg:pct(tAvg('adh')), neutral:true, fmt:function(v){return pct(v);} }
+// ── METRICS ───────────────────────────────────────────────────────────────────
+function pct(v, dec){ return (v * 100).toFixed(dec !== undefined ? dec : 1) + '%'; }
+
+function renderMetrics(a){
+  var metrics = [
+    {
+      label: 'MTD Tickets',
+      display: a.tickets,
+      tgt: null,
+      status: 'neutral'
+    },
+    {
+      label: 'Daily Average',
+      display: a.avgCustDay,
+      tgt: null,
+      status: 'neutral'
+    },
+    {
+      label: 'AHT (Email + Chat)',
+      display: a.handleCust || '—',
+      tgt: '≤ 7m target',
+      status: a.aht <= a.ahtTgt ? 'met' : 'miss',
+      badge: true
+    },
+    {
+      label: 'Chat AHT',
+      display: a.chatAHT || '—',
+      tgt: null,
+      status: a.chatAHT ? 'neutral' : 'neutral',
+      na: !a.chatAHT
+    },
+    {
+      label: 'Missed Chats',
+      display: a.missedChats,
+      tgt: 'target: 0',
+      status: a.missedChats === 0 ? 'met' : 'miss',
+      badge: true
+    },
+    {
+      label: 'QA Score',
+      display: a.qa !== null ? pct(a.qa) : '—',
+      tgt: '≥ 85% target',
+      status: a.qa === null ? 'neutral' : (a.qa >= 0.85 ? 'met' : 'miss'),
+      badge: a.qa !== null,
+      na: a.qa === null
+    },
+    {
+      label: 'FCR',
+      display: a.fcr !== null ? pct(a.fcr) : '—',
+      tgt: '≥ 75% target',
+      status: a.fcr === null ? 'neutral' : (a.fcr >= 0.75 ? 'met' : 'miss'),
+      badge: a.fcr !== null,
+      na: a.fcr === null
+    },
+    {
+      label: 'Login Utilization',
+      display: pct(a.loginUtil),
+      tgt: '≥ 85% target',
+      status: a.loginUtil >= 0.85 ? 'met' : 'miss',
+      badge: true
+    }
   ];
 
-  document.getElementById('scoreGrid').innerHTML = cards.map(function(c){
-    var statusClass = c.neutral ? 'neutral' : (c.met===null ? 'neutral' : (c.met ? 'met' : 'miss'));
-    var valClass = c.neutral ? 'neutral' : (c.met===null ? 'neutral' : (c.met ? 'met' : 'miss'));
-    var displayVal = c.fmt(c.val);
-
-    // vs team avg delta
-    var vsHtml = '';
-    if(!c.neutral && c.teamAvg !== null){
-      var teamNum = typeof c.teamAvg === 'string' ? parseFloat(c.teamAvg) : c.teamAvg;
-      var myNum = c.val * (c.fmt === function(v){return pct(v);} ? 1 : 1); // rough
-      // For pct metrics, compare numerically
-      var delta = '';
-      if(c.label==='AHT (min)'){
-        var d = (a.aht - parseFloat(c.teamAvg)).toFixed(1);
-        var dc = d<0 ? 'up' : 'dn';
-        delta = (d>0?'+':'')+d+'min vs team avg';
-        vsHtml = '<div class="vs-avg '+dc+'">'+delta+'</div>';
-      } else if(!c.neutral){
-        var myPct = parseFloat((c.val*100).toFixed(1));
-        var tPct  = parseFloat((parseFloat(c.teamAvg)));
-        var dd = (myPct - tPct).toFixed(1);
-        var dc2 = c.label==='AHT (min)' ? (dd<0?'up':'dn') : (dd>=0?'up':'dn');
-        vsHtml = '<div class="vs-avg '+dc2+'">'+(dd>0?'+':'')+dd+'pp vs team avg</div>';
-      }
+  document.getElementById('metricGrid').innerHTML = metrics.map(function(m){
+    var badgeHtml = '';
+    if(m.badge){
+      badgeHtml = '<span class="metric-badge '+m.status+'">'+(m.status==='met'?'✓ Met':'✗ Below')+'</span>';
+    } else if(m.na){
+      badgeHtml = '<span style="font-size:10px;color:var(--text3)">Not tracked</span>';
     }
-
-    var progW = c.neutral ? null : Math.min(parseFloat(displayVal),100);
-    var progHtml = '';
-    if(!c.neutral && progW!==null){
-      progHtml = '<div class="prog"><div class="prog-fill '+statusClass+'" style="width:'+(c.label==='AHT (min)' ? Math.min((a.ahtTgt/a.aht)*100,100) : progW)+'%"></div></div>';
-    }
-
-    return '<div class="score-card '+statusClass+'">'
-      +'<div class="score-lbl">'+c.label+'</div>'
-      +'<div class="score-val '+valClass+'">'+displayVal+'</div>'
-      +(c.tgtLabel ? '<div class="score-tgt">target '+c.tgtLabel+'</div>' : '')
-      +(c.neutral ? '<div class="score-tgt">team avg: '+c.teamAvg+'</div>' : '')
-      +(!c.neutral && c.met!==null ? '<span class="score-badge '+statusClass+'">'+(c.met?'✓ Met':'✗ Below')+'</span>' : '')
-      +vsHtml
-      +progHtml
+    return '<div class="metric-card '+m.status+(m.na?' na':'')+'">'
+      +'<div class="metric-lbl">'+m.label+'</div>'
+      +'<div class="metric-val '+m.status+'">'+m.display+'</div>'
+      +(m.tgt ? '<div class="metric-tgt">'+m.tgt+'</div>' : '')
+      +badgeHtml
       +'</div>';
   }).join('');
 }
@@ -418,125 +345,92 @@ function renderScorecard(a, tAvg){
 function renderCoaching(a){
   var flags = [];
 
-  if(a.qa !== null){
-    if(a.qa < a.qaTgt){
-      flags.push({c:'r', icon:'📋', title:'QA Score needs improvement', detail:'Current: '+pct(a.qa)+' · Target: '+pct(a.qaTgt)+' · Gap: '+(((a.qaTgt-a.qa)*100).toFixed(1))+'pp. Review recent QA feedback and focus on the lowest-scoring categories.'});
-    } else {
-      flags.push({c:'g', icon:'✅', title:'QA Score on target', detail:'Great work! Your QA score of '+pct(a.qa)+' exceeds the '+pct(a.qaTgt)+' target.'});
-    }
-  }
-
+  // AHT
   if(a.aht > a.ahtTgt){
-    flags.push({c:'r', icon:'⏱', title:'Handle time above target', detail:'AHT is '+a.aht+'min vs '+a.ahtTgt+'min target. Consider reviewing your workflow for common ticket types or using macros for faster resolution.'});
+    flags.push({c:'r', icon:'⏱', title:'Handle time above target',
+      detail:'Your AHT is '+a.aht+'min vs the '+a.ahtTgt+'min target. Try using macros and templates for common ticket types to reduce handle time.'});
   } else {
-    flags.push({c:'g', icon:'⚡', title:'Handle time within target', detail:'Your AHT of '+a.aht+'min is within the '+a.ahtTgt+'min target — keep it up!'});
+    flags.push({c:'g', icon:'⚡', title:'Handle time within target',
+      detail:'Your AHT of '+a.aht+'min is within the '+a.ahtTgt+'min target. Keep it up!'});
   }
 
-  if(a.csat !== null && a.csat < 0.85){
-    flags.push({c:'r', icon:'😊', title:'CSAT below target', detail:'Current: '+pct(a.csat)+' · Target: 85%. Focus on personalised, empathetic responses and fully resolving the issue on first contact.'});
+  // Missed chats
+  if(a.missedChats > 0){
+    flags.push({c:'w', icon:'💬', title:a.missedChats+' missed chat'+(a.missedChats!==1?'s':'')+' this month',
+      detail:'Missed chats impact customer experience and your score. Make sure to accept incoming chats promptly during your shift.'});
+  } else if(a.chatAHT){
+    flags.push({c:'g', icon:'💬', title:'Zero missed chats',
+      detail:'Great — no missed chats this month.'});
   }
 
-  if(a.fcr !== null && a.fcr < 0.75){
-    flags.push({c:'w', icon:'🔁', title:'FCR below target', detail:'Current: '+pct(a.fcr)+' · Target: 75%. First Contact Resolution is low — check if issues are being fully resolved before closing tickets.'});
-  }
-
-  if(flags.filter(function(f){return f.c==='r';}).length === 0 && flags.filter(function(f){return f.c==='w';}).length === 0){
-    flags.unshift({c:'g', icon:'🌟', title:'All key metrics are on target!', detail:'You\'re meeting or exceeding all performance targets. Keep up the great work!'});
-  }
-
-  document.getElementById('coachList').innerHTML = '<div class="coach-list">'+flags.map(function(f){
-    return '<div class="coach-flag '+f.c+'">'
-      +'<div class="coach-icon">'+f.icon+'</div>'
-      +'<div><div class="coach-title">'+f.title+'</div><div class="coach-detail">'+f.detail+'</div></div>'
-      +'</div>';
-  }).join('')+'</div>';
-}
-
-// ── RADAR CHART ───────────────────────────────────────────────────────────────
-function renderChart(a, tAvg){
-  var ctx = document.getElementById('cRadar').getContext('2d');
-  if(CHART_REF) CHART_REF.destroy();
-
-  // Normalise each metric to % of target (100 = exactly at target); null metrics show as 0
-  var metrics = ['QA Score','CSAT','FCR','Occupancy','Adherence'];
-  function normVal(v, tgt){ return v!==null ? Math.min((v/tgt*100),130).toFixed(1)*1 : 0; }
-  var myVals   = [normVal(a.qa,a.qaTgt), normVal(a.csat,0.85), normVal(a.fcr,0.75), normVal(a.occ,0.83), normVal(a.adh,0.93)];
-  var ta_qa = tAvg('qa'), ta_csat = tAvg('csat'), ta_fcr = tAvg('fcr');
-  var teamVals = [normVal(ta_qa,a.qaTgt), normVal(ta_csat,0.85), normVal(ta_fcr,0.75), normVal(tAvg('occ'),0.83), normVal(tAvg('adh'),0.93)];
-
-  CHART_REF = new Chart(ctx, {
-    type: 'radar',
-    data:{
-      labels: metrics,
-      datasets:[
-        {label:'You', data:myVals, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.15)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#3b82f6'},
-        {label:'Team Avg', data:teamVals, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,.08)', borderWidth:1.5, pointRadius:3, borderDash:[4,3], pointBackgroundColor:'#94a3b8'}
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
-      scales:{r:{
-        min:60, max:130,
-        ticks:{display:false},
-        grid:{color:'#e2e8f0'},
-        pointLabels:{font:{size:11,weight:'600'},color:'#475569'},
-        angleLines:{color:'#e2e8f0'}
-      }}
+  // QA
+  if(a.qa !== null){
+    if(a.qa < 0.85){
+      flags.push({c:'r', icon:'📋', title:'QA score below target',
+        detail:'Current: '+pct(a.qa)+' · Target: 85%. Review your QA feedback and focus on the lowest-scoring categories.'});
+    } else {
+      flags.push({c:'g', icon:'📋', title:'QA score on target',
+        detail:'Your QA score of '+pct(a.qa)+' meets the 85% target.'});
     }
-  });
+  }
+
+  // FCR
+  if(a.fcr !== null){
+    if(a.fcr < 0.75){
+      flags.push({c:'w', icon:'🔁', title:'FCR below target',
+        detail:'Current: '+pct(a.fcr)+' · Target: 75%. Check that customer issues are fully resolved before closing a ticket.'});
+    } else {
+      flags.push({c:'g', icon:'🔁', title:'FCR on target',
+        detail:'Your first contact resolution rate of '+pct(a.fcr)+' meets the 75% target.'});
+    }
+  }
+
+  // Login utilization
+  if(a.loginUtil < 0.85){
+    flags.push({c:'w', icon:'🕐', title:'Login utilization below target',
+      detail:'Current: '+pct(a.loginUtil)+' · Target: 85%. Check your schedule adherence and ensure you are logged in for your full shift.'});
+  } else {
+    flags.push({c:'g', icon:'🕐', title:'Login utilization on target',
+      detail:'Your login utilization of '+pct(a.loginUtil)+' meets the 85% target.'});
+  }
+
+  // All green check
+  var issues = flags.filter(function(f){ return f.c !== 'g'; });
+  if(issues.length === 0){
+    flags.unshift({c:'g', icon:'🌟', title:'All metrics on target!',
+      detail:'You are meeting all performance targets this month. Excellent work!'});
+  }
+
+  document.getElementById('coachList').innerHTML =
+    '<div class="coach-list">'+flags.map(function(f){
+      return '<div class="coach-flag '+f.c+'">'
+        +'<div class="coach-icon">'+f.icon+'</div>'
+        +'<div><div class="coach-title">'+f.title+'</div>'
+        +'<div class="coach-detail">'+f.detail+'</div></div>'
+        +'</div>';
+    }).join('')+'</div>';
 }
 
-// ── LOB RANKING ───────────────────────────────────────────────────────────────
-function renderRanking(a, lobPeers){
-  document.getElementById('rankTitle').textContent = a.lob + ' Team Ranking';
-  document.getElementById('rankCardTitle').textContent = a.lob + ' — Agent Comparison';
-
-  // Sort by QA desc for ranking
-  var sorted = lobPeers.slice().sort(function(x,y){ return y.qa - x.qa; });
-
-  var rankBadge = function(i){
-    if(i===0) return '<span class="rank-badge r1">1</span>';
-    if(i===1) return '<span class="rank-badge r2">2</span>';
-    if(i===2) return '<span class="rank-badge r3">3</span>';
-    return '<span class="rank-badge">'+(i+1)+'</span>';
-  };
-
-  var avgTickets = lobPeers.reduce(function(s,x){return s+x.tickets;},0)/lobPeers.length;
-  var avgQA      = lobPeers.reduce(function(s,x){return s+x.qa;},0)/lobPeers.length;
-  var avgCSAT    = lobPeers.reduce(function(s,x){return s+x.csat;},0)/lobPeers.length;
-  var avgFCR     = lobPeers.reduce(function(s,x){return s+x.fcr;},0)/lobPeers.length;
-  var avgAHT     = lobPeers.reduce(function(s,x){return s+x.aht;},0)/lobPeers.length;
-
-  document.getElementById('rankBody').innerHTML = sorted.map(function(p, i){
-    var isMe = p.name === a.name;
-    var qaMet = p.qa>=p.qaTgt;
-    return '<tr class="'+(isMe?'highlight-row':'')+'">'
-      +'<td>'+rankBadge(i)+'</td>'
-      +'<td>'+(isMe?'<strong>'+p.name+' (you)</strong>':p.name)+'</td>'
-      +'<td class="r">'+p.tickets+'</td>'
-      +'<td class="r" style="color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(p.qa)+'</td>'
-      +'<td class="r" style="color:'+(p.csat>=0.85?'var(--green)':'var(--red)')+'">'+pct(p.csat)+'</td>'
-      +'<td class="r" style="color:'+(p.fcr>=0.75?'var(--green)':'var(--red)')+'">'+pct(p.fcr)+'</td>'
-      +'<td class="r" style="color:'+(p.aht<=p.ahtTgt?'var(--green)':'var(--red)')+'">'+p.aht+'</td>'
-      +'</tr>';
-  }).join('') + '<tr class="avg-row">'
-    +'<td>—</td><td>LOB Average</td>'
-    +'<td class="r">'+Math.round(avgTickets)+'</td>'
-    +'<td class="r">'+pct(avgQA)+'</td>'
-    +'<td class="r">'+pct(avgCSAT)+'</td>'
-    +'<td class="r">'+pct(avgFCR)+'</td>'
-    +'<td class="r">'+avgAHT.toFixed(1)+'</td>'
-    +'</tr>';
+// ── LOAD FROM SHEETS (future) ─────────────────────────────────────────────────
+// When SHEETS_AGENT_URL is set, this will fetch live agent data and update D.
+// The sheet should be Published to web as CSV with columns:
+//   Name | LOB | Tickets | DailyAvg | AHT(min) | HandleCust | ChatAHT | MissedChats | QA | FCR | LoginUtil
+async function loadSheets(){
+  if(!SHEETS_AGENT_URL) return;
+  try{
+    var cb = '&_cb='+Date.now();
+    var r = await fetch(SHEETS_AGENT_URL+cb,{credentials:'omit',redirect:'follow',cache:'no-store'});
+    if(!r.ok) return;
+    // TODO: parse CSV and update D.agents when sheet format is confirmed
+    console.log('[Agent] Sheet fetch ok — parsing not yet implemented. Using embedded data.');
+  }catch(e){ console.warn('[Agent] Sheet fetch error:',e.message); }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-var saved = getSavedAgent();
-if(saved && getData()){
-  document.getElementById('modalBg').style.display = 'none';
-  loadDashboard(saved);
-} else {
-  showPicker();
+loadSheets();
+var savedCode = localStorage.getItem(CODE_KEY);
+if(savedCode && AGENT_CODES[savedCode]){
+  showDash(AGENT_CODES[savedCode]);
 }
 </script>
 </body>
