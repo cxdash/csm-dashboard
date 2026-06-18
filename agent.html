@@ -987,10 +987,12 @@ function parseFCRSheet(text){
     if(dp.length<3) continue;
     var mon = dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+parseInt(dp[0]);
     if(months12.indexOf(mon)<0) continue;
-    var fc = parseFloat(f[6])||0, el = parseFloat(f[7])||0;
+    // Use f[5] = pre-computed daily FCR rate; average across days (matches pivot AVERAGE of FCR%)
+    var rate = parseFloat(f[5]);
+    if(isNaN(rate)) continue;
     if(!byAgent[key]) byAgent[key]={name:name, email:email};
     if(!byAgent[key][mon]) byAgent[key][mon]=[0,0];
-    byAgent[key][mon][0]+=fc; byAgent[key][mon][1]+=el;
+    byAgent[key][mon][0]+=rate; byAgent[key][mon][1]++;
   }
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
