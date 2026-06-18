@@ -982,16 +982,20 @@ function parseFCRSheet(text){
     var name = normName((f[3]||'').trim());
     if(!name) continue;
     var email = (f[8]||'').trim().toLowerCase();
-    var key = email || name;
+    var key = (email && email.indexOf('@')>=0) ? email : name;
     var dp = (f[4]||'').trim().split('/');
     if(dp.length<3) continue;
-    var mon = dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+dp[0];
+    var mon = dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+parseInt(dp[0]);
     if(months12.indexOf(mon)<0) continue;
     var fc = parseFloat(f[6])||0, el = parseFloat(f[7])||0;
     if(!byAgent[key]) byAgent[key]={name:name, email:email};
     if(!byAgent[key][mon]) byAgent[key][mon]=[0,0];
     byAgent[key][mon][0]+=fc; byAgent[key][mon][1]+=el;
   }
+  // Consolidate: merge name-keyed entries into email-keyed entries for same agent
+  var _n2e={};
+  for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
+  for(var _k in byAgent){if(_k.indexOf('@')<0&&byAgent[_k].name&&_n2e[byAgent[_k].name]){var _ek=_n2e[byAgent[_k].name];for(var _m in byAgent[_k]){if(_m==='name'||_m==='email')continue;if(!byAgent[_ek][_m])byAgent[_ek][_m]=[0,0];byAgent[_ek][_m][0]+=byAgent[_k][_m][0];byAgent[_ek][_m][1]+=byAgent[_k][_m][1];}delete byAgent[_k];}}
 
   var result = [];
   for(var key in byAgent){
@@ -1055,6 +1059,10 @@ function parseQASheet(text){
       byAgent[key].rows.push({score:score/100, ztpFlag:hasZTP, link:link});
     }
   }
+  // Consolidate: merge name-keyed entries into email-keyed entries for same agent
+  var _n2e={};
+  for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
+  for(var _k in byAgent){if(_k.indexOf('@')<0&&byAgent[_k].name&&_n2e[byAgent[_k].name]){var _ek=_n2e[byAgent[_k].name];for(var _m in byAgent[_k].months){if(!byAgent[_ek].months[_m])byAgent[_ek].months[_m]=[0,0,false];byAgent[_ek].months[_m][0]+=byAgent[_k].months[_m][0];byAgent[_ek].months[_m][1]+=byAgent[_k].months[_m][1];if(byAgent[_k].months[_m][2])byAgent[_ek].months[_m][2]=true;}byAgent[_ek].rows=byAgent[_ek].rows.concat(byAgent[_k].rows||[]);delete byAgent[_k];}}
 
   var result = [];
   for(var k in byAgent){

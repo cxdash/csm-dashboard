@@ -1210,7 +1210,7 @@ function parseFCRSheetIdx(text){
     var key=(email&&email.indexOf('@')>=0)?email:name;
     var dp=(f[4]||'').trim().split('/');
     if(dp.length<3) continue;
-    var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+dp[0];
+    var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+parseInt(dp[0]);
     if(months12.indexOf(mon)<0) continue;
     var fc=parseFloat(f[6])||0,el=parseFloat(f[7])||0;
     if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
@@ -1218,6 +1218,10 @@ function parseFCRSheetIdx(text){
     if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0];
     byAgent[key].m[mon][0]+=fc; byAgent[key].m[mon][1]+=el;
   }
+  // Consolidate: merge name-keyed entries into email-keyed entries for same agent
+  var _n2e={};
+  for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
+  for(var _k in byAgent){if(_k.indexOf('@')<0&&byAgent[_k].name&&_n2e[byAgent[_k].name]){var _ek=_n2e[byAgent[_k].name];for(var _m in byAgent[_k].m){if(!byAgent[_ek].m[_m])byAgent[_ek].m[_m]=[0,0];byAgent[_ek].m[_m][0]+=byAgent[_k].m[_m][0];byAgent[_ek].m[_m][1]+=byAgent[_k].m[_m][1];}delete byAgent[_k];}}
   var result=[];
   for(var k in byAgent){
     var ag=byAgent[k]; var mons=ag.m;
@@ -1260,6 +1264,10 @@ function parseQASheetIdx(text){
     byAgent[key].m[mon][0]+=score; byAgent[key].m[mon][1]++;
     if(hasZTP) byAgent[key].m[mon][2]=true;
   }
+  // Consolidate: merge name-keyed entries into email-keyed entries for same agent
+  var _n2e={};
+  for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
+  for(var _k in byAgent){if(_k.indexOf('@')<0&&byAgent[_k].name&&_n2e[byAgent[_k].name]){var _ek=_n2e[byAgent[_k].name];for(var _m in byAgent[_k].m){if(!byAgent[_ek].m[_m])byAgent[_ek].m[_m]=[0,0,false];byAgent[_ek].m[_m][0]+=byAgent[_k].m[_m][0];byAgent[_ek].m[_m][1]+=byAgent[_k].m[_m][1];if(byAgent[_k].m[_m][2])byAgent[_ek].m[_m][2]=true;}delete byAgent[_k];}}
   var result=[];
   for(var k in byAgent){
     var ag=byAgent[k]; var mons=ag.m;
