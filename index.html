@@ -862,6 +862,7 @@ function parseGladlyCSV(text){
 // Parses the VolDA Google Sheet tab (published as CSV).
 // Finds "MoM" section for volume and "Within/Exceeded SLA Count" for SLA.
 // Returns { inbound:{lobs,months,values}, sla:[{lob,sla,jun,may}] }
+function parsePct(s){ s=(s||'').trim(); return s.endsWith('%') ? parseFloat(s)/100 : parseFloat(s)||0; }
 function parseVolDaSheet(text){
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   function csvRow(line){
@@ -1088,11 +1089,6 @@ function parseSLASummarySheet(text){
     if(n.startsWith('recentfollow')) return 'Follows';
     return null;
   }
-  function parsePct(s){
-    s=(s||'').trim();
-    return s.endsWith('%') ? parseFloat(s)/100 : parseFloat(s)||0;
-  }
-
   var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
   var monthData = {}, monthOrder = [], curMonth = null;
 
