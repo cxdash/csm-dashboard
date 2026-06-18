@@ -116,6 +116,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     </div>
     <div class="hdr-right">
       <div class="period-pill" id="hdrPeriod"></div>
+      <div id="sheetChip" style="display:none;font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7)"></div>
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
   </div>
@@ -144,10 +145,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 'use strict';
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-// Paste a published-CSV URL here when your agent sheet is ready.
-// The sheet should have columns: Name, Tickets, DailyAvg, AHT, ChatAHT,
-// MissedChats, QA%, FCR%, LoginUtil%
-var SHEETS_AGENT_URL = '';
+var SHEETS_AGENT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';
 
 // ── AGENT CODES ───────────────────────────────────────────────────────────────
 // Each agent gets one code. Share individually — do not share the full list.
@@ -172,43 +170,49 @@ var AGENT_CODES = {
   'FO01':'Roynalyn Malcampo',      'FO02':'Geal Ann Lorico',       'FO03':'Jessica Ibañez'
 };
 
-// ── DEFAULT DATA (June 2026 · sourced from Agent Reporting CSV) ───────────────
+// ── DEFAULT DATA (June 2026 MTD · sourced from Agent Reporting daily CSV) ─────
 var DEFAULT_DATA = {
-  period: 'June 2026',
+  period: 'Jun 2026 MTD',
   agents: [
-    {name:'Geric Vallar',            lob:'Path Social', tickets:2070, avgCustDay:60, handleCust:'8m 41s', chatAHT:'9m 11s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.90,  aht:6.2,  ahtTgt:7.0},
-    {name:'Zheraine',                lob:'Path Social', tickets:1971, avgCustDay:63, handleCust:'8m 7s',  chatAHT:'11m 44s', missedChats:0,  qa:null, fcr:null, loginUtil:0.89,  aht:5.8,  ahtTgt:7.0},
-    {name:'Abigail Aquino',          lob:'Path Social', tickets:1813, avgCustDay:58, handleCust:'6m 1s',  chatAHT:'6m 43s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.90,  aht:6.3,  ahtTgt:7.0},
-    {name:'Benedict Catbagan',       lob:'Path Social', tickets:1787, avgCustDay:61, handleCust:'5m 35s', chatAHT:'6m 18s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.91,  aht:6.2,  ahtTgt:7.0},
-    {name:'Kaila May Membredo',      lob:'Path Social', tickets:1762, avgCustDay:60, handleCust:'6m 39s', chatAHT:'6m 8s',   missedChats:14, qa:null, fcr:null, loginUtil:0.91,  aht:6.3,  ahtTgt:7.0},
-    {name:'Jennilen Manosa',         lob:'Path Social', tickets:500,  avgCustDay:27, handleCust:'5m 28s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.91,  aht:3.8,  ahtTgt:7.0},
-    {name:'Pherbia',                 lob:'Path Social', tickets:745,  avgCustDay:22, handleCust:'7m 2s',  chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.89,  aht:7.8,  ahtTgt:7.0},
-    {name:'Janelle Decena',          lob:'Path Social', tickets:42,   avgCustDay:26, handleCust:'8m 57s', chatAHT:'1m 23s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.99,  aht:76.8, ahtTgt:7.0},
-    {name:'Mark Lora',               lob:'Crowd Ignite',tickets:1487, avgCustDay:30, handleCust:'6m 08s', chatAHT:'20m 48s', missedChats:0,  qa:null, fcr:null, loginUtil:0.901, aht:5.6,  ahtTgt:7.0},
-    {name:'Faye',                    lob:'Crowd Ignite',tickets:1225, avgCustDay:22, handleCust:'4m 01s', chatAHT:'10m 13s', missedChats:1,  qa:null, fcr:null, loginUtil:0.930, aht:5.0,  ahtTgt:7.0},
-    {name:'Mariam Riasat',           lob:'Crowd Ignite',tickets:790,  avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.877, aht:5.2,  ahtTgt:7.0},
-    {name:'Rosie Eslao',             lob:'High Social', tickets:2048, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 15s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.952, aht:2.8,  ahtTgt:7.0},
-    {name:'Rockwell De Mesa',        lob:'High Social', tickets:1527, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 20s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.918, aht:3.6,  ahtTgt:7.0},
-    {name:'Samantha Mae Parrilla',   lob:'High Social', tickets:1380, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 24s',  missedChats:5,  qa:null, fcr:null, loginUtil:0.929, aht:4.6,  ahtTgt:7.0},
-    {name:'Charito Mencedez',        lob:'High Social', tickets:1308, avgCustDay:43, handleCust:'3m 05s', chatAHT:'5m 37s',  missedChats:8,  qa:null, fcr:null, loginUtil:0.926, aht:3.1,  ahtTgt:7.0},
-    {name:'Polly Yanah Salanatin',   lob:'High Social', tickets:1297, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 31s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.940, aht:3.4,  ahtTgt:7.0},
-    {name:'Christine Joy M Salvador',lob:'High Social', tickets:995,  avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 04s',  missedChats:4,  qa:null, fcr:null, loginUtil:0.917, aht:3.8,  ahtTgt:7.0},
-    {name:'Jaycel Napa',             lob:'Plixi',       tickets:1342, avgCustDay:39, handleCust:'6m 10s', chatAHT:'6m 12s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.941, aht:6.4,  ahtTgt:7.0},
-    {name:'Trisha Joy Cads',         lob:'Plixi',       tickets:1300, avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 16s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.935, aht:7.4,  ahtTgt:7.0},
-    {name:'Mary Rose Sebastian',     lob:'Plixi',       tickets:1026, avgCustDay:25, handleCust:'7m 45s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.941, aht:9.1,  ahtTgt:7.0},
-    {name:'Rhian de Belen',          lob:'Plixi',       tickets:983,  avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 41s',  missedChats:6,  qa:null, fcr:null, loginUtil:0.906, aht:7.6,  ahtTgt:7.0},
-    {name:'Djamillah Maria Abaya',   lob:'Plixi',       tickets:918,  avgCustDay:25, handleCust:'9m 42s', chatAHT:'8m 12s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.938, aht:8.7,  ahtTgt:7.0},
-    {name:'Anne Nicole Asistio',     lob:'Plixi',       tickets:808,  avgCustDay:27, handleCust:'8m 37s', chatAHT:'48m 38s', missedChats:2,  qa:null, fcr:null, loginUtil:0.973, aht:9.7,  ahtTgt:7.0},
-    {name:'Eunice Jeremiah Valiao',  lob:'Plixi',       tickets:717,  avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 36s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.939, aht:10.2, ahtTgt:7.0},
-    {name:'Rushelle',                lob:'Plixi',       tickets:539,  avgCustDay:17, handleCust:'15m 31s',chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.933, aht:16.1, ahtTgt:7.0},
-    {name:'Monica',                  lob:'Plixi',       tickets:161,  avgCustDay:13, handleCust:'9m 22s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.939, aht:30.6, ahtTgt:7.0},
-    {name:'Dencio Almag, Jr.',       lob:'Goread',      tickets:1429, avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 21s',  missedChats:40, qa:null, fcr:null, loginUtil:0.929, aht:6.9,  ahtTgt:7.0},
-    {name:'Moses Eragbai',           lob:'Goread',      tickets:1400, avgCustDay:52, handleCust:'5m 16s', chatAHT:'3m 41s',  missedChats:7,  qa:null, fcr:null, loginUtil:0.926, aht:6.0,  ahtTgt:7.0},
-    {name:'Nay Nuttida',             lob:'Goread',      tickets:1144, avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, qa:null, fcr:null, loginUtil:0.968, aht:4.9,  ahtTgt:7.0},
-    {name:'Suzette Mejia',           lob:'Goread',      tickets:1039, avgCustDay:27, handleCust:'6m 29s', chatAHT:'5m 07s',  missedChats:1,  qa:null, fcr:null, loginUtil:0.964, aht:7.2,  ahtTgt:7.0},
-    {name:'Roynalyn Malcampo',       lob:'Follows',     tickets:1208, avgCustDay:32, handleCust:'5m 59s', chatAHT:'8m 16s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.909, aht:6.4,  ahtTgt:7.0},
-    {name:'Geal Ann Lorico',         lob:'Follows',     tickets:927,  avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 37s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.890, aht:5.8,  ahtTgt:7.0},
-    {name:'Jessica Ibañez',          lob:'Follows',     tickets:281,  avgCustDay:2,  handleCust:'10m 07s',chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.876, aht:7.8,  ahtTgt:7.0}
+    // Path Social
+    {name:'Geric Vallar',            lob:'Path Social', tickets:678,  avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.895, aht:6.25, ahtTgt:7.0},
+    {name:'Zheraine',                lob:'Path Social', tickets:649,  avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  qa:null, fcr:null, loginUtil:0.889, aht:6.02, ahtTgt:7.0},
+    {name:'Abigail Aquino',          lob:'Path Social', tickets:618,  avgCustDay:48, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.896, aht:5.97, ahtTgt:7.0},
+    {name:'Benedict Catbagan',       lob:'Path Social', tickets:682,  avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.909, aht:5.58, ahtTgt:7.0},
+    {name:'Kaila May Membredo',      lob:'Path Social', tickets:677,  avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, qa:null, fcr:null, loginUtil:0.909, aht:6.18, ahtTgt:7.0},
+    {name:'Jennilen Manosa',         lob:'Path Social', tickets:28,   avgCustDay:14, handleCust:'5m 31s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.912, aht:5.52, ahtTgt:7.0},
+    {name:'Pherbia',                 lob:'Path Social', tickets:237,  avgCustDay:22, handleCust:'7m 18s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.891, aht:7.30, ahtTgt:7.0},
+    {name:'Janelle Decena',          lob:'Path Social', tickets:270,  avgCustDay:25, handleCust:'3m 54s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.989, aht:3.90, ahtTgt:7.0},
+    // Crowd Ignite
+    {name:'Mark Lora',               lob:'Crowd Ignite',tickets:304,  avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  qa:null, fcr:null, loginUtil:0.901, aht:6.13, ahtTgt:7.0},
+    {name:'Faye',                    lob:'Crowd Ignite',tickets:291,  avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  qa:null, fcr:null, loginUtil:0.930, aht:4.02, ahtTgt:7.0},
+    {name:'Mariam Riasat',           lob:'Crowd Ignite',tickets:234,  avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.877, aht:4.75, ahtTgt:7.0},
+    // High Social
+    {name:'Rosie Eslao',             lob:'High Social', tickets:585,  avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.952, aht:2.72, ahtTgt:7.0},
+    {name:'Rockwell De Mesa',        lob:'High Social', tickets:426,  avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.918, aht:3.45, ahtTgt:7.0},
+    {name:'Samantha Mae Parrilla',   lob:'High Social', tickets:614,  avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  qa:null, fcr:null, loginUtil:0.929, aht:3.82, ahtTgt:7.0},
+    {name:'Charito Mencedez',        lob:'High Social', tickets:433,  avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  qa:null, fcr:null, loginUtil:0.926, aht:3.08, ahtTgt:7.0},
+    {name:'Polly Yanah Salanatin',   lob:'High Social', tickets:485,  avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.940, aht:3.57, ahtTgt:7.0},
+    {name:'Christine Joy M Salvador',lob:'High Social', tickets:157,  avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  qa:null, fcr:null, loginUtil:0.917, aht:4.52, ahtTgt:7.0},
+    // Plixi
+    {name:'Jaycel Napa',             lob:'Plixi',       tickets:431,  avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.941, aht:6.17, ahtTgt:7.0},
+    {name:'Trisha Joy Cads',         lob:'Plixi',       tickets:325,  avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.935, aht:7.40, ahtTgt:7.0},
+    {name:'Mary Rose Sebastian',     lob:'Plixi',       tickets:303,  avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.941, aht:7.75, ahtTgt:7.0},
+    {name:'Rhian de Belen',          lob:'Plixi',       tickets:352,  avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  qa:null, fcr:null, loginUtil:0.906, aht:7.38, ahtTgt:7.0},
+    {name:'Djamillah Maria Abaya',   lob:'Plixi',       tickets:280,  avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.938, aht:9.70, ahtTgt:7.0},
+    {name:'Anne Nicole Asistio',     lob:'Plixi',       tickets:270,  avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.973, aht:8.62, ahtTgt:7.0},
+    {name:'Eunice Jeremiah Valiao',  lob:'Plixi',       tickets:242,  avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  qa:null, fcr:null, loginUtil:0.939, aht:8.45, ahtTgt:7.0},
+    {name:'Rushelle',                lob:'Plixi',       tickets:184,  avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.933, aht:15.52,ahtTgt:7.0},
+    {name:'Monica',                  lob:'Plixi',       tickets:156,  avgCustDay:13, handleCust:'9m 22s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.939, aht:9.37, ahtTgt:7.0},
+    // Goread
+    {name:'Dencio Almag, Jr.',       lob:'Goread',      tickets:447,  avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 40s',  missedChats:40, qa:null, fcr:null, loginUtil:0.929, aht:6.10, ahtTgt:7.0},
+    {name:'Moses Eragbai',           lob:'Goread',      tickets:577,  avgCustDay:52, handleCust:'5m 16s', chatAHT:'5m 58s',  missedChats:7,  qa:null, fcr:null, loginUtil:0.926, aht:5.27, ahtTgt:7.0},
+    {name:'Nay Nuttida',             lob:'Goread',      tickets:304,  avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, qa:null, fcr:null, loginUtil:0.968, aht:5.27, ahtTgt:7.0},
+    {name:'Suzette Mejia',           lob:'Goread',      tickets:243,  avgCustDay:27, handleCust:'6m 29s', chatAHT:'4m 46s',  missedChats:1,  qa:null, fcr:null, loginUtil:0.964, aht:6.48, ahtTgt:7.0},
+    // Follows
+    {name:'Roynalyn Malcampo',       lob:'Follows',     tickets:349,  avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  qa:null, fcr:null, loginUtil:0.909, aht:5.98, ahtTgt:7.0},
+    {name:'Geal Ann Lorico',         lob:'Follows',     tickets:203,  avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 16s',  missedChats:0,  qa:null, fcr:null, loginUtil:0.890, aht:5.98, ahtTgt:7.0},
+    {name:'Jessica Ibañez',          lob:'Follows',     tickets:64,   avgCustDay:4,  handleCust:'9m 24s', chatAHT:null,      missedChats:0,  qa:null, fcr:null, loginUtil:0.957, aht:9.40, ahtTgt:7.0}
   ]
 };
 
@@ -411,19 +415,173 @@ function renderCoaching(a){
     }).join('')+'</div>';
 }
 
-// ── LOAD FROM SHEETS (future) ─────────────────────────────────────────────────
-// When SHEETS_AGENT_URL is set, this will fetch live agent data and update D.
-// The sheet should be Published to web as CSV with columns:
-//   Name | LOB | Tickets | DailyAvg | AHT(min) | HandleCust | ChatAHT | MissedChats | QA | FCR | LoginUtil
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function normName(s){
+  return (s||'').trim().replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').replace(/Ã¡/g,'á').replace(/Ã³/g,'ó');
+}
+
+function setChip(msg){
+  var el = document.getElementById('sheetChip');
+  if(!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg || '';
+}
+
+// ── PARSE AGENT SHEET (raw daily Gladly CSV) ──────────────────────────────────
+// Handles the full historical export — auto-detects latest month, aggregates MTD.
+function parseAgentSheet(text){
+  var lines = text.split('\n');
+
+  // Find header row (contains "Bucket Beginning")
+  var hLine = -1, headers = null;
+  for(var i = 0; i < Math.min(lines.length, 5); i++){
+    if(lines[i].indexOf('Bucket Beginning') >= 0){ hLine = i; headers = lines[i]; break; }
+  }
+  if(!headers) return null;
+
+  // Find column index by name (simple split — header has no quoted commas)
+  var hCols = headers.split(',');
+  function col(name){ for(var j=0;j<hCols.length;j++) if(hCols[j].trim()===name) return j; return -1; }
+
+  var C = {
+    DATE:  col('Bucket Beginning'),
+    NAME:  col('Name'),
+    LOGIN: col('Logged in Time in seconds'),
+    ACTV:  col('Active Time in seconds'),
+    FULF:  col('Contact Fulfilled'),
+    MC:    col('Contact Missed - Chat'),
+    FC:    col('Contact Fulfilled - Chat'),
+    FE:    col('Contact Fulfilled - Email'),
+    HTC:   col('Contact Handle Time in seconds - Chat'),
+    HTE:   col('Contact Handle Time in seconds - Email')
+  };
+  if(C.NAME < 0 || C.DATE < 0 || C.FULF < 0) return null;
+
+  // Minimal CSV row parser (handles quoted fields with commas)
+  function parseRow(line){
+    var res=[], cur='', inQ=false;
+    for(var i=0; i<=line.length; i++){
+      var c = i < line.length ? line[i] : ',';
+      if(inQ){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=c; }
+      else{ if(c==='"') inQ=true; else if(c===','){ res.push(cur); cur=''; } else cur+=c; }
+    }
+    return res;
+  }
+
+  function n(v){ return parseFloat(v)||0; }
+  function fmtTime(secs){
+    if(!secs||secs<=0) return null;
+    var m=Math.floor(secs/60), s=Math.round(secs%60);
+    return m+'m '+(s<10?'0':'')+s+'s';
+  }
+
+  // Single pass: bucket all months, track latest
+  var monthBuckets = {}, latestY=0, latestM=0;
+
+  for(var i = hLine+1; i < lines.length; i++){
+    var line = lines[i];
+    if(!line||!line.trim()) continue;
+
+    // Quick date pre-check: find date field (col 2) via first two commas
+    var c1=line.indexOf(','), c2=c1>=0?line.indexOf(',',c1+1):-1, c3=c2>=0?line.indexOf(',',c2+1):-1;
+    if(c3<0) continue;
+    var dateStr = line.substring(c2+1, c3).trim();
+    var dp = dateStr.split('/');
+    if(dp.length < 3) continue;
+    var mo = parseInt(dp[0]), yr = parseInt(dp[2]);
+    if(isNaN(mo)||isNaN(yr)||yr<2025) continue;
+
+    if(yr > latestY || (yr===latestY && mo>latestM)){ latestY=yr; latestM=mo; }
+
+    var mKey = yr+'-'+mo;
+    if(!monthBuckets[mKey]) monthBuckets[mKey]={};
+    var bucket = monthBuckets[mKey];
+
+    var f = parseRow(line);
+    var name = normName(f[C.NAME]);
+    if(!name) continue;
+
+    if(!bucket[name]) bucket[name]={login:0,actv:0,fulf:0,mc:0,fc:0,fe:0,htc:0,hte:0,days:{}};
+    var ag = bucket[name];
+    ag.login += n(f[C.LOGIN]);
+    ag.actv  += n(f[C.ACTV]);
+    ag.fulf  += n(f[C.FULF]);
+    ag.mc    += n(f[C.MC]);
+    ag.fc    += n(f[C.FC]);
+    ag.fe    += n(f[C.FE]);
+    ag.htc   += C.HTC>=0 ? n(f[C.HTC]) : 0;
+    ag.hte   += C.HTE>=0 ? n(f[C.HTE]) : 0;
+    ag.days[dp[0]+'/'+dp[1]] = 1; // unique day key
+  }
+
+  if(!latestY) return null;
+  var bucket = monthBuckets[latestY+'-'+latestM];
+  if(!bucket) return null;
+
+  var MNAMES=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var period = MNAMES[latestM]+' '+latestY+' MTD';
+
+  var result = [];
+  for(var nm in bucket){
+    var ag = bucket[nm];
+    if(ag.fulf < 1) continue;
+    var days = Object.keys(ag.days).length;
+    var ecFulf = ag.fc + ag.fe;
+    var ecHt   = ag.htc + ag.hte;
+    var ahtSec = ecFulf > 0 ? ecHt/ecFulf : (ag.fulf > 0 ? (ag.htc+ag.hte)/ag.fulf : 0);
+    result.push({
+      name:        nm,
+      tickets:     Math.round(ag.fulf),
+      avgCustDay:  days > 0 ? Math.round(ag.fulf/days) : 0,
+      handleCust:  fmtTime(ahtSec),
+      chatAHT:     ag.fc > 0 ? fmtTime(ag.htc/ag.fc) : null,
+      missedChats: Math.round(ag.mc),
+      loginUtil:   ag.login > 0 ? ag.actv/ag.login : 0,
+      aht:         ahtSec > 0 ? Math.round(ahtSec/60*10)/10 : 0
+    });
+  }
+  return { period: period, agents: result };
+}
+
+// ── LOAD FROM SHEETS ──────────────────────────────────────────────────────────
 async function loadSheets(){
   if(!SHEETS_AGENT_URL) return;
+  setChip('⏳ Updating…');
   try{
     var cb = '&_cb='+Date.now();
     var r = await fetch(SHEETS_AGENT_URL+cb,{credentials:'omit',redirect:'follow',cache:'no-store'});
-    if(!r.ok) return;
-    // TODO: parse CSV and update D.agents when sheet format is confirmed
-    console.log('[Agent] Sheet fetch ok — parsing not yet implemented. Using embedded data.');
-  }catch(e){ console.warn('[Agent] Sheet fetch error:',e.message); }
+    console.log('[Agent] fetch ok='+r.ok+' status='+r.status);
+    if(!r.ok){ setChip(''); return; }
+    var text = await r.text();
+    var result = parseAgentSheet(text);
+    if(!result){ console.warn('[Agent] parse returned null'); setChip(''); return; }
+
+    // Merge live metrics into D — match by name (with normalization fallback)
+    D.period = result.period;
+    result.agents.forEach(function(live){
+      var def = D.agents.find(function(a){ return a.name===live.name || normName(a.name)===live.name; });
+      if(!def) return;
+      def.tickets    = live.tickets;
+      def.avgCustDay = live.avgCustDay;
+      if(live.handleCust) def.handleCust = live.handleCust;
+      def.chatAHT    = live.chatAHT;
+      def.missedChats= live.missedChats;
+      def.loginUtil  = live.loginUtil;
+      if(live.aht > 0) def.aht = live.aht;
+    });
+
+    var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    setChip('🔗 Live · '+ts);
+
+    // Re-render dashboard if already open
+    var savedCode = localStorage.getItem(CODE_KEY);
+    if(savedCode && AGENT_CODES[savedCode] && document.getElementById('dashScreen').style.display!=='none'){
+      showDash(AGENT_CODES[savedCode]);
+    }
+  }catch(e){
+    console.warn('[Agent] Sheet error:',e.message);
+    setChip('');
+  }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
