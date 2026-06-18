@@ -1731,7 +1731,7 @@ function renderAgents(){
   }).join('');
 
   // Team average row
-  var avgDay   = avgNonNull(agents.filter(function(a){return !a.esc;}).map(function(a){return a.avgCustDay;}));
+  var avgDay   = avgNonNull(agents.filter(function(a){return !a.esc&&!a.partTime;}).map(function(a){return a.avgCustDay;}));
   var avgLogin = avgNonNull(agents.map(function(a){return a.loginUtil;}));
   var avgProd  = avgNonNull(agents.map(function(a){return a.productivity;}));
   var avgQA    = avgNonNull(agents.map(function(a){return a.qa;}));
