@@ -419,6 +419,7 @@ var SHEETS_SLA_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7w
 var SHEETS_FCR_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1422680454&single=true&output=csv';  // FCR tab
 var SHEETS_QA_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';  // QA tab (main)
 var SHEETS_QA2_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1209230234&single=true&output=csv';  // Goread QA tab
+var SHEETS_QA3_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeQRp3nRG-wmesyi92QfWskCdCMXNGivUeMES44LpZ3YWx_QHY5ux2t7RwT_n-5GcZYBrh8q2B0y2c/pub?gid=1110854295&single=true&output=csv';  // Plixi+HighSocial+Cloutify QA tab
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -1239,38 +1240,54 @@ function parseFCRSheetIdx(text){
   }
   return result;
 }
-function parseQASheetIdx(text, text2){
+function parseQASheetIdx(text, text2, text3){
   var hIdx=2;
   var now=new Date(), months12=[];
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());}
   var latestMon=months12[months12.length-1], prevMon=months12[months12.length-2];
-  // byAgent: key=email(col A) or name; months nested under .m
+  // byAgent: key=email(col A) or normName; months nested under .m
   var byAgent={};
+  // Name aliases for PX/HS/CL sheet (agents use full names; DEFAULT_DATA has shorter names)
+  var QA_ALIAS={'rushelleronquillo':'rushelle','monicaprincesstandoc':'monica',
+    'eunicevaliao':'eunicejeremiahvaliao','nicoleasistio':'annenicoleasistio',
+    'samanthaparrilla':'samanthamaeparrilla','christinesalvador':'christinejoymsalvador'};
   function parseInto(txt){
     var lines=txt.split('\n');
     for(var i=hIdx+1;i<lines.length;i++){
       var f=parseCSVRow(lines[i]);
-      if(f.length<7) continue;
-      // Type column: f[20] for main QA sheet; f[23] for Goread sheet (f[20] = Average Score there).
-      // Only treat f[20] as a type if it looks like 'QA' or 'Calibration'; otherwise fall back to f[23].
-      var t20=(f.length>20?(f[20]||''):'').trim();
-      var t23=(f.length>23?(f[23]||''):'').trim();
-      var qaType=/^(qa|calibration)$/i.test(t20)?t20:t23;
-      if(qaType&&qaType.toLowerCase()!=='qa') continue;
-      var name=normName((f[3]||'').trim());
-      var email=(f[0]||'').trim().toLowerCase();
+      var name, email, rawMon, score, hasZTP;
+      if(f.length>=29&&/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
+        // ── PX / HS / Cloutify format ──
+        // f[0]=Timestamp  f[1]=AgentName  f[4]=Score  f[17]=AuditType  f[20]=ZTP  f[28]=MonthYear
+        var qaType=(f[17]||'').trim();
+        if(qaType&&!/^(qa|focused\s*qa)/i.test(qaType)) continue;
+        name=normName((f[1]||'').trim()); name=QA_ALIAS[name]||name;
+        email='';
+        rawMon=(f[28]||'').trim();
+        score=parseFloat(f[4]);
+        hasZTP=(f[20]||'').trim()!==''&&!/^(na|no)$/i.test((f[20]||'').trim());
+      } else {
+        // ── Main QA / Goread format ──
+        // f[0]=Email  f[1]=Month  f[3]=AgentName  f[6]=Score  f[20] or f[23]=Type  f[21]=ZTP
+        if(f.length<7) continue;
+        var t20=(f.length>20?(f[20]||''):'').trim();
+        var t23=(f.length>23?(f[23]||''):'').trim();
+        var qaType2=/^(qa|calibration)$/i.test(t20)?t20:t23;
+        if(qaType2&&qaType2.toLowerCase()!=='qa') continue;
+        email=(f[0]||'').trim().toLowerCase();
+        name=normName((f[3]||'').trim());
+        rawMon=(f[1]||'').trim();
+        score=parseFloat(f[6]);
+        hasZTP=f.length>21&&(f[21]||'').trim()!==''&&(f[21]||'').indexOf('@')<0;
+      }
       var key=(email&&email.indexOf('@')>=0)?email:(name||null);
       if(!key) continue;
-      var rawMon=(f[1]||'').trim();
-      // Normalize month format: MM-YYYY (canonical), YYYY-MM, MM/DD/YYYY
+      // Normalize month: MM-YYYY (canonical), YYYY-MM, MM/DD/YYYY
       var mon=rawMon;
       var _ym=rawMon.match(/^(\d{4})-(\d{2})$/);if(_ym)mon=_ym[2]+'-'+_ym[1];
       var _dm=rawMon.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})$/);if(_dm)mon=(_dm[1].length<2?'0':'')+_dm[1]+'-'+_dm[2];
       if(months12.indexOf(mon)<0) continue;
-      var score=parseFloat(f[6]);
       if(isNaN(score)) continue;
-      // ZTP flag at f[21] — skip if it's an email address (Goread sheet stores reviewer email there)
-      var hasZTP=f.length>21&&(f[21]||'').trim()!==''&&(f[21]||'').indexOf('@')<0;
       if(!byAgent[key]) byAgent[key]={name:name,email:email,m:{}};
       else if(name&&!byAgent[key].name) byAgent[key].name=name;
       if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0,false];
@@ -1280,6 +1297,7 @@ function parseQASheetIdx(text, text2){
   }
   parseInto(text);
   if(text2) parseInto(text2);
+  if(text3) parseInto(text3);
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
   for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
@@ -1320,7 +1338,8 @@ async function loadFromSheets(){
       safeFetch(SHEETS_SLA_URL),
       safeFetch(SHEETS_FCR_URL),
       safeFetch(SHEETS_QA_URL),
-      safeFetch(SHEETS_QA2_URL)
+      safeFetch(SHEETS_QA2_URL),
+      safeFetch(SHEETS_QA3_URL)
     ]);
 
     // Agent reporting (MTD + 12M)
@@ -1387,7 +1406,8 @@ async function loadFromSheets(){
     // QA sheets (main + Goread)
     if(SHEETS_QA_URL && resps[4] && resps[4].ok){
       var qa2Text = (SHEETS_QA2_URL && resps[5] && resps[5].ok) ? await resps[5].text() : null;
-      var qaResult = parseQASheetIdx(await resps[4].text(), qa2Text);
+      var qa3Text = (SHEETS_QA3_URL && resps[6] && resps[6].ok) ? await resps[6].text() : null;
+      var qaResult = parseQASheetIdx(await resps[4].text(), qa2Text, qa3Text);
       if(qaResult) qaResult.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
         function findAgent(arr){
@@ -1420,7 +1440,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
