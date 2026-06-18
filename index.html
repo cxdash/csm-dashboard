@@ -438,12 +438,12 @@ var DEFAULT_DATA = {
     ]
   },
   sla: [
-    {lob:'Path Social', sla:0.808,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:4025, may:8970},
-    {lob:'Crowd Ignite',sla:0.921,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:761,  may:2543},
-    {lob:'High Social', sla:0.922,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:2641, may:5952},
-    {lob:'Plixi',       sla:0.998,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:2519, may:6260},
-    {lob:'Goread',      sla:0.954,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:1566, may:3812},
-    {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:626,  may:1998},
+    {lob:'Path Social', sla:0.808,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5809,fcrTgt:0.75,jun:4025, may:8970},
+    {lob:'Crowd Ignite',sla:0.921,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5462,fcrTgt:0.75,jun:761,  may:2543},
+    {lob:'High Social', sla:0.922,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4655,fcrTgt:0.75,jun:2641, may:5952},
+    {lob:'Plixi',       sla:0.998,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5285,fcrTgt:0.75,jun:2519, may:6260},
+    {lob:'Goread',      sla:0.954,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.6806,fcrTgt:0.75,jun:1566, may:3812},
+    {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4703,fcrTgt:0.75,jun:626,  may:1998},
   ],
   agents: [
     {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.901,qaTgt:0.90,csat:null,fcr:0.6393,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
@@ -457,21 +457,21 @@ var DEFAULT_DATA = {
     {name:'Mark Lora',             lob:'Crowd Ignite',tickets:304, aht:6.13,ahtTgt:5.0,qa:0.957,qaTgt:0.90,csat:null,fcr:0.4829,occ:0.62,adh:0.97, avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  avgLogin:'8h 03m',loginUtil:0.901,productivity:0.429,fulfilledByResp:247},
     {name:'Faye',                  lob:'Crowd Ignite',tickets:291, aht:4.02,ahtTgt:5.0,qa:0.972,qaTgt:0.90,csat:null,fcr:0.5854,occ:0.44,adh:0.97, avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  avgLogin:'6h 52m',loginUtil:0.930,productivity:0.235,fulfilledByResp:175},
     {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:234, aht:4.75,ahtTgt:5.0,qa:1.0,  qaTgt:0.90,csat:null,fcr:0.5704,occ:0.30,adh:0.97, avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'8h 07m',loginUtil:0.877,productivity:0.237,fulfilledByResp:139},
-    {name:'Rosie Eslao',           lob:'High Social', tickets:585, aht:2.72,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4479,occ:0.40,adh:0.97, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  avgLogin:'7h 39m',loginUtil:0.952,productivity:0.363,fulfilledByResp:281},
-    {name:'Rockwell De Mesa',      lob:'High Social', tickets:426, aht:3.45,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5082,occ:0.39,adh:0.97, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  avgLogin:'8h 07m',loginUtil:0.918,productivity:0.367,fulfilledByResp:246},
-    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:614, aht:3.82,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4152,occ:0.42,adh:0.97, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  avgLogin:'8h 45m',loginUtil:0.929,productivity:0.401,fulfilledByResp:328},
-    {name:'Charito Mencedez',      lob:'High Social', tickets:433, aht:3.08,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4652,occ:0.30,adh:0.97, avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  avgLogin:'8h 03m',loginUtil:0.926,productivity:0.299,fulfilledByResp:231},
-    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:485, aht:3.57,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4281,occ:0.35,adh:0.97, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.940,productivity:0.375,fulfilledByResp:302},
-    {name:'Christine Joy M Salvador',lob:'High Social',tickets:157,aht:4.52,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5285,occ:0.39,adh:0.97, avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  avgLogin:'8h 04m',loginUtil:0.917,productivity:0.400,fulfilledByResp:85},
-    {name:'Jaycel Napa',           lob:'Plixi',       tickets:431, aht:6.17,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5691,occ:0.57,adh:0.97, avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  avgLogin:'8h 26m',loginUtil:0.941,productivity:0.507,fulfilledByResp:417},
-    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:325, aht:7.40,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5872,occ:0.70,adh:0.97, avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  avgLogin:'8h 05m',loginUtil:0.935,productivity:0.664,fulfilledByResp:312},
-    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:303, aht:7.75,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5316,occ:0.57,adh:0.97, avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  avgLogin:'7h 30m',loginUtil:0.941,productivity:0.462,fulfilledByResp:284},
-    {name:'Rhian de Belen',        lob:'Plixi',       tickets:352, aht:7.38,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5975,occ:0.59,adh:0.97, avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  avgLogin:'6h 42m',loginUtil:0.906,productivity:0.549,fulfilledByResp:338},
-    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:280, aht:9.70,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4235,occ:0.59,adh:0.97, avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  avgLogin:'7h 27m',loginUtil:0.938,productivity:0.590,fulfilledByResp:267},
-    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:270, aht:8.62,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4349,occ:0.51,adh:0.93, avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  avgLogin:'8h 16m',loginUtil:0.973,productivity:0.483,fulfilledByResp:261},
-    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:242, aht:8.45,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.4610,occ:0.47,adh:0.97, avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  avgLogin:'6h 27m',loginUtil:0.939,productivity:0.433,fulfilledByResp:241},
-    {name:'Rushelle',              lob:'Plixi',       tickets:184, aht:15.52,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.6190,occ:0.61,adh:0.97, avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  avgLogin:'7h 44m',loginUtil:0.933,productivity:0.600,fulfilledByResp:170},
-    {name:'Monica',                lob:'Plixi',       tickets:156, aht:9.37,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.5331,occ:0.34,adh:0.97, avgCustDay:13, handleCust:'9m 22s', chatAHT:null,       missedChats:0,  avgLogin:'6h 47m',loginUtil:0.939,productivity:0.319,fulfilledByResp:145},
+    {name:'Rosie Eslao',           lob:'High Social', tickets:585, aht:2.72,ahtTgt:5.0,qa:0.9733, qaTgt:0.90,csat:null,fcr:0.4479,occ:0.40,adh:0.97, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  avgLogin:'7h 39m',loginUtil:0.952,productivity:0.363,fulfilledByResp:281},
+    {name:'Rockwell De Mesa',      lob:'High Social', tickets:426, aht:3.45,ahtTgt:5.0,qa:0.9333, qaTgt:0.90,csat:null,fcr:0.5082,occ:0.39,adh:0.97, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  avgLogin:'8h 07m',loginUtil:0.918,productivity:0.367,fulfilledByResp:246},
+    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:614, aht:3.82,ahtTgt:5.0,qa:0.9025, qaTgt:0.90,csat:null,fcr:0.4152,occ:0.42,adh:0.97, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  avgLogin:'8h 45m',loginUtil:0.929,productivity:0.401,fulfilledByResp:328},
+    {name:'Charito Mencedez',      lob:'High Social', tickets:433, aht:3.08,ahtTgt:5.0,qa:1.0000, qaTgt:0.90,csat:null,fcr:0.4652,occ:0.30,adh:0.97, avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  avgLogin:'8h 03m',loginUtil:0.926,productivity:0.299,fulfilledByResp:231},
+    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:485, aht:3.57,ahtTgt:5.0,qa:0.9600, qaTgt:0.90,csat:null,fcr:0.4281,occ:0.35,adh:0.97, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.940,productivity:0.375,fulfilledByResp:302},
+    {name:'Christine Joy M Salvador',lob:'High Social',tickets:157,aht:4.52,ahtTgt:5.0,qa:1.0000, qaTgt:0.90,csat:null,fcr:0.5285,occ:0.39,adh:0.97, avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  avgLogin:'8h 04m',loginUtil:0.917,productivity:0.400,fulfilledByResp:85},
+    {name:'Jaycel Napa',           lob:'Plixi',       tickets:431, aht:6.17,ahtTgt:5.0,qa:0.9012, qaTgt:0.90,csat:null,fcr:0.5691,occ:0.57,adh:0.97, avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  avgLogin:'8h 26m',loginUtil:0.941,productivity:0.507,fulfilledByResp:417},
+    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:325, aht:7.40,ahtTgt:5.0,qa:0.8443, qaTgt:0.90,csat:null,fcr:0.5872,occ:0.70,adh:0.97, avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  avgLogin:'8h 05m',loginUtil:0.935,productivity:0.664,fulfilledByResp:312},
+    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:303, aht:7.75,ahtTgt:5.0,qa:0.9462, qaTgt:0.90,csat:null,fcr:0.5316,occ:0.57,adh:0.97, avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  avgLogin:'7h 30m',loginUtil:0.941,productivity:0.462,fulfilledByResp:284},
+    {name:'Rhian de Belen',        lob:'Plixi',       tickets:352, aht:7.38,ahtTgt:5.0,qa:0.8869, qaTgt:0.90,csat:null,fcr:0.5975,occ:0.59,adh:0.97, avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  avgLogin:'6h 42m',loginUtil:0.906,productivity:0.549,fulfilledByResp:338},
+    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:280, aht:9.70,ahtTgt:5.0,qa:0.9506, qaTgt:0.90,csat:null,fcr:0.4235,occ:0.59,adh:0.97, avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  avgLogin:'7h 27m',loginUtil:0.938,productivity:0.590,fulfilledByResp:267},
+    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:270, aht:8.62,ahtTgt:5.0,qa:1.0000, qaTgt:0.90,csat:null,fcr:0.4349,occ:0.51,adh:0.93, avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  avgLogin:'8h 16m',loginUtil:0.973,productivity:0.483,fulfilledByResp:261},
+    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:242, aht:8.45,ahtTgt:5.0,qa:1.0000, qaTgt:0.90,csat:null,fcr:0.4610,occ:0.47,adh:0.97, avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  avgLogin:'6h 27m',loginUtil:0.939,productivity:0.433,fulfilledByResp:241},
+    {name:'Rushelle',              lob:'Plixi',       tickets:184, aht:15.52,ahtTgt:5.0,qa:1.0000, qaTgt:0.90,csat:null,fcr:0.6190,occ:0.61,adh:0.97, avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  avgLogin:'7h 44m',loginUtil:0.933,productivity:0.600,fulfilledByResp:170},
+    {name:'Monica',                lob:'Plixi',       tickets:156, aht:9.37,ahtTgt:5.0,qa:0.9136, qaTgt:0.90,csat:null,fcr:0.5331,occ:0.34,adh:0.97, avgCustDay:13, handleCust:'9m 22s', chatAHT:null,       missedChats:0,  avgLogin:'6h 47m',loginUtil:0.939,productivity:0.319,fulfilledByResp:145},
     {name:'Dencio Almag, Jr.',     lob:'Goread',      tickets:447, aht:6.10,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.7392,occ:0.68,adh:0.94, avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 40s',  missedChats:40, avgLogin:'8h 33m',loginUtil:0.929,productivity:0.521,fulfilledByResp:339},
     {name:'Moses Eragbai',         lob:'Goread',      tickets:577, aht:5.27,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.6875,occ:0.67,adh:0.97, avgCustDay:52, handleCust:'5m 16s', chatAHT:'5m 58s',  missedChats:7,  avgLogin:'8h 30m',loginUtil:0.926,productivity:0.586,fulfilledByResp:429},
     {name:'Nay Nuttida',           lob:'Goread',      tickets:304, aht:5.27,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.6449,occ:0.35,adh:0.93, avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, avgLogin:'9h 05m',loginUtil:0.968,productivity:0.303,fulfilledByResp:232},
@@ -1306,7 +1306,7 @@ function parseQASheetIdx(text, text2, text3){
   for(var k in byAgent){
     var ag=byAgent[k]; var mons=ag.m;
     // MTD: current month average
-    var lv=mons[latestMon];
+    var lv=mons[latestMon]||mons[prevMon];
     var qaMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*100)/10000:null;
     // 12m: weighted average across all months
     var t12=[0,0];
@@ -1400,6 +1400,11 @@ async function loadFromSheets(){
           if(lv.email) _emailCache[lv.email]=normName(def.name);
         }
         if(def12 && lv.fcr12m!==null) def12.fcr=lv.fcr12m;
+      });
+      // Compute per-LOB FCR average from updated agent values
+      D.sla.forEach(function(ls){
+        var lobAg=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!==null&&a.fcr!==undefined;});
+        if(lobAg.length) ls.fcr=Math.round(lobAg.reduce(function(s,a){return s+a.fcr;},0)/lobAg.length*10000)/10000;
       });
     }
 
@@ -1614,9 +1619,7 @@ function renderCharts(){
       label:ds.label, data:ds.data,
       backgroundColor:LOB_COLORS[ds.label],
       borderColor:LOB_COLORS[ds.label],
-      borderWidth:0,
-      borderRadius:2,
-      stack:'vol'
+      borderWidth:0, borderRadius:2, stack:'vol'
     };
   });
   CHARTS.vol = new Chart(ctx1, {
@@ -1633,7 +1636,7 @@ function renderCharts(){
   });
 
   // SLA trend chart
-  var ctx2 = document.getElementById('cSLA').getContext('2d');
+  var ctx2 = document.getElementById('cSla').getContext('2d');
   if(CHARTS.sla) CHARTS.sla.destroy();
   CHARTS.sla = new Chart(ctx2, {
     type:'line',
@@ -1642,178 +1645,170 @@ function renderCharts(){
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
       scales:{
-        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},
-        y:{
-          min:65, max:102,
-          grid:{color:'#f1f5f9'},
-          ticks:{font:{size:11},callback:function(v){return v+'%';}}
-        }
+        x:{grid:{display:false}, ticks:{font:{size:10},maxRotation:30}},
+        y:{min:50, max:100, grid:{color:'#f1f5f9'}, ticks:{font:{size:11},callback:function(v){return v+'%';}}}
       }
     }
   });
 }
 
+// ── RENDER: AGENTS ────────────────────────────────────────────────────────────
 function renderAgents(){
-  // Build LOB tabs
+  // Tabs
   var tabs = document.getElementById('agTabs');
-  var allLOBs = LOBS.concat(['All']);
+  var allLOBs = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows','All'];
   tabs.innerHTML = allLOBs.map(function(lob){
     return '<div class="tab'+(agLOB===lob?' on':'')+'" onclick="setAgLOB(\''+lob+'\')">'+(lob==='All'?'All LOBs':lob)+'</div>';
   }).join('');
 
-  var agentsSrc = (agPeriod === '12m' && D.agents12m) ? D.agents12m : D.agents;
-  var agents = agentsSrc.filter(function(a){ return agLOB==='All' || a.lob===agLOB; });
+  var src = (agPeriod==='12m' && D.agents12m && D.agents12m.length) ? D.agents12m : D.agents;
+  var agents = src.filter(function(a){ return agLOB==='All'||a.lob===agLOB; });
   if(agSearch) agents = agents.filter(function(a){ return a.name.toLowerCase().includes(agSearch)||a.lob.toLowerCase().includes(agSearch); });
 
+  var sortKeys = ['name','code','lob','avgCustDay','aht','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp','qa','fcr'];
   if(agSort.col>=0){
-    var keys = ['name','code','lob','avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp','qa','fcr'];
+    var sk = sortKeys[agSort.col];
     agents = agents.slice().sort(function(a,b){
-      var v1=a[keys[agSort.col]], v2=b[keys[agSort.col]];
-      if(v1===null && v2===null) return 0;
-      if(v1===null) return 1;
-      if(v2===null) return -1;
-      return (typeof v1==='string'?v1.localeCompare(v2):v1-v2)*agSort.dir;
+      var v1=a[sk]!==null&&a[sk]!==undefined?a[sk]:( typeof a[sk]==='string'?'':0);
+      var v2=b[sk]!==null&&b[sk]!==undefined?b[sk]:(typeof b[sk]==='string'?'':0);
+      return (typeof v1==='string'?v1.localeCompare(v2):(v1-v2))*agSort.dir;
     });
   }
 
-  // Update sort indicators (offset by 1 for group header row)
-  document.querySelectorAll('#agTable thead tr:last-child th').forEach(function(th,i){ th.classList.remove('asc','desc'); if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc'); });
+  document.querySelectorAll('#agTable thead th').forEach(function(th,i){
+    th.classList.remove('asc','desc');
+    if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc');
+  });
 
-  if(!agents.length){ document.getElementById('agBody').innerHTML='<tr><td colspan="13"><div class="empty"><strong>No agents found</strong></div></td></tr>'; return; }
+  if(!agents.length){
+    document.getElementById('agBody').innerHTML='<tr><td colspan="13"><div class="empty"><strong>No agents found</strong></div></td></tr>';
+    return;
+  }
 
-  var nonEsc = agents.filter(function(a){ return !a.esc; });
-  var avgBase = nonEsc.length ? nonEsc : agents;
-  var avgBaseDay = avgBase.filter(function(a){ return !a.partTime; });
-  if(!avgBaseDay.length) avgBaseDay = avgBase;
-  var avgACD = avgBaseDay.reduce(function(s,a){ return s+(a.avgCustDay||0); },0)/avgBaseDay.length;
-  var avgLoginUtil = avgBase.reduce(function(s,a){ return s+(a.loginUtil||0); },0)/avgBase.length;
-  var avgProd = avgBase.reduce(function(s,a){ return s+(a.productivity||0); },0)/avgBase.length;
-  var avgByResp = avgBase.reduce(function(s,a){ return s+(a.fulfilledByResp||0); },0)/avgBase.length;
-  var avgMissed = avgBase.reduce(function(s,a){ return s+(a.missedChats||0); },0)/avgBase.length;
-  var avgHandleCust = fmtTime(avgTime(avgBase,'handleCust'));
-  var avgChatAHT = fmtTime(avgTime(avgBase.filter(function(a){ return a.chatAHT; }),'chatAHT'));
-  var avgLogin = avgHM(avgBaseDay,'avgLogin');
-  var qaAgents = agents.filter(function(a){ return a.qa!==null; });
-  var avgQA = qaAgents.length ? qaAgents.reduce(function(s,a){ return s+a.qa; },0)/qaAgents.length : null;
-  var fcrAgents = agents.filter(function(a){ return a.fcr!==null; });
-  var avgFCR = fcrAgents.length ? fcrAgents.reduce(function(s,a){ return s+a.fcr; },0)/fcrAgents.length : null;
+  // Build agent code reverse map
+  var codeMap={};
+  if(typeof AGENT_CODES!=='undefined'){
+    Object.keys(AGENT_CODES).forEach(function(code){ codeMap[AGENT_CODES[code]]=code; });
+  }
 
-  var periodLabel = agPeriod==='12m' ? '<tr><td colspan="13"><div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:5px 14px;font-size:11px;color:#1e40af;margin:4px 0">📅 Jan 2025 – Jun 2026 · 12-month average per working day</div></td></tr>' : '';
+  function nullPct(v,dec,tgt,cls){
+    if(v===null||v===undefined) return '<span style="color:var(--text3)">—</span>';
+    var met = tgt!==null&&tgt!==undefined ? v>=tgt : null;
+    var col = met===null?'var(--text1)':(met?'var(--green)':'var(--red)');
+    return '<span style="color:'+col+';font-weight:600">'+(v*100).toFixed(dec||1)+'%</span>';
+  }
+  function nullVal(v,neutral){
+    if(v===null||v===undefined) return '<span style="color:var(--text3)">—</span>';
+    return neutral?String(v):'<span style="font-weight:600">'+v+'</span>';
+  }
 
-  document.getElementById('agBody').innerHTML = periodLabel + agents.map(function(a){
-    var prodMet = a.productivity!==null ? a.productivity >= 0.75 : null;
-    var loginMet = a.loginUtil!==null ? a.loginUtil >= 0.85 : null;
-    var qaMet = a.qa!==null ? a.qa>=a.qaTgt : null;
-    var fcrMet = a.fcr!==null ? a.fcr>=0.75 : null;
-    var dotColor = prodMet===null ? '#94a3b8' : (prodMet ? '#16a34a' : '#dc2626');
-    var escBadge = a.esc ? '<span style="background:#ede9fe;color:#7c3aed;border-radius:3px;font-size:9px;font-weight:700;padding:1px 4px;margin-left:4px">ESC</span>' : '';
-    var qaCell = a.qa!==null
-      ? '<span style="font-weight:700;color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(a.qa,2)+'</span>'
-      : '<span style="color:var(--text3)">—</span>';
-    var fcrCell = a.fcr!==null
-      ? '<span style="font-weight:700;color:'+(fcrMet?'var(--green)':'var(--red)')+'">'+pct(a.fcr,2)+'</span>'
-      : '<span style="color:var(--text3)">—</span>';
-    var codeStr = AGENT_CODE_MAP[a.name] || '—';
+  document.getElementById('agBody').innerHTML = agents.map(function(a){
+    var qaMet=a.qa!==null&&a.qa!==undefined&&a.qa>=(a.qaTgt||0.90);
+    var fcrMet=a.fcr!==null&&a.fcr!==undefined&&a.fcr>=0.75;
+    var ahtMet=a.aht&&a.ahtTgt?a.aht<=a.ahtTgt:null;
+    var loginMet=a.loginUtil!==null&&a.loginUtil!==undefined?a.loginUtil>=0.85:null;
+    var code=codeMap[a.name]||'—';
     return '<tr>'
-      +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+dotColor+';margin-right:6px;vertical-align:middle"></span>'+a.name+escBadge+'</td>'
-      +'<td class="r"><span style="font-family:monospace;font-size:10px;color:#2563eb">'+codeStr+'</span></td>'
+      +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(qaMet?'#16a34a':'#dc2626')+';margin-right:6px;vertical-align:middle"></span>'+a.name+'</td>'
+      +'<td class="r"><code style="font-size:10px;color:var(--text3)">'+code+'</code></td>'
       +'<td><span style="'+pillClass(a.lob)+'">'+a.lob+'</span></td>'
-      +'<td class="r">'+Math.round(a.avgCustDay||0)+'</td>'
-      +'<td class="r">'+(a.handleCust||'—')+'</td>'
-      +'<td class="r">'+(a.chatAHT||'<span style="color:var(--text3)">—</span>')+'</td>'
-      +'<td class="r" style="color:'+(a.missedChats>0?'var(--red)':'var(--text)')+'">'+a.missedChats+'</td>'
-      +'<td class="r">'+(a.avgLogin||'—')+'</td>'
-      +'<td class="r" style="font-weight:600;'+(a.loginUtil!==null?'color:'+(loginMet?'var(--green)':'var(--amber)')+';':'')+';border-right:2px solid var(--border)">'+(a.loginUtil!==null?Math.round(a.loginUtil*100)+'%':'<span style="color:var(--text3)">—</span>')+'</td>'
-      +'<td class="r" style="font-weight:700;'+(a.productivity!==null?'color:'+(prodMet?'var(--green)':'var(--red)')+';':'')+'">'+(a.productivity!==null?Math.round(a.productivity*100)+'%':'<span style="color:var(--text3)">—</span>')+'</td>'
-      +'<td class="r">'+(a.fulfilledByResp||0)+'</td>'
-      +'<td class="r">'+qaCell+'</td>'
-      +'<td class="r">'+fcrCell+'</td>'
+      +'<td class="r">'+nullVal(a.avgCustDay,true)+'</td>'
+      +'<td class="r" style="color:'+(ahtMet===null?'var(--text1)':ahtMet?'var(--green)':'var(--red)')+'">'+((a.handleCust)||'—')+'</td>'
+      +'<td class="r">'+((a.chatAHT)||'—')+'</td>'
+      +'<td class="r" style="color:'+((a.missedChats||0)===0?'var(--green)':((a.missedChats||0)<=5?'var(--text1)':'var(--red)'))+'">'+((a.missedChats!==null&&a.missedChats!==undefined)?a.missedChats:'—')+'</td>'
+      +'<td class="r">'+((a.avgLogin)||'—')+'</td>'
+      +'<td class="r" style="border-right:2px solid var(--border)">'+nullPct(a.loginUtil,1,0.85)+'</td>'
+      +'<td class="r">'+nullPct(a.productivity,1,null)+'</td>'
+      +'<td class="r">'+nullVal(a.fulfilledByResp,true)+'</td>'
+      +'<td class="r">'+nullPct(a.qa,2,a.qaTgt||0.90)+'</td>'
+      +'<td class="r">'+nullPct(a.fcr,2,0.75)+'</td>'
       +'</tr>';
-  }).join('') + '<tr class="avg-row"><td colspan="3">TEAM AVERAGE</td>'
-    +'<td class="r">'+Math.round(avgACD)+'</td>'
-    +'<td class="r">'+avgHandleCust+'</td>'
-    +'<td class="r">'+avgChatAHT+'</td>'
-    +'<td class="r">'+avgMissed.toFixed(1)+'</td>'
-    +'<td class="r">'+avgLogin+'</td>'
-    +'<td class="r" style="border-right:2px solid var(--border)">'+Math.round(avgLoginUtil*100)+'%</td>'
-    +'<td class="r">'+Math.round(avgProd*100)+'%</td>'
-    +'<td class="r">'+Math.round(avgByResp)+'</td>'
-    +'<td class="r">'+(avgQA!==null?pct(avgQA,2):'<span style="color:var(--text3)">—</span>')+'</td>'
-    +'<td class="r">'+(avgFCR!==null?pct(avgFCR,2):'<span style="color:var(--text3)">—</span>')+'</td></tr>';
+  }).join('');
 }
 
-function setAgLOB(lob){ agLOB=lob; renderAgents(); }
-function setAgPeriod(p){ agPeriod=p; document.getElementById('btnMTD').className='view-btn'+(p==='mtd'?' on':''); document.getElementById('btn12M').className='view-btn'+(p==='12m'?' on':''); renderAgents(); }
-function sortAg(col){ if(agSort.col===col) agSort.dir*=-1; else{agSort.col=col;agSort.dir=1;} renderAgents(); }
-document.getElementById('agSearch').oninput = function(){ agSearch=this.value.toLowerCase(); renderAgents(); };
-
+// ── RENDER: ESCALATIONS ───────────────────────────────────────────────────────
 function renderEscalations(){
-  if(!D.escalations.length){ return; }
-  var escs = D.escalations;
-  var open=escs.filter(function(e){return e.status==='Open';}).length;
-  var resolved=escs.filter(function(e){return e.status==='Resolved';}).length;
-  var critical=escs.filter(function(e){return e.status==='Open'&&e.pri==='Critical';}).length;
-  document.getElementById('escStats').innerHTML = [
-    {val:escs.length,lbl:'Total',c:'n'},{val:open,lbl:'Open',c:'w'},
-    {val:resolved,lbl:'Resolved',c:'g'},{val:critical,lbl:'Critical',c:'r'}
-  ].map(function(s){ return '<div class="esc-stat"><div class="esc-stat-val" style="color:'+(s.c==='r'?'var(--red)':s.c==='g'?'var(--green)':s.c==='w'?'var(--amber)':'var(--text)')+'">'+s.val+'</div><div class="esc-stat-lbl">'+s.lbl+'</div></div>'; }).join('');
+  var escs = D.escalations||[];
+  if(!escs.length){
+    document.getElementById('escBody').innerHTML='<tr><td colspan="9"><div class="empty"><strong>No escalations this period</strong></div></td></tr>';
+    return;
+  }
+  var stats = {open:0, pending:0, critical:0};
+  escs.forEach(function(e){
+    if(/open/i.test(e.status)) stats.open++;
+    if(/pend/i.test(e.status)) stats.pending++;
+    if(/crit/i.test(e.priority)) stats.critical++;
+  });
+  var sEl=document.getElementById('escStats');
+  if(sEl) sEl.innerHTML=
+    '<div class="esc-stat"><div class="esc-stat-val">'+stats.open+'</div><div class="esc-stat-lbl">Open</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val">'+stats.pending+'</div><div class="esc-stat-lbl">Pending</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--red)">'+stats.critical+'</div><div class="esc-stat-lbl">Critical</div></div>';
   document.getElementById('escBody').innerHTML = escs.map(function(e){
-    var overdue = e.status==='Open' && e.daysOpen>e.ttr;
-    return '<tr>'
-      +'<td style="font-weight:700">'+e.id+'</td>'
-      +'<td><span style="'+pillClass(e.lob)+'">'+e.lob+'</span></td>'
-      +'<td>'+e.date+'</td>'
-      +'<td>'+e.cat+'</td>'
-      +'<td><span class="pri '+e.pri+'">'+e.pri+'</span></td>'
-      +'<td>'+e.agent+'</td>'
-      +'<td>'+e.daysOpen+'d'+(overdue?'<span class="overdue">Overdue</span>':'')+'</td>'
-      +'<td><span class="sts '+e.status+'">'+e.status+'</span></td>'
-      +'<td class="r">'+e.csat+'</td>'
-      +'</tr>';
+    var priCls=(/crit/i.test(e.priority)?'color:var(--red);font-weight:700':(/high/i.test(e.priority)?'color:var(--yellow)':''));
+    return '<tr><td>'+e.ticket+'</td><td>'+e.lob+'</td><td>'+e.date+'</td><td>'+e.category+'</td>'
+      +'<td style="'+priCls+'">'+e.priority+'</td><td>'+e.agent+'</td>'
+      +'<td class="r">'+e.daysOpen+'</td><td>'+e.status+'</td>'
+      +'<td class="r">'+(e.csat!==null&&e.csat!==undefined?pct(e.csat):'—')+'</td></tr>';
   }).join('');
 }
 
+// ── RENDER: STAFFING ──────────────────────────────────────────────────────────
 function renderStaffing(){
-  if(!D.staffing.length) return;
-  document.getElementById('staffGrid').innerHTML = D.staffing.map(function(s){
-    var adhMet=s.adh>=s.adhTgt, absMet=s.abs<=s.absTgt;
-    return '<div class="staff-card" style="border-top-color:'+LOB_COLORS[s.lob]+'">'
-      +'<div class="staff-top"><div><div class="staff-name">'+lobDot(s.lob)+s.lob+'</div><div class="staff-hc">'+s.hc+' FTE · '+s.openReqs+' open req'+(s.openReqs!==1?'s':'')+'</div></div>'
-      +'<span class="b '+(adhMet&&absMet?'g':'r')+'">'+(adhMet&&absMet?'✓':'⚠')+'</span></div>'
-      +'<div class="staff-metrics">'
-      +'<div><div class="staff-m-lbl">Adherence</div><div class="staff-m-val '+(adhMet?'g':'r')+'">'+pct(s.adh)+'</div></div>'
-      +'<div><div class="staff-m-lbl">Absenteeism</div><div class="staff-m-val '+(absMet?'g':'r')+'">'+pct(s.abs)+'</div></div>'
-      +'<div><div class="staff-m-lbl">Utilization</div><div class="staff-m-val n">'+pct(s.util)+'</div></div>'
-      +'</div></div>';
+  var staff = D.staffing||[];
+  var grid = document.getElementById('staffGrid');
+  if(!staff.length){
+    grid.innerHTML='<div class="card" style="grid-column:1/-1"><div class="empty"><strong>No staffing data</strong></div></div>';
+    return;
+  }
+  grid.innerHTML = staff.map(function(s){
+    var attMet=s.attendance>=0.90, sched=s.scheduled||0, act=s.actual||0;
+    return '<div class="card"><div style="font-weight:700;font-size:13px;margin-bottom:8px">'+s.lob+'</div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Scheduled</span><strong>'+sched+'</strong></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Actual</span><strong>'+act+'</strong></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px"><span>Attendance</span>'
+      +'<strong style="color:'+(attMet?'var(--green)':'var(--red)')+'">'+pct(s.attendance)+'</strong></div></div>';
   }).join('');
 }
 
+// ── RENDER: FLAGS ─────────────────────────────────────────────────────────────
 function renderFlags(){
-  var flags = [];
-  if(!D){ document.getElementById('flagsEl').innerHTML='<div class="empty"><strong>No data loaded</strong></div>'; return; }
-  D.sla.forEach(function(r){
-    if(r.sla<r.slaTgt) flags.push({c:'r', msg:'🔴 '+r.lob+' — SLA '+pct(r.sla)+' is below target of '+pct(r.slaTgt)});
-    if(r.csat&&r.csat<r.csatTgt) flags.push({c:'r', msg:'🔴 '+r.lob+' — CSAT '+pct(r.csat)+' is below target of '+pct(r.csatTgt)});
-    if(r.nps&&r.nps<r.npsTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — NPS '+r.nps.toFixed(1)+' is below target of '+r.npsTgt});
-    if(r.fcr&&r.fcr<r.fcrTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — FCR '+pct(r.fcr)+' is below target of '+pct(r.fcrTgt)});
-  });
-  D.agents.forEach(function(a){
-    if(a.qa&&a.qaTgt&&a.qa<a.qaTgt) flags.push({c:'w', msg:'⚠️ '+a.name+' ('+a.lob+') — QA '+pct(a.qa,2)+' below target '+pct(a.qaTgt,2)});
-  });
-  var critical=D.escalations.filter(function(e){ return e.pri==='Critical'&&e.status==='Open'; });
-  if(critical.length) flags.push({c:'r', msg:'🔴 '+critical.length+' Critical escalation'+(critical.length>1?'s':'')+' currently open — '+critical.map(function(e){return e.id;}).join(', ')});
-  var overdue=D.escalations.filter(function(e){ return e.status==='Open'&&e.daysOpen>e.ttr; });
-  if(overdue.length) flags.push({c:'r', msg:'🔴 '+overdue.length+' escalation'+(overdue.length>1?'s':'')+' breached SLA target resolution time'});
-  if(!flags.length) flags.push({c:'g', msg:'✅ No critical flags — all key metrics look healthy'});
-  document.getElementById('flagsEl').innerHTML='<div class="alerts">'+flags.map(function(f){ return '<div class="alert '+f.c+'">'+f.msg+'</div>'; }).join('')+'</div>';
+  var flags = D.flags||[];
+  var el = document.getElementById('flagsEl');
+  if(!flags.length){
+    el.innerHTML='<div class="empty"><strong>No action items — all clear!</strong></div>';
+    return;
+  }
+  el.innerHTML = flags.map(function(f){
+    var cls=f.type==='critical'?'r':f.type==='warning'?'w':'g';
+    var icon=f.type==='critical'?'🚨':f.type==='warning'?'⚠️':'✅';
+    return '<div class="coach-flag '+cls+'" style="margin-bottom:6px"><div class="coach-icon">'+icon+'</div>'
+      +'<div><div class="coach-title">'+f.title+'</div><div class="coach-detail">'+f.detail+'</div></div></div>';
+  }).join('');
+}
+
+// ── SORT / FILTER HANDLERS ────────────────────────────────────────────────────
+function sortAg(col){
+  if(agSort.col===col) agSort.dir*=-1;
+  else { agSort.col=col; agSort.dir=-1; }
+  renderAgents();
+}
+function setAgLOB(lob){
+  agLOB=lob; renderAgents();
+}
+function setAgPeriod(p){
+  agPeriod=p;
+  document.getElementById('btnMTD').className='view-btn'+(p==='mtd'?' on':'');
+  document.getElementById('btnY12').className='view-btn'+(p==='12m'?' on':'');
+  renderAgents();
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-// Show upload zone only when URL contains ?admin (for CSM use only)
-if(window.location.search.indexOf('admin')>=0){
-  document.getElementById('dropZone').style.display='flex';
-}
-loadData();
+(function init(){
+  var chip = document.getElementById('sheetChip');
+  if(chip){ chip.style.display='none'; }
+  loadFromSheets();
+})();
 </script>
 </body>
 </html>

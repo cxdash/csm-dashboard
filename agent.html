@@ -609,14 +609,14 @@ function renderMetrics(a){
   var loginCls=a.loginUtil!==null&&a.loginUtil!==undefined?(a.loginUtil>=0.85?'met':'miss'):'neutral';
   var loginBadge=a.loginUtil!==null&&a.loginUtil!==undefined?(a.loginUtil>=0.85?'✓ On target':'↓ Below target'):null;
   document.getElementById('metricGrid').innerHTML=
-    card('MTD Tickets',a.tickets>0?a.tickets.toLocaleString():'—',null,'neutral',null,tktSub)
+    card('MTD Volume',a.tickets>0?a.tickets.toLocaleString():'—',null,'neutral',null,tktSub)
+    +card('Daily Avg',(a.avgCustDay||0)>0?a.avgCustDay:'—',null,'neutral',null,null)
     +card('FCR',fcrV,fcrTgt,fcrCls,fcrBadge)
     +card('QA Score',qaV,qaTgt,qaCls,qaBadge)
+    +card('Login Util',loginV,'85%',loginCls,loginBadge,null)
     +card('Handle Time',a.handleCust||'—',(a.ahtTgt||5)+'m',ahtCls,ahtBadge)
-    +card('Daily Avg',(a.avgCustDay||0)>0?a.avgCustDay:'—',null,'neutral',null,null)
     +card('Chat AHT',a.chatAHT||'—',null,'neutral',null,null)
-    +card('Missed Chats',a.missedChats!==undefined&&a.missedChats!==null?a.missedChats:'—',null,missedCls,missedBadge,null)
-    +card('Login Util',loginV,'85%',loginCls,loginBadge,null);
+    +card('Missed Chats',a.missedChats!==undefined&&a.missedChats!==null?a.missedChats:'—',null,missedCls,missedBadge,null);
 }
 
 // ── RENDER: COACHING FLAGS ────────────────────────────────────────────────────
