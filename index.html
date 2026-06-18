@@ -1217,9 +1217,6 @@ function parseFCRSheetIdx(text){
     else if(!byAgent[key].name&&name) byAgent[key].name=name;
     if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0];
     byAgent[key].m[mon][0]+=fc; byAgent[key].m[mon][1]+=el;
-    // Debug: log raw rows for specific agents
-    if(name==='janelle decena'||name==='mariam riasat'||name==='mark lora')
-      console.log('[FCR-ROW]',name,'|mon:',mon,'|f[3]:',f[3],'|f[4]:',f[4],'|f[5]:',f[5],'|f[6]:',f[6],'|f[7]:',f[7],'|f[8]:',f[8]);
   }
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
@@ -1237,7 +1234,6 @@ function parseFCRSheetIdx(text){
     var fcr12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*10000)/10000:null;
     result.push({name:ag.name,email:ag.email,fcrMTD:fcrMTD,fcr12m:fcr12m});
   }
-  console.log('[FCR parsed latestMon='+latestMon+']', result.map(function(r){return r.name+':'+(r.fcrMTD!==null?(r.fcrMTD*100).toFixed(2)+'%':'null')}).join(' | '));
   return result;
 }
 function parseQASheetIdx(text){
@@ -1271,8 +1267,6 @@ function parseQASheetIdx(text){
     if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0,false];
     byAgent[key].m[mon][0]+=score; byAgent[key].m[mon][1]++;
     if(hasZTP) byAgent[key].m[mon][2]=true;
-    if(name==='benedict catbagan'||name==='abigail aquino')
-      console.log('[QA-ROW]',name,'rawMon:',rawMon,'→mon:',mon,'score:',score,'type:',(f.length>20?f[20]:'(no col U)'));
   }
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
@@ -1290,7 +1284,6 @@ function parseQASheetIdx(text){
     var qa12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*10)/1000:null;
     var ztpFlag=(mons[latestMon]&&mons[latestMon][2])||(mons[prevMon]&&mons[prevMon][2])||false;
     result.push({name:ag.name,email:ag.email,qaMTD:qaMTD,qa12m:qa12m,ztpFlag:ztpFlag});
-    console.log('[QA]',ag.name,'email:',ag.email,'latestMon:',latestMon,'lv:',JSON.stringify(lv),'qaMTD:',qaMTD);
   }
   return result;
 }
