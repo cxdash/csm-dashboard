@@ -1103,7 +1103,14 @@ async function loadFromSheets(){
       if(slaResult){
         slaResult.sla.forEach(function(vs){
           var def = D.sla.find(function(s){ return s.lob===vs.lob; });
-          if(def && vs.sla!==null) def.sla = vs.sla;
+          if(def && vs.sla!==null){
+            def.sla = vs.sla;
+            // Sync the SLA trend chart's most recent month point
+            if(D.slaHistory && D.slaHistory.values && D.slaHistory.values[vs.lob]){
+              var arr = D.slaHistory.values[vs.lob];
+              if(arr.length) arr[arr.length-1] = vs.sla;
+            }
+          }
         });
       }
     }
