@@ -198,6 +198,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   </div>
   <div class="hdr-right">
     <span class="period-pill" id="periodPill">No data loaded</span>
+    <span class="chip wait" id="sheetStatusChip" style="margin-top:0;font-size:10px">⏳ Loading…</span>
     <a class="agent-link" href="agent.html">👤 Agent View →</a>
   </div>
 </div>
@@ -1152,6 +1153,8 @@ function parseSLASummarySheet(text){
 function setChip(cls, text){
   var chip = document.getElementById('fileChip');
   chip.className='chip '+cls; chip.textContent=text;
+  var hdrChip = document.getElementById('sheetStatusChip');
+  if(hdrChip){ hdrChip.className='chip '+cls; hdrChip.textContent=text; }
 }
 
 function loadFromStorage(){
@@ -1728,7 +1731,7 @@ function renderAgents(){
   }).join('');
 
   // Team average row
-  var avgDay   = avgNonNull(agents.map(function(a){return a.avgCustDay;}));
+  var avgDay   = avgNonNull(agents.filter(function(a){return !a.esc;}).map(function(a){return a.avgCustDay;}));
   var avgLogin = avgNonNull(agents.map(function(a){return a.loginUtil;}));
   var avgProd  = avgNonNull(agents.map(function(a){return a.productivity;}));
   var avgQA    = avgNonNull(agents.map(function(a){return a.qa;}));
