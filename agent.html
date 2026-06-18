@@ -198,7 +198,7 @@ var DEFAULT_DATA = {
     {name:'Zheraine',                lob:'Path Social', tickets:649,  avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  qa:0.974, fcr:0.659, ztpFlag:false, loginUtil:0.889, aht:6.02, ahtTgt:5.0,
      fcrH:[0.519,0.665,0.547,0.52,0.54,0.572,0.611,0.473,0.48,0.47,0.599,0.659],
      qaH:[0.946,0.932,0.957,0.874,0.909,0.825,0.851,0.908,0.863,0.891,0.931,0.974]},
-    {name:'Abigail Aquino',          lob:'Path Social', tickets:618,  avgCustDay:48, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  qa:0.961, fcr:0.622, ztpFlag:false, loginUtil:0.896, aht:5.97, ahtTgt:5.0,
+    {name:'Abigail Aquino',          lob:'Path Social', tickets:618,  avgCustDay:58, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  qa:0.961, fcr:0.622, ztpFlag:false, loginUtil:0.896, aht:5.97, ahtTgt:5.0,
      fcrH:[0.467,0.677,0.584,0.577,0.592,0.582,0.595,0.527,0.514,0.561,0.558,0.622],
      qaH:[0.974,0.988,0.958,0.871,0.97,0.914,0.918,0.927,0.932,0.88,0.947,0.961]},
     {name:'Benedict Catbagan',       lob:'Path Social', tickets:682,  avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  qa:0.934, fcr:0.579, ztpFlag:false, loginUtil:0.909, aht:5.58, ahtTgt:5.0,
@@ -210,8 +210,8 @@ var DEFAULT_DATA = {
     {name:'Jennilen Manosa',         lob:'Path Social', tickets:28,   avgCustDay:14, handleCust:'5m 31s', chatAHT:null,      missedChats:0,  qa:1.0,   fcr:0.857, ztpFlag:false, loginUtil:0.912, aht:5.52, ahtTgt:5.0,
      fcrH:[0.563,0.699,0.569,0.607,0.654,0.611,0.618,0.528,0.477,0.576,0.538,0.857],
      qaH:[0.956,0.953,0.973,0.924,0.974,0.911,0.965,0.957,0.957,0.989,0.986,1.0]},
-    {name:'Pherbia',                 lob:'Path Social', tickets:237,  avgCustDay:22, handleCust:'7m 18s', chatAHT:null,      missedChats:0,  qa:0.97,  fcr:0.327, ztpFlag:false, loginUtil:0.891, aht:7.30, ahtTgt:5.0,
-     fcrH:[0.571,0.648,0.583,0.565,0.599,0.595,0.563,0.484,0.51,0.528,0.434,0.327],
+    {name:'Pherbia',                 lob:'Path Social', tickets:237,  avgCustDay:22, handleCust:'7m 18s', chatAHT:null,      missedChats:0,  qa:0.97,  fcr:0.3128, ztpFlag:false, loginUtil:0.891, aht:7.30, ahtTgt:5.0,
+     fcrH:[0.571,0.648,0.583,0.565,0.599,0.595,0.563,0.484,0.51,0.528,0.434,0.3128],
      qaH:[0.984,0.988,0.993,0.971,0.958,0.942,0.955,0.963,0.961,0.929,0.969,0.97]},
     {name:'Janelle Decena',          lob:'Path Social', tickets:270,  avgCustDay:25, handleCust:'3m 54s', chatAHT:null,      missedChats:0,  qa:0.984, fcr:0.562, ztpFlag:false, loginUtil:0.989, aht:3.90, ahtTgt:5.0,
      fcrH:[0.597,0.694,0.631,0.614,0.528,0.397,0.443,0.337,0.347,0.375,0.551,0.562],
@@ -400,8 +400,8 @@ function renderMetrics(a){
     {
       label: 'FCR',
       display: a.fcr !== null ? pct(a.fcr) : '—',
-      tgt: '65-70% target · 55%+ acceptable',
-      status: a.fcr === null ? 'neutral' : (a.fcr >= 0.65 ? 'met' : a.fcr >= 0.55 ? 'caution' : 'miss'),
+      tgt: '≥ 60% good · 55%+ acceptable',
+      status: a.fcr === null ? 'neutral' : (a.fcr >= 0.60 ? 'met' : a.fcr >= 0.55 ? 'caution' : 'miss'),
       badge: a.fcr !== null,
       na: a.fcr === null
     },
@@ -479,12 +479,12 @@ function renderCoaching(a){
 
   // FCR
   if(a.fcr !== null){
-    if(a.fcr >= 0.65){
-      flags.push({c:'g', icon:'🔁', title:'FCR on target',
-        detail:'Your first contact resolution rate of '+pct(a.fcr)+' meets the 65-70% target.'});
+    if(a.fcr >= 0.60){
+      flags.push({c:'g', icon:'🔁', title:'FCR — Good',
+        detail:'Your first contact resolution rate of '+pct(a.fcr)+' meets the ≥ 60% good threshold.'});
     } else if(a.fcr >= 0.55){
       flags.push({c:'w', icon:'🔁', title:'FCR — acceptable but below target',
-        detail:'Current: '+pct(a.fcr)+' · Target: 65-70% · Acceptable floor: 55%. Work to close tickets fully on first contact to improve FCR.'});
+        detail:'Current: '+pct(a.fcr)+' · Good: ≥ 60% · Acceptable floor: 55%. Work to close tickets fully on first contact to improve FCR.'});
     } else {
       flags.push({c:'r', icon:'🔁', title:'FCR below acceptable threshold',
         detail:'Current: '+pct(a.fcr)+' · Acceptable minimum: 55%. Check that customer issues are fully resolved before closing tickets.'});
@@ -684,15 +684,18 @@ function parseAgentSheet(text){
 
     if(!bucket[name]) bucket[name]={login:0,actv:0,fulf:0,mc:0,fc:0,fe:0,htc:0,hte:0,days:{}};
     var ag = bucket[name];
+    var rowFulf = n(f[C.FULF]);
     ag.login += n(f[C.LOGIN]);
     ag.actv  += n(f[C.ACTV]);
-    ag.fulf  += n(f[C.FULF]);
+    ag.fulf  += rowFulf;
     ag.mc    += n(f[C.MC]);
     ag.fc    += n(f[C.FC]);
     ag.fe    += n(f[C.FE]);
     ag.htc   += C.HTC>=0 ? n(f[C.HTC]) : 0;
     ag.hte   += C.HTE>=0 ? n(f[C.HTE]) : 0;
-    ag.days[dp[0]+'/'+dp[1]] = 1; // unique day key
+    // Track fulfillments per day (not just presence) — filters midnight-overflow rows for night-shift agents
+    var dk = dp[0]+'/'+dp[1];
+    ag.days[dk] = (ag.days[dk]||0) + rowFulf;
   }
 
   if(!latestY) return null;
@@ -706,7 +709,8 @@ function parseAgentSheet(text){
   for(var nm in bucket){
     var ag = bucket[nm];
     if(ag.fulf < 1) continue;
-    var days = Object.keys(ag.days).length;
+    // Only count days with ≥5 fulfilled contacts as real working days (eliminates night-shift midnight overflow)
+    var days = Object.keys(ag.days).filter(function(k){ return ag.days[k] >= 5; }).length;
     var ecFulf = ag.fc + ag.fe;
     var ecHt   = ag.htc + ag.hte;
     var ahtSec = ecFulf > 0 ? ecHt/ecFulf : (ag.fulf > 0 ? (ag.htc+ag.hte)/ag.fulf : 0);
