@@ -21,7 +21,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .login-wrap h1{font-size:20px;font-weight:800;text-align:center;color:var(--text);margin-bottom:6px}
 .login-wrap p{font-size:12px;color:var(--text3);text-align:center;margin-bottom:24px;line-height:1.6}
 .login-error{background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:9px 14px;font-size:12px;color:#991b1b;margin-bottom:14px;font-weight:600;text-align:center}
-.code-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:8px;font-size:18px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;text-align:center;outline:none;transition:.2s;color:var(--text);background:#f8fafc;margin-bottom:12px}
+.code-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:8px;font-size:16px;font-weight:700;letter-spacing:.05em;text-align:center;outline:none;transition:.2s;color:var(--text);background:#f8fafc;margin-bottom:12px}
 .code-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
 .code-input::placeholder{font-size:13px;font-weight:400;letter-spacing:0;color:var(--text3)}
 .login-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;margin-bottom:16px}
@@ -83,6 +83,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:8px}
 
+/* QA INSIGHTS */
+.qa-insight-summary{padding:12px 18px 8px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
+.qa-insight-summary strong{color:var(--text)}
+.qa-eval-list{display:flex;flex-direction:column}
+.qa-eval-row{display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid #f1f5f9;font-size:12px}
+.qa-eval-row:last-child{border-bottom:none}
+.qa-eval-score{font-weight:800;font-size:13px;min-width:52px}
+.qa-eval-score.win{color:#16a34a}
+.qa-eval-score.ok{color:#2563eb}
+.qa-eval-score.opp{color:#d97706}
+.qa-eval-score.crit{color:#dc2626}
+.qa-eval-link{color:var(--accent);text-decoration:none;font-size:11px;margin-left:auto;white-space:nowrap}
+.qa-eval-link:hover{text-decoration:underline}
+.qa-eval-ztp{background:#fee2e2;color:#991b1b;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;margin-left:4px}
+.qa-insight-box{margin:10px 18px 12px;padding:10px 14px;background:#f0fdf4;border-radius:7px;font-size:11.5px;color:#14532d;border-left:3px solid #16a34a;line-height:1.6}
+.qa-insight-box.mixed{background:#fefce8;border-color:#d97706;color:#78350f}
+.qa-insight-box.needs-work{background:#fef2f2;border-color:#dc2626;color:#991b1b}
+.qa-nodata{padding:16px 18px;font-size:12px;color:var(--text3)}
+.tkt-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
 @media(max-width:680px){
   .metric-grid{grid-template-columns:repeat(2,1fr)}
   .main{padding:12px}
@@ -103,7 +123,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <h1>Agent Scorecard</h1>
     <p>Enter your unique access code to view your personal performance dashboard.</p>
     <div id="loginError" class="login-error" style="display:none">Invalid code. Please check with your manager.</div>
-    <input id="codeInput" class="code-input" type="text" placeholder="e.g. PS01" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <input id="codeInput" class="code-input" type="text" placeholder="e.g. Geric2824ps" maxlength="16" autocomplete="off" autocapitalize="none" spellcheck="false">
     <button class="login-btn" onclick="doLogin()">View My Scorecard →</button>
     <div class="login-hint">Your access code was shared by your CSM.<br>Keep it private — it shows only your data.</div>
   </div>
@@ -151,6 +171,15 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="card">
       <div id="coachList"></div>
     </div>
+
+    <div class="sec-hdr" id="qaInsightHdr" style="display:none">
+      <div class="sec-bar" style="background:#16a34a"></div>
+      <div class="sec-label">QA Evaluations</div>
+      <span id="qaInsightMeta" style="font-size:10px;color:var(--text3);margin-left:6px"></span>
+    </div>
+    <div class="card" id="qaInsightCard" style="display:none">
+      <div id="qaInsightList"></div>
+    </div>
   </div>
 
   <footer>CX Agent Scorecard &nbsp;·&nbsp; <span id="footerPeriod"></span> &nbsp;·&nbsp; Personal view only</footer>
@@ -165,26 +194,26 @@ var SHEETS_FCR_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt
 var SHEETS_QA_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';
 
 // ── AGENT CODES ───────────────────────────────────────────────────────────────
-// Each agent gets one code. Share individually — do not share the full list.
+// Each agent gets one unique code. Share individually — do not share the full list.
 var AGENT_CODES = {
   // Path Social
-  'PS01':'Geric Vallar',           'PS02':'Zheraine',              'PS03':'Abigail Aquino',
-  'PS04':'Benedict Catbagan',      'PS05':'Kaila May Membredo',    'PS06':'Jennilen Manosa',
-  'PS07':'Pherbia',                'PS08':'Janelle Decena',
+  'Geric2824ps':'Geric Vallar',        'Zheraine1409ps':'Zheraine',            'Abigail5506ps':'Abigail Aquino',
+  'Benedict5012ps':'Benedict Catbagan','Kaila4657ps':'Kaila May Membredo',     'Jennilen3286ps':'Jennilen Manosa',
+  'Pherbia2679ps':'Pherbia',           'Janelle9935ps':'Janelle Decena',
   // Crowd Ignite
-  'CI01':'Mark Lora',              'CI02':'Faye',                  'CI03':'Mariam Riasat',
+  'Mark2424ci':'Mark Lora',            'Faye7912ci':'Faye',                    'Mariam1520ci':'Mariam Riasat',
   // High Social
-  'HS01':'Rosie Eslao',            'HS02':'Rockwell De Mesa',      'HS03':'Samantha Mae Parrilla',
-  'HS04':'Charito Mencedez',       'HS05':'Polly Yanah Salanatin', 'HS06':'Christine Joy M Salvador',
+  'Rosie1488hs':'Rosie Eslao',         'Rockwell2535hs':'Rockwell De Mesa',    'Samantha4582hs':'Samantha Mae Parrilla',
+  'Charito4811hs':'Charito Mencedez',  'Polly9279hs':'Polly Yanah Salanatin',  'Christine1434hs':'Christine Joy M Salvador',
   // Plixi
-  'PL01':'Jaycel Napa',            'PL02':'Trisha Joy Cads',       'PL03':'Mary Rose Sebastian',
-  'PL04':'Rhian de Belen',         'PL05':'Djamillah Maria Abaya', 'PL06':'Anne Nicole Asistio',
-  'PL07':'Eunice Jeremiah Valiao', 'PL08':'Rushelle',              'PL09':'Monica',
+  'Jaycel4257pl':'Jaycel Napa',        'Trisha9928pl':'Trisha Joy Cads',       'Mary7873pl':'Mary Rose Sebastian',
+  'Rhian4611pl':'Rhian de Belen',      'Djamillah8359pl':'Djamillah Maria Abaya','Anne5557pl':'Anne Nicole Asistio',
+  'Eunice1106pl':'Eunice Jeremiah Valiao','Rushelle3615pl':'Rushelle',          'Monica7924pl':'Monica',
   // Goread
-  'GR01':'Dencio Almag, Jr.',      'GR02':'Moses Eragbai',         'GR03':'Nay Nuttida',
-  'GR04':'Suzette Mejia',
+  'Dencio6574gr':'Dencio Almag, Jr.', 'Moses5552gr':'Moses Eragbai',          'Nay3547gr':'Nay Nuttida',
+  'Suzette4527gr':'Suzette Mejia',
   // Follows
-  'FO01':'Roynalyn Malcampo',      'FO02':'Geal Ann Lorico',       'FO03':'Jessica Ibañez'
+  'Roynalyn6514fo':'Roynalyn Malcampo','Geal2674fo':'Geal Ann Lorico',         'Jessica2519fo':'Jessica Ibañez'
 };
 
 // ── DEFAULT DATA (June 2026 MTD · sourced from Agent Reporting daily CSV) ─────
@@ -192,110 +221,146 @@ var DEFAULT_DATA = {
   period: 'Jun 2026 MTD',
   agents: [
     // Path Social
-    {name:'Geric Vallar',            lob:'Path Social', tickets:678,  avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  qa:0.901, fcr:0.645, ztpFlag:false, loginUtil:0.895, aht:6.25, ahtTgt:5.0,
+    {name:'Geric Vallar',            lob:'Path Social', tickets:678,  emailTkts:561, chatTkts:117, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  qa:0.901, fcr:0.645, ztpFlag:false, qaRows:[], loginUtil:0.895, aht:6.25, ahtTgt:5.0,
      fcrH:[0.52,0.688,0.534,0.577,0.543,0.593,0.572,0.48,0.451,0.6,0.573,0.645],
-     qaH:[0.866,0.923,0.887,0.928,0.963,0.919,0.912,0.929,0.908,0.93,0.895,0.901]},
-    {name:'Zheraine',                lob:'Path Social', tickets:649,  avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  qa:0.974, fcr:0.659, ztpFlag:false, loginUtil:0.889, aht:6.02, ahtTgt:5.0,
+     qaH:[0.866,0.923,0.887,0.928,0.963,0.919,0.912,0.929,0.908,0.93,0.895,0.901],
+     avgDayH:[36,93,51,43,52,64,60,46,43,51,60,56]},
+    {name:'Zheraine',                lob:'Path Social', tickets:649,  emailTkts:518, chatTkts:131, avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  qa:0.974, fcr:0.659, ztpFlag:false, qaRows:[], loginUtil:0.889, aht:6.02, ahtTgt:5.0,
      fcrH:[0.519,0.665,0.547,0.52,0.54,0.572,0.611,0.473,0.48,0.47,0.599,0.659],
-     qaH:[0.946,0.932,0.957,0.874,0.909,0.825,0.851,0.908,0.863,0.891,0.931,0.974]},
-    {name:'Abigail Aquino',          lob:'Path Social', tickets:618,  avgCustDay:58, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  qa:0.961, fcr:0.622, ztpFlag:false, loginUtil:0.896, aht:5.97, ahtTgt:5.0,
+     qaH:[0.946,0.932,0.957,0.874,0.909,0.825,0.851,0.908,0.863,0.891,0.931,0.974],
+     avgDayH:[78,121,60,51,54,59,73,59,59,57,66,65]},
+    {name:'Abigail Aquino',          lob:'Path Social', tickets:618,  emailTkts:502, chatTkts:116, avgCustDay:58, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  qa:0.961, fcr:0.622, ztpFlag:false, qaRows:[], loginUtil:0.896, aht:5.97, ahtTgt:5.0,
      fcrH:[0.467,0.677,0.584,0.577,0.592,0.582,0.595,0.527,0.514,0.561,0.558,0.622],
-     qaH:[0.974,0.988,0.958,0.871,0.97,0.914,0.918,0.927,0.932,0.88,0.947,0.961]},
-    {name:'Benedict Catbagan',       lob:'Path Social', tickets:682,  avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  qa:0.934, fcr:0.579, ztpFlag:false, loginUtil:0.909, aht:5.58, ahtTgt:5.0,
+     qaH:[0.974,0.988,0.958,0.871,0.97,0.914,0.918,0.927,0.932,0.88,0.947,0.961],
+     avgDayH:[55,78,54,48,49,53,48,43,43,50,55,58]},
+    {name:'Benedict Catbagan',       lob:'Path Social', tickets:682,  emailTkts:571, chatTkts:111, avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  qa:0.934, fcr:0.579, ztpFlag:false, qaRows:[], loginUtil:0.909, aht:5.58, ahtTgt:5.0,
      fcrH:[0.508,0.719,0.551,0.54,0.553,0.541,0.578,0.545,0.486,0.55,0.59,0.579],
-     qaH:[0.944,0.917,0.911,0.96,0.919,0.85,0.84,0.9,0.923,0.911,0.864,0.934]},
-    {name:'Kaila May Membredo',      lob:'Path Social', tickets:677,  avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, qa:0.957, fcr:0.549, ztpFlag:false, loginUtil:0.909, aht:6.18, ahtTgt:5.0,
+     qaH:[0.944,0.917,0.911,0.96,0.919,0.85,0.84,0.9,0.923,0.911,0.864,0.934],
+     avgDayH:[36,66,42,37,54,65,55,39,42,50,53,62]},
+    {name:'Kaila May Membredo',      lob:'Path Social', tickets:677,  emailTkts:558, chatTkts:119, avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, qa:0.957, fcr:0.549, ztpFlag:false, qaRows:[], loginUtil:0.909, aht:6.18, ahtTgt:5.0,
      fcrH:[0.505,0.704,0.57,0.558,0.557,0.54,0.549,0.548,0.542,0.571,0.596,0.549],
-     qaH:[0.953,0.991,0.944,0.934,0.973,0.919,0.977,0.905,0.937,0.975,0.848,0.957]},
-    {name:'Jennilen Manosa',         lob:'Path Social', tickets:28,   avgCustDay:14, handleCust:'5m 31s', chatAHT:null,      missedChats:0,  qa:1.0,   fcr:0.857, ztpFlag:false, loginUtil:0.912, aht:5.52, ahtTgt:5.0,
+     qaH:[0.953,0.991,0.944,0.934,0.973,0.919,0.977,0.905,0.937,0.975,0.848,0.957],
+     avgDayH:[71,82,69,57,51,47,45,49,45,50,58,62]},
+    {name:'Jennilen Manosa',         lob:'Path Social', tickets:28,   emailTkts:28,  chatTkts:0,   avgCustDay:14, handleCust:'5m 31s', chatAHT:null,      missedChats:0,  qa:1.0,   fcr:0.857, ztpFlag:false, qaRows:[], loginUtil:0.912, aht:5.52, ahtTgt:5.0,
      fcrH:[0.563,0.699,0.569,0.607,0.654,0.611,0.618,0.528,0.477,0.576,0.538,0.857],
-     qaH:[0.956,0.953,0.973,0.924,0.974,0.911,0.965,0.957,0.957,0.989,0.986,1.0]},
-    {name:'Pherbia',                 lob:'Path Social', tickets:237,  avgCustDay:22, handleCust:'7m 18s', chatAHT:null,      missedChats:0,  qa:0.97,  fcr:0.3128, ztpFlag:false, loginUtil:0.891, aht:7.30, ahtTgt:5.0,
+     qaH:[0.956,0.953,0.973,0.924,0.974,0.911,0.965,0.957,0.957,0.989,0.986,1.0],
+     avgDayH:[62,82,61,64,63,72,67,56,32,43,37,28]},
+    {name:'Pherbia',                 lob:'Path Social', tickets:237,  emailTkts:237, chatTkts:0,   avgCustDay:22, handleCust:'7m 18s', chatAHT:null,      missedChats:0,  qa:0.97,  fcr:0.3128, ztpFlag:false, qaRows:[], loginUtil:0.891, aht:7.30, ahtTgt:5.0,
      fcrH:[0.571,0.648,0.583,0.565,0.599,0.595,0.563,0.484,0.51,0.528,0.434,0.3128],
-     qaH:[0.984,0.988,0.993,0.971,0.958,0.942,0.955,0.963,0.961,0.929,0.969,0.97]},
-    {name:'Janelle Decena',          lob:'Path Social', tickets:270,  avgCustDay:25, handleCust:'3m 54s', chatAHT:null,      missedChats:0,  qa:0.984, fcr:0.562, ztpFlag:false, loginUtil:0.989, aht:3.90, ahtTgt:5.0,
+     qaH:[0.984,0.988,0.993,0.971,0.958,0.942,0.955,0.963,0.961,0.929,0.969,0.97],
+     avgDayH:[66,74,64,60,56,54,55,47,48,34,28,26]},
+    {name:'Janelle Decena',          lob:'Path Social', tickets:270,  emailTkts:270, chatTkts:0,   avgCustDay:25, handleCust:'3m 54s', chatAHT:null,      missedChats:0,  qa:0.984, fcr:0.562, ztpFlag:false, qaRows:[], loginUtil:0.989, aht:3.90, ahtTgt:5.0,
      fcrH:[0.597,0.694,0.631,0.614,0.528,0.397,0.443,0.337,0.347,0.375,0.551,0.562],
-     qaH:[0.92,0.902,0.978,0.872,0.962,0.993,0.962,0.988,0.966,0.971,1.0,0.984]},
+     qaH:[0.92,0.902,0.978,0.872,0.962,0.993,0.962,0.988,0.966,0.971,1.0,0.984],
+     avgDayH:[27,96,36,29,42,29,36,27,29,26,31,30]},
     // Crowd Ignite
-    {name:'Mark Lora',               lob:'Crowd Ignite',tickets:304,  avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  qa:0.957, fcr:0.545, ztpFlag:false, loginUtil:0.901, aht:6.13, ahtTgt:5.0,
+    {name:'Mark Lora',               lob:'Crowd Ignite',tickets:304,  emailTkts:241, chatTkts:63,  avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  qa:0.957, fcr:0.545, ztpFlag:false, qaRows:[], loginUtil:0.901, aht:6.13, ahtTgt:5.0,
      fcrH:[0.455,0.656,0.566,0.533,0.562,0.604,0.628,0.517,0.524,0.572,0.559,0.545],
-     qaH:[0.947,0.951,0.949,0.929,0.964,0.974,0.988,0.955,0.984,0.921,0.971,0.957]},
-    {name:'Faye',                    lob:'Crowd Ignite',tickets:291,  avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  qa:0.972, fcr:0.585, ztpFlag:false, loginUtil:0.930, aht:4.02, ahtTgt:5.0,
+     qaH:[0.947,0.951,0.949,0.929,0.964,0.974,0.988,0.955,0.984,0.921,0.971,0.957],
+     avgDayH:[62,80,60,52,52,69,58,49,50,56,56,30]},
+    {name:'Faye',                    lob:'Crowd Ignite',tickets:291,  emailTkts:215, chatTkts:76,  avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  qa:0.972, fcr:0.585, ztpFlag:false, qaRows:[], loginUtil:0.930, aht:4.02, ahtTgt:5.0,
      fcrH:[0.561,0.703,null,0.571,0.637,0.642,0.64,0.598,0.488,0.568,0.601,0.585],
-     qaH:[0.967,0.988,null,0.991,0.98,0.952,0.955,0.948,0.951,0.956,0.925,0.972]},
-    {name:'Mariam Riasat',           lob:'Crowd Ignite',tickets:234,  avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  qa:1.0,   fcr:0.644, ztpFlag:false, loginUtil:0.877, aht:4.75, ahtTgt:5.0,
+     qaH:[0.967,0.988,null,0.991,0.98,0.952,0.955,0.948,0.951,0.956,0.925,0.972],
+     avgDayH:[40,70,null,51,42,41,43,37,31,29,47,29]},
+    {name:'Mariam Riasat',           lob:'Crowd Ignite',tickets:234,  emailTkts:172, chatTkts:62,  avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  qa:1.0,   fcr:0.644, ztpFlag:false, qaRows:[], loginUtil:0.877, aht:4.75, ahtTgt:5.0,
      fcrH:[0.488,0.571,0.516,0.484,0.514,0.498,0.523,0.452,0.428,0.456,0.548,0.644],
-     qaH:[1.0,0.982,0.98,0.975,0.991,0.986,0.98,0.967,0.982,0.989,1.0,1.0]},
+     qaH:[1.0,0.982,0.98,0.975,0.991,0.986,0.98,0.967,0.982,0.989,1.0,1.0],
+     avgDayH:[44,73,44,34,24,60,53,57,52,56,32,21]},
     // High Social
-    {name:'Rosie Eslao',             lob:'High Social', tickets:585,  avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  qa:null,  fcr:0.458, ztpFlag:false, loginUtil:0.952, aht:2.72, ahtTgt:5.0,
+    {name:'Rosie Eslao',             lob:'High Social', tickets:585,  emailTkts:414, chatTkts:171, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  qa:null,  fcr:0.458, ztpFlag:false, qaRows:[], loginUtil:0.952, aht:2.72, ahtTgt:5.0,
      fcrH:[0.446,0.463,0.477,0.449,0.436,0.398,0.437,0.474,0.424,0.44,0.509,0.458],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Rockwell De Mesa',        lob:'High Social', tickets:426,  avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  qa:0.43,  fcr:0.57,  ztpFlag:false, loginUtil:0.918, aht:3.45, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[59,48,40,44,42,48,62,47,63,63,67,58]},
+    {name:'Rockwell De Mesa',        lob:'High Social', tickets:426,  emailTkts:298, chatTkts:128, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  qa:0.43,  fcr:0.57,  ztpFlag:false, qaRows:[], loginUtil:0.918, aht:3.45, ahtTgt:5.0,
      fcrH:[0.522,0.682,0.548,0.574,0.575,0.651,0.635,0.579,0.483,0.507,0.531,0.57],
-     qaH:[0.929,0.863,0.938,0.899,0.984,0.902,0.879,0.864,0.43,null,null,null]},
-    {name:'Samantha Mae Parrilla',   lob:'High Social', tickets:614,  avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  qa:null,  fcr:0.417, ztpFlag:false, loginUtil:0.929, aht:3.82, ahtTgt:5.0,
+     qaH:[0.929,0.863,0.938,0.899,0.984,0.902,0.879,0.864,0.43,null,null,null],
+     avgDayH:[55,76,50,39,49,52,46,39,31,38,48,47]},
+    {name:'Samantha Mae Parrilla',   lob:'High Social', tickets:614,  emailTkts:449, chatTkts:165, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  qa:null,  fcr:0.417, ztpFlag:false, qaRows:[], loginUtil:0.929, aht:3.82, ahtTgt:5.0,
      fcrH:[null,null,null,null,null,null,null,0.57,0.482,0.444,0.381,0.417],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Charito Mencedez',        lob:'High Social', tickets:433,  avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  qa:null,  fcr:0.475, ztpFlag:false, loginUtil:0.926, aht:3.08, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,25,29,34,32,51]},
+    {name:'Charito Mencedez',        lob:'High Social', tickets:433,  emailTkts:303, chatTkts:130, avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  qa:null,  fcr:0.475, ztpFlag:false, qaRows:[], loginUtil:0.926, aht:3.08, ahtTgt:5.0,
      fcrH:[0.543,0.507,0.56,0.515,0.508,0.491,0.513,0.429,0.4,0.434,0.425,0.475],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Polly Yanah Salanatin',   lob:'High Social', tickets:485,  avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  qa:null,  fcr:0.415, ztpFlag:false, loginUtil:0.940, aht:3.57, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[55,51,48,52,44,49,41,38,43,34,43,43]},
+    {name:'Polly Yanah Salanatin',   lob:'High Social', tickets:485,  emailTkts:339, chatTkts:146, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  qa:null,  fcr:0.415, ztpFlag:false, qaRows:[], loginUtil:0.940, aht:3.57, ahtTgt:5.0,
      fcrH:[0.437,0.477,0.503,0.467,0.509,0.399,0.374,0.431,0.477,0.462,0.405,0.415],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Christine Joy M Salvador',lob:'High Social', tickets:157,  avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  qa:null,  fcr:0.467, ztpFlag:false, loginUtil:0.917, aht:4.52, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[49,47,48,50,47,52,51,46,46,42,43,48]},
+    {name:'Christine Joy M Salvador',lob:'High Social', tickets:157,  emailTkts:120, chatTkts:37,  avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  qa:null,  fcr:0.467, ztpFlag:false, qaRows:[], loginUtil:0.917, aht:4.52, ahtTgt:5.0,
      fcrH:[0.444,0.449,0.463,0.387,0.359,0.388,0.379,0.392,0.467,0.504,0.52,0.467],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[43,39,41,38,30,36,50,37,47,46,47,39]},
     // Plixi
-    {name:'Jaycel Napa',             lob:'Plixi',       tickets:431,  avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  qa:null,  fcr:0.563, ztpFlag:false, loginUtil:0.941, aht:6.17, ahtTgt:5.0,
+    {name:'Jaycel Napa',             lob:'Plixi',       tickets:431,  emailTkts:360, chatTkts:71,  avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  qa:null,  fcr:0.563, ztpFlag:false, qaRows:[], loginUtil:0.941, aht:6.17, ahtTgt:5.0,
      fcrH:[null,null,null,null,null,null,0.0,0.665,0.636,0.613,0.52,0.563],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Trisha Joy Cads',         lob:'Plixi',       tickets:325,  avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  qa:null,  fcr:0.608, ztpFlag:false, loginUtil:0.935, aht:7.40, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,27,45,40,42,39]},
+    {name:'Trisha Joy Cads',         lob:'Plixi',       tickets:325,  emailTkts:267, chatTkts:58,  avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  qa:null,  fcr:0.608, ztpFlag:false, qaRows:[], loginUtil:0.935, aht:7.40, ahtTgt:5.0,
      fcrH:[0.64,0.576,0.505,0.539,0.624,0.566,0.662,0.636,0.54,0.552,0.582,0.608],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Mary Rose Sebastian',     lob:'Plixi',       tickets:303,  avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  qa:null,  fcr:0.55,  ztpFlag:false, loginUtil:0.941, aht:7.75, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[44,49,40,31,46,57,44,50,48,47,45,41]},
+    {name:'Mary Rose Sebastian',     lob:'Plixi',       tickets:303,  emailTkts:258, chatTkts:45,  avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  qa:null,  fcr:0.55,  ztpFlag:false, qaRows:[], loginUtil:0.941, aht:7.75, ahtTgt:5.0,
      fcrH:[0.578,0.569,0.533,0.514,0.564,0.583,0.644,0.612,0.55,0.56,0.57,0.55],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Rhian de Belen',          lob:'Plixi',       tickets:352,  avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  qa:null,  fcr:0.598, ztpFlag:false, loginUtil:0.906, aht:7.38, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[43,68,30,17,32,47,74,45,38,26,35,28]},
+    {name:'Rhian de Belen',          lob:'Plixi',       tickets:352,  emailTkts:305, chatTkts:47,  avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  qa:null,  fcr:0.598, ztpFlag:false, qaRows:[], loginUtil:0.906, aht:7.38, ahtTgt:5.0,
      fcrH:[null,null,0.558,0.538,0.513,0.568,0.583,0.586,0.54,0.533,0.565,0.598],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Djamillah Maria Abaya',   lob:'Plixi',       tickets:280,  avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  qa:null,  fcr:0.431, ztpFlag:false, loginUtil:0.938, aht:9.70, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,20,null,null,null,null,null,null,null,null,null]},
+    {name:'Djamillah Maria Abaya',   lob:'Plixi',       tickets:280,  emailTkts:231, chatTkts:49,  avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  qa:null,  fcr:0.431, ztpFlag:false, qaRows:[], loginUtil:0.938, aht:9.70, ahtTgt:5.0,
      fcrH:[0.586,0.582,0.532,0.596,0.571,0.571,0.661,0.606,0.584,0.587,0.548,0.431],
      qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
     {name:'Anne Nicole Asistio',     lob:'Plixi',       tickets:270,  avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  qa:null,  fcr:0.426, ztpFlag:false, loginUtil:0.973, aht:8.62, ahtTgt:5.0,
      fcrH:[null,null,null,null,null,null,0.5,0.636,0.518,0.513,0.527,0.426],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Eunice Jeremiah Valiao',  lob:'Plixi',       tickets:242,  avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  qa:null,  fcr:0.366, ztpFlag:false, loginUtil:0.939, aht:8.45, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[44,45,30,26,43,45,40,60,44,33,32,28]},
+    {name:'Anne Nicole Asistio',     lob:'Plixi',       tickets:270,  emailTkts:226, chatTkts:44,  avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  qa:null,  fcr:0.426, ztpFlag:false, qaRows:[], loginUtil:0.973, aht:8.62, ahtTgt:5.0,
+     fcrH:[null,null,null,null,null,null,0.5,0.636,0.518,0.513,0.527,0.426],
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,25,31,29,28,27]},
+    {name:'Eunice Jeremiah Valiao',  lob:'Plixi',       tickets:242,  emailTkts:200, chatTkts:42,  avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  qa:null,  fcr:0.366, ztpFlag:false, qaRows:[], loginUtil:0.939, aht:8.45, ahtTgt:5.0,
      fcrH:[null,null,null,null,null,null,0.333,0.547,0.499,0.594,0.574,0.366],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Rushelle',                lob:'Plixi',       tickets:184,  avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  qa:null,  fcr:0.584, ztpFlag:false, loginUtil:0.933, aht:15.52,ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,31,26,19,18,20]},
+    {name:'Rushelle',                lob:'Plixi',       tickets:184,  emailTkts:156, chatTkts:28,  avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  qa:null,  fcr:0.584, ztpFlag:false, qaRows:[], loginUtil:0.933, aht:15.52,ahtTgt:5.0,
      fcrH:[0.681,0.709,0.568,0.536,0.562,0.599,0.7,0.7,0.731,0.556,0.613,0.584],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Monica',                  lob:'Plixi',       tickets:156,  avgCustDay:13, handleCust:'9m 22s', chatAHT:null,      missedChats:0,  qa:null,  fcr:0.554, ztpFlag:false, loginUtil:0.939, aht:9.37, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[29,72,22,12,21,26,45,31,28,22,19,17]},
+    {name:'Monica',                  lob:'Plixi',       tickets:156,  emailTkts:156, chatTkts:0,   avgCustDay:13, handleCust:'9m 22s', chatAHT:null,      missedChats:0,  qa:null,  fcr:0.554, ztpFlag:false, qaRows:[], loginUtil:0.939, aht:9.37, ahtTgt:5.0,
      fcrH:[0.628,0.535,0.527,0.525,0.527,0.531,0.365,0.553,0.676,0.603,0.608,0.554],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[39,61,29,18,26,42,95,69,44,20,21,16]},
     // Goread
-    {name:'Dencio Almag, Jr.',       lob:'Goread',      tickets:447,  avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 40s',  missedChats:40, qa:null,  fcr:0.728, ztpFlag:false, loginUtil:0.929, aht:6.10, ahtTgt:5.0,
+    {name:'Dencio Almag, Jr.',       lob:'Goread',      tickets:447,  emailTkts:326, chatTkts:121, avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 40s',  missedChats:40, qa:null,  fcr:0.728, ztpFlag:false, qaRows:[], loginUtil:0.929, aht:6.10, ahtTgt:5.0,
      fcrH:[0.644,0.762,0.705,0.722,0.703,0.666,0.703,0.657,0.673,0.678,0.674,0.728],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Moses Eragbai',           lob:'Goread',      tickets:577,  avgCustDay:52, handleCust:'5m 16s', chatAHT:'5m 58s',  missedChats:7,  qa:null,  fcr:0.693, ztpFlag:false, loginUtil:0.926, aht:5.27, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[21,84,53,49,47,58,53,48,36,37,47,41]},
+    {name:'Moses Eragbai',           lob:'Goread',      tickets:577,  emailTkts:420, chatTkts:157, avgCustDay:52, handleCust:'5m 16s', chatAHT:'5m 58s',  missedChats:7,  qa:null,  fcr:0.693, ztpFlag:false, qaRows:[], loginUtil:0.926, aht:5.27, ahtTgt:5.0,
      fcrH:[0.694,0.717,0.688,0.724,0.625,0.658,0.672,0.657,0.667,0.692,0.7,0.693],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Nay Nuttida',             lob:'Goread',      tickets:304,  avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, qa:null,  fcr:0.645, ztpFlag:false, loginUtil:0.968, aht:5.27, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[21,100,73,60,53,67,69,60,43,50,58,52]},
+    {name:'Nay Nuttida',             lob:'Goread',      tickets:304,  emailTkts:214, chatTkts:90,  avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, qa:null,  fcr:0.645, ztpFlag:false, qaRows:[], loginUtil:0.968, aht:5.27, ahtTgt:5.0,
      fcrH:[0.661,0.702,0.699,0.702,0.658,0.662,0.656,0.625,0.676,0.646,0.663,0.645],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
-    {name:'Suzette Mejia',           lob:'Goread',      tickets:243,  avgCustDay:27, handleCust:'6m 29s', chatAHT:'4m 46s',  missedChats:1,  qa:null,  fcr:0.669, ztpFlag:false, loginUtil:0.964, aht:6.48, ahtTgt:5.0,
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[20,65,46,36,33,41,42,44,24,38,41,30]},
+    {name:'Suzette Mejia',           lob:'Goread',      tickets:243,  emailTkts:171, chatTkts:72,  avgCustDay:27, handleCust:'6m 29s', chatAHT:'4m 46s',  missedChats:1,  qa:null,  fcr:0.669, ztpFlag:false, qaRows:[], loginUtil:0.964, aht:6.48, ahtTgt:5.0,
      fcrH:[0.622,0.743,0.717,0.698,0.697,0.695,0.676,0.661,0.629,0.641,0.653,0.669],
-     qaH:[null,null,null,null,null,null,null,null,null,null,null,null]},
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[16,47,42,34,31,43,42,41,28,30,36,30]},
     // Follows
-    {name:'Roynalyn Malcampo',       lob:'Follows',     tickets:349,  avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  qa:0.951, fcr:0.462, ztpFlag:false, loginUtil:0.909, aht:5.98, ahtTgt:5.0,
+    {name:'Roynalyn Malcampo',       lob:'Follows',     tickets:349,  emailTkts:274, chatTkts:75,  avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  qa:0.951, fcr:0.462, ztpFlag:false, qaRows:[], loginUtil:0.909, aht:5.98, ahtTgt:5.0,
      fcrH:[0.592,0.622,0.595,0.585,0.496,0.62,0.629,0.543,0.524,0.554,0.437,0.462],
-     qaH:[0.952,0.917,0.968,0.911,0.938,0.888,0.907,0.929,0.809,0.986,0.832,0.951]},
-    {name:'Geal Ann Lorico',         lob:'Follows',     tickets:203,  avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 16s',  missedChats:0,  qa:0.98,  fcr:0.419, ztpFlag:false, loginUtil:0.890, aht:5.98, ahtTgt:5.0,
+     qaH:[0.952,0.917,0.968,0.911,0.938,0.888,0.907,0.929,0.809,0.986,0.832,0.951],
+     avgDayH:[51,72,57,51,49,62,62,51,51,50,44,32]},
+    {name:'Geal Ann Lorico',         lob:'Follows',     tickets:203,  emailTkts:163, chatTkts:40,  avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 16s',  missedChats:0,  qa:0.98,  fcr:0.419, ztpFlag:false, qaRows:[], loginUtil:0.890, aht:5.98, ahtTgt:5.0,
      fcrH:[0.523,0.657,0.564,0.488,0.525,0.516,0.582,0.531,0.411,0.5,0.366,0.419],
-     qaH:[0.958,0.902,0.949,0.974,0.993,0.964,0.977,0.965,0.905,0.931,0.898,0.98]},
-    {name:'Jessica Ibañez',          lob:'Follows',     tickets:64,   avgCustDay:4,  handleCust:'9m 24s', chatAHT:null,      missedChats:0,  qa:0.801, fcr:0.577, ztpFlag:true,  loginUtil:0.957, aht:9.40, ahtTgt:5.0,
+     qaH:[0.958,0.902,0.949,0.974,0.993,0.964,0.977,0.965,0.905,0.931,0.898,0.98],
+     avgDayH:[68,88,61,50,37,50,45,54,50,55,32,20]},
+    {name:'Jessica Ibañez',          lob:'Follows',     tickets:64,   emailTkts:64,  chatTkts:0,   avgCustDay:4,  handleCust:'9m 24s', chatAHT:null,      missedChats:0,  qa:0.801, fcr:0.577, ztpFlag:true,  qaRows:[], loginUtil:0.957, aht:9.40, ahtTgt:5.0,
      fcrH:[null,null,null,0.437,0.447,0.5,0.653,0.545,0.633,0.526,0.625,0.577],
-     qaH:[null,null,null,null,null,null,null,null,null,0.505,0.801,null]}
+     qaH:[null,null,null,null,null,null,null,null,null,0.505,0.801,null],
+     avgDayH:[null,null,null,10,8,10,8,11,10,11,12,9]}
   ]
 };
 
@@ -306,7 +371,7 @@ var D = DEFAULT_DATA;
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 function doLogin(){
-  var code = (document.getElementById('codeInput').value||'').trim().toUpperCase();
+  var code = (document.getElementById('codeInput').value||'').trim();
   var name = AGENT_CODES[code];
   if(!name){
     document.getElementById('loginError').style.display = 'block';
@@ -348,6 +413,7 @@ function showDash(name){
   renderMetrics(agent);
   renderCoaching(agent);
   renderChart(agent);
+  renderQAInsights(agent);
 }
 
 // ── METRICS ───────────────────────────────────────────────────────────────────
@@ -358,6 +424,7 @@ function renderMetrics(a){
     {
       label: 'MTD Tickets',
       display: a.tickets,
+      sub: (a.emailTkts != null && a.chatTkts != null) ? '✉ ' + a.emailTkts + ' email · 💬 ' + a.chatTkts + ' chat' : null,
       tgt: null,
       status: 'neutral'
     },
@@ -426,6 +493,7 @@ function renderMetrics(a){
     return '<div class="metric-card '+m.status+(m.na?' na':'')+'">'
       +'<div class="metric-lbl">'+m.label+'</div>'
       +'<div class="metric-val '+m.status+'">'+m.display+'</div>'
+      +(m.sub ? '<div class="tkt-sub">'+m.sub+'</div>' : '')
       +(m.tgt ? '<div class="metric-tgt">'+m.tgt+'</div>' : '')
       +badgeHtml
       +'</div>';
@@ -522,7 +590,8 @@ var trendChartInst = null;
 function renderChart(agent){
   var hasFCR = agent.fcrH && agent.fcrH.some(function(v){ return v!==null; });
   var hasQA  = agent.qaH  && agent.qaH.some(function(v){ return v!==null; });
-  var show = hasFCR || hasQA;
+  var hasAVG = agent.avgDayH && agent.avgDayH.some(function(v){ return v!==null; });
+  var show = hasFCR || hasQA || hasAVG;
   document.getElementById('trendHdr').style.display  = show ? '' : 'none';
   document.getElementById('trendCard').style.display = show ? '' : 'none';
   if(!show) return;
@@ -533,30 +602,38 @@ function renderChart(agent){
   var datasets = [];
   if(hasFCR){
     datasets.push({
-      label:'FCR',
+      label:'FCR', yAxisID:'y',
       data: toP(agent.fcrH),
       borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.07)',
       borderWidth:2, pointRadius:3, pointHoverRadius:5, spanGaps:true, tension:0.3, fill:false
     });
     datasets.push({
-      label:'FCR Target (65%)',
-      data: Array(12).fill(65),
+      label:'FCR Target (60%)', yAxisID:'y',
+      data: Array(12).fill(60),
       borderColor:'rgba(59,130,246,.25)', borderWidth:1,
       borderDash:[5,4], pointRadius:0, spanGaps:true, fill:false
     });
   }
   if(hasQA){
     datasets.push({
-      label:'QA',
+      label:'QA', yAxisID:'y',
       data: toP(agent.qaH),
       borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,.05)',
       borderWidth:2, pointRadius:3, pointHoverRadius:5, spanGaps:true, tension:0.3, fill:false
     });
     datasets.push({
-      label:'QA Target (90%)',
+      label:'QA Target (90%)', yAxisID:'y',
       data: Array(12).fill(90),
       borderColor:'rgba(22,163,74,.25)', borderWidth:1,
       borderDash:[5,4], pointRadius:0, spanGaps:true, fill:false
+    });
+  }
+  if(hasAVG){
+    datasets.push({
+      label:'Daily Avg', yAxisID:'y1',
+      data: (agent.avgDayH||[]).map(function(v){ return v!==null ? v : null; }),
+      borderColor:'#f97316', backgroundColor:'rgba(249,115,22,.05)',
+      borderWidth:2, pointRadius:3, pointHoverRadius:5, spanGaps:true, tension:0.3, fill:false
     });
   }
 
@@ -572,13 +649,14 @@ function renderChart(agent){
         legend:{
           position:'top',
           labels:{ boxWidth:10, font:{size:10}, filter:function(item){
-            return item.text.indexOf('Target')<0; // hide target lines from legend
+            return item.text.indexOf('Target')<0;
           }}
         },
         tooltip:{
           callbacks:{
             label:function(ctx){
               if(ctx.raw===null||ctx.raw===undefined) return null;
+              if(ctx.dataset.yAxisID==='y1') return ctx.dataset.label+': '+ctx.raw+' contacts';
               return ctx.dataset.label+': '+ctx.raw+'%';
             }
           }
@@ -586,14 +664,83 @@ function renderChart(agent){
       },
       scales:{
         y:{
-          min:0, max:100,
+          min:0, max:100, position:'left',
           ticks:{ font:{size:10}, callback:function(v){ return v+'%'; }, stepSize:20 },
           grid:{ color:'rgba(0,0,0,.06)' }
+        },
+        y1:{
+          type:'linear', display: hasAVG, position:'right',
+          min:0,
+          ticks:{ font:{size:10}, color:'#f97316', callback:function(v){ return v; } },
+          grid:{ drawOnChartArea:false }
         },
         x:{ ticks:{ font:{size:10} }, grid:{ display:false } }
       }
     }
   });
+}
+
+// ── QA INSIGHTS ───────────────────────────────────────────────────────────────
+function renderQAInsights(agent){
+  var hdr  = document.getElementById('qaInsightHdr');
+  var card = document.getElementById('qaInsightCard');
+  var list = document.getElementById('qaInsightList');
+  var meta = document.getElementById('qaInsightMeta');
+
+  var rows = agent.qaRows || [];
+  if(rows.length === 0 && agent.qa === null){
+    hdr.style.display  = 'none';
+    card.style.display = 'none';
+    return;
+  }
+  hdr.style.display  = '';
+  card.style.display = '';
+
+  if(rows.length === 0){
+    meta.textContent = '';
+    list.innerHTML = '<div class="qa-nodata">No individual evaluations loaded — showing aggregate score only.</div>';
+    return;
+  }
+
+  // Sort by score desc
+  var sorted = rows.slice().sort(function(a,b){ return b.score - a.score; });
+  var wins = rows.filter(function(r){ return r.score >= 0.95; }).length;
+  var ok   = rows.filter(function(r){ return r.score >= 0.90 && r.score < 0.95; }).length;
+  var opps = rows.filter(function(r){ return r.score < 0.90; }).length;
+
+  meta.textContent = rows.length + ' evaluation' + (rows.length!==1?'s':'') + ' · ' + wins + ' win' + (wins!==1?'s':'') + (opps>0?' · '+opps+' need'+' attention':'');
+
+  // Insight text
+  var avg = rows.reduce(function(s,r){ return s+r.score; }, 0) / rows.length;
+  var insightClass = opps > 0 ? (opps >= rows.length/2 ? 'needs-work' : 'mixed') : '';
+  var insightText = '';
+  if(wins === rows.length){
+    insightText = '🌟 All evaluations this period scored 95%+ — outstanding quality work!';
+  } else if(opps === 0){
+    insightText = '✅ All evaluations met the 90% passing threshold. Avg: ' + pct(avg) + '. Push for 95%+ to reach excellence.';
+  } else if(opps === rows.length){
+    insightText = '⚠️ All evaluations fell below the 90% passing threshold this period. Avg: ' + pct(avg) + '. Review QA feedback carefully and focus on the lowest-scoring categories.';
+  } else {
+    insightText = 'Avg: ' + pct(avg) + ' — ' + wins + ' win' + (wins!==1?'s':'') + ', ' + ok + ' passing, ' + opps + ' below threshold. Review ' + (opps===1?'the':'each') + ' below-threshold evaluation and identify improvement areas.';
+  }
+
+  var rowsHtml = sorted.map(function(r, i){
+    var sc = r.score;
+    var cls = sc >= 0.95 ? 'win' : (sc >= 0.90 ? 'ok' : (sc >= 0.75 ? 'opp' : 'crit'));
+    var label = sc >= 0.95 ? '✓ Win' : (sc >= 0.90 ? 'Passing' : 'Needs attention');
+    var ztpBadge = r.ztpFlag ? '<span class="qa-eval-ztp">ZTP</span>' : '';
+    var linkHtml = r.link ? '<a class="qa-eval-link" href="'+r.link+'" target="_blank" rel="noopener">View →</a>' : '';
+    return '<div class="qa-eval-row">'
+      +'<span style="color:var(--text3);font-size:11px;min-width:20px">'+(i+1)+'.</span>'
+      +'<span class="qa-eval-score '+cls+'">'+pct(sc)+'</span>'
+      +'<span style="font-size:11px;color:var(--text2)">'+label+'</span>'
+      +ztpBadge
+      +linkHtml
+      +'</div>';
+  }).join('');
+
+  list.innerHTML = '<div class="qa-insight-box '+insightClass+'">'+insightText+'</div>'
+    +'<div class="qa-eval-list">'+rowsHtml+'</div>';
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -717,6 +864,8 @@ function parseAgentSheet(text){
     result.push({
       name:        nm,
       tickets:     Math.round(ag.fulf),
+      emailTkts:   Math.round(ag.fe),
+      chatTkts:    Math.round(ag.fc),
       avgCustDay:  days > 0 ? Math.round(ag.fulf/days) : 0,
       handleCust:  fmtTime(ahtSec),
       chatAHT:     ag.fc > 0 ? fmtTime(ag.htc/ag.fc) : null,
@@ -793,10 +942,8 @@ function parseFCRSheet(text){
 // Cols: 1=Month(MM-YYYY), 3=Agent Name, 6=Score(0-1), 20=Type(QA/Calibration), 21=ZTP
 function parseQASheet(text){
   var lines = text.split('\n');
-  // Find header row (contains "Score" and "Type" or similar); skip first 2 rows
   var hIdx = 2;
 
-  // Compute 12 month keys (Mon-YYYY like "Jun-2026" but col1 is MM-YYYY)
   var now = new Date();
   var months12 = [];
   for(var m=11; m>=0; m--){
@@ -804,10 +951,9 @@ function parseQASheet(text){
     months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());
   }
   var latestMon = months12[months12.length-1];
-  // Second-to-last for ZTP lookback
   var prevMon = months12[months12.length-2];
 
-  // Aggregate: {name: {mon: [sum_scores, count, hasZTP]}}
+  // byAgent: {name: {months: {mon:[sum,count,ztp]}, rows:[{score,ztpFlag,link}]}}
   var byAgent = {};
   for(var i=hIdx+1; i<lines.length; i++){
     var f = parseCSVRow(lines[i]);
@@ -816,29 +962,38 @@ function parseQASheet(text){
     if(qaType.toLowerCase() !== 'qa') continue;
     var name = normName((f[3]||'').trim());
     if(!name) continue;
-    var mon = (f[1]||'').trim(); // MM-YYYY
+    var mon = (f[1]||'').trim();
     if(months12.indexOf(mon)<0) continue;
     var score = parseFloat(f[6]);
     if(isNaN(score)) continue;
     var hasZTP = f.length>21 && (f[21]||'').trim() !== '';
-    if(!byAgent[name]) byAgent[name]={};
-    if(!byAgent[name][mon]) byAgent[name][mon]=[0,0,false];
-    byAgent[name][mon][0]+=score; byAgent[name][mon][1]++;
-    if(hasZTP) byAgent[name][mon][2]=true;
+    if(!byAgent[name]) byAgent[name]={months:{}, rows:[]};
+    if(!byAgent[name].months[mon]) byAgent[name].months[mon]=[0,0,false];
+    byAgent[name].months[mon][0]+=score;
+    byAgent[name].months[mon][1]++;
+    if(hasZTP) byAgent[name].months[mon][2]=true;
+    // Store individual rows for the current month
+    if(mon === latestMon){
+      var link = '';
+      for(var k=0; k<f.length; k++){
+        var fv=(f[k]||'').trim();
+        if(fv.indexOf('http')===0){ link=fv; break; }
+      }
+      byAgent[name].rows.push({score:score, ztpFlag:hasZTP, link:link});
+    }
   }
 
   var result = [];
   for(var nm in byAgent){
-    var mdata = byAgent[nm];
+    var aData = byAgent[nm];
+    var mdata = aData.months;
     var qaH = months12.map(function(mk){
       var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*1000)/1000 : null;
     });
-    // Latest non-null score
     var qa = null;
     for(var j=qaH.length-1; j>=0; j--){ if(qaH[j]!==null){ qa=qaH[j]; break; } }
-    // ZTP: check last 2 months
     var ztpFlag = (mdata[latestMon]&&mdata[latestMon][2]) || (mdata[prevMon]&&mdata[prevMon][2]) || false;
-    result.push({name:nm, qa:qa, qaH:qaH, ztpFlag:ztpFlag});
+    result.push({name:nm, qa:qa, qaH:qaH, ztpFlag:ztpFlag, qaRows:aData.rows});
   }
   return result;
 }
@@ -861,13 +1016,15 @@ async function loadSheets(){
     result.agents.forEach(function(live){
       var def = D.agents.find(function(a){ return a.name===live.name || normName(a.name)===live.name; });
       if(!def) return;
-      def.tickets    = live.tickets;
-      def.avgCustDay = live.avgCustDay;
+      def.tickets     = live.tickets;
+      def.avgCustDay  = live.avgCustDay;
       if(live.handleCust) def.handleCust = live.handleCust;
-      def.chatAHT    = live.chatAHT;
-      def.missedChats= live.missedChats;
-      def.loginUtil  = live.loginUtil;
+      def.chatAHT     = live.chatAHT;
+      def.missedChats = live.missedChats;
+      def.loginUtil   = live.loginUtil;
       if(live.aht > 0) def.aht = live.aht;
+      if(live.emailTkts != null) def.emailTkts = live.emailTkts;
+      if(live.chatTkts  != null) def.chatTkts  = live.chatTkts;
     });
 
     // Fetch FCR sheet
@@ -896,6 +1053,7 @@ async function loadSheets(){
           if(lv.qa !== null) def.qa = lv.qa;
           if(lv.qaH) def.qaH = lv.qaH;
           def.ztpFlag = lv.ztpFlag;
+          if(lv.qaRows) def.qaRows = lv.qaRows;
         });
         console.log('[QA] parsed '+((qaResult||[]).length)+' agents');
       }

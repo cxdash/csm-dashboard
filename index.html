@@ -399,6 +399,8 @@ var SHEETS_AGENT_URL  = '';  // Gladly Agent Reporting — disabled (using embed
 // Step 3: Paste the URL below and push to GitHub
 var SHEETS_VOLUME_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=271621784&single=true&output=csv';  // VolDA tab
 var SHEETS_SLA_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=1007479806&single=true&output=csv';  // SLA tab
+var SHEETS_FCR_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1422680454&single=true&output=csv';  // FCR tab
+var SHEETS_QA_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';  // QA tab
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -425,39 +427,39 @@ var DEFAULT_DATA = {
     {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:626,  may:1998},
   ],
   agents: [
-    {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
-    {name:'Zheraine',              lob:'Path Social', tickets:649, aht:6.02,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.89,adh:0.97, avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  avgLogin:'8h 12m',loginUtil:0.889,productivity:0.89,fulfilledByResp:614},
-    {name:'Abigail Aquino',        lob:'Path Social', tickets:618, aht:5.97,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.81,adh:0.97, avgCustDay:58, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'7h 44m',loginUtil:0.896,productivity:0.81,fulfilledByResp:587},
-    {name:'Benedict Catbagan',     lob:'Path Social', tickets:682, aht:5.58,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.81,adh:0.97, avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  avgLogin:'8h 9m', loginUtil:0.909,productivity:0.78,fulfilledByResp:654},
-    {name:'Kaila May Membredo',    lob:'Path Social', tickets:677, aht:6.18,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.85,adh:0.97, avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, avgLogin:'8h 15m',loginUtil:0.909,productivity:0.85,fulfilledByResp:633},
-    {name:'Jennilen Manosa',       lob:'Path Social', tickets:28,  aht:5.52,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.38,adh:0.97, avgCustDay:14, handleCust:'5m 31s', chatAHT:null,       missedChats:0,  avgLogin:'8h 13m',loginUtil:0.912,productivity:0.34,fulfilledByResp:22},
-    {name:'Pherbia',               lob:'Path Social', tickets:237, aht:7.30,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.61,adh:0.97,esc:true, avgCustDay:22, handleCust:'7m 18s', chatAHT:null,       missedChats:0,  avgLogin:'7h 50m',loginUtil:0.891,productivity:0.38,fulfilledByResp:221},
-    {name:'Janelle Decena',        lob:'Path Social', tickets:270, aht:3.90,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.23,adh:0.97,esc:true, avgCustDay:25, handleCust:'3m 54s', chatAHT:null,       missedChats:0,  avgLogin:'8h 12m',loginUtil:0.989,productivity:0.22,fulfilledByResp:171},
-    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:304, aht:6.13,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.62,adh:0.97, avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  avgLogin:'8h 03m',loginUtil:0.901,productivity:0.429,fulfilledByResp:247},
-    {name:'Faye',                  lob:'Crowd Ignite',tickets:291, aht:4.02,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.44,adh:0.97, avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  avgLogin:'6h 52m',loginUtil:0.930,productivity:0.235,fulfilledByResp:175},
-    {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:234, aht:4.75,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.30,adh:0.97, avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'8h 07m',loginUtil:0.877,productivity:0.237,fulfilledByResp:139},
-    {name:'Rosie Eslao',           lob:'High Social', tickets:585, aht:2.72,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.40,adh:0.97, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  avgLogin:'7h 39m',loginUtil:0.952,productivity:0.363,fulfilledByResp:281},
-    {name:'Rockwell De Mesa',      lob:'High Social', tickets:426, aht:3.45,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.39,adh:0.97, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  avgLogin:'8h 07m',loginUtil:0.918,productivity:0.367,fulfilledByResp:246},
-    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:614, aht:3.82,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.42,adh:0.97, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  avgLogin:'8h 45m',loginUtil:0.929,productivity:0.401,fulfilledByResp:328},
-    {name:'Charito Mencedez',      lob:'High Social', tickets:433, aht:3.08,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.30,adh:0.97, avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  avgLogin:'8h 03m',loginUtil:0.926,productivity:0.299,fulfilledByResp:231},
-    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:485, aht:3.57,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.35,adh:0.97, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.940,productivity:0.375,fulfilledByResp:302},
-    {name:'Christine Joy M Salvador',lob:'High Social',tickets:157,aht:4.52,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.39,adh:0.97, avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  avgLogin:'8h 04m',loginUtil:0.917,productivity:0.400,fulfilledByResp:85},
-    {name:'Jaycel Napa',           lob:'Plixi',       tickets:431, aht:6.17,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.57,adh:0.97, avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  avgLogin:'8h 26m',loginUtil:0.941,productivity:0.507,fulfilledByResp:417},
-    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:325, aht:7.40,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.70,adh:0.97, avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  avgLogin:'8h 05m',loginUtil:0.935,productivity:0.664,fulfilledByResp:312},
-    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:303, aht:7.75,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.57,adh:0.97, avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  avgLogin:'7h 30m',loginUtil:0.941,productivity:0.462,fulfilledByResp:284},
-    {name:'Rhian de Belen',        lob:'Plixi',       tickets:352, aht:7.38,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.59,adh:0.97, avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  avgLogin:'6h 42m',loginUtil:0.906,productivity:0.549,fulfilledByResp:338},
-    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:280, aht:9.70,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.59,adh:0.97, avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  avgLogin:'7h 27m',loginUtil:0.938,productivity:0.590,fulfilledByResp:267},
-    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:270, aht:8.62,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.51,adh:0.93, avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  avgLogin:'8h 16m',loginUtil:0.973,productivity:0.483,fulfilledByResp:261},
-    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:242, aht:8.45,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.47,adh:0.97, avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  avgLogin:'6h 27m',loginUtil:0.939,productivity:0.433,fulfilledByResp:241},
-    {name:'Rushelle',              lob:'Plixi',       tickets:184, aht:15.52,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.61,adh:0.97, avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  avgLogin:'7h 44m',loginUtil:0.933,productivity:0.600,fulfilledByResp:170},
-    {name:'Monica',                lob:'Plixi',       tickets:156, aht:9.37,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.34,adh:0.97, avgCustDay:13, handleCust:'9m 22s', chatAHT:null,       missedChats:0,  avgLogin:'6h 47m',loginUtil:0.939,productivity:0.319,fulfilledByResp:145},
-    {name:'Dencio Almag, Jr.',     lob:'Goread',      tickets:447, aht:6.10,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.68,adh:0.94, avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 40s',  missedChats:40, avgLogin:'8h 33m',loginUtil:0.929,productivity:0.521,fulfilledByResp:339},
-    {name:'Moses Eragbai',         lob:'Goread',      tickets:577, aht:5.27,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.67,adh:0.97, avgCustDay:52, handleCust:'5m 16s', chatAHT:'5m 58s',  missedChats:7,  avgLogin:'8h 30m',loginUtil:0.926,productivity:0.586,fulfilledByResp:429},
-    {name:'Nay Nuttida',           lob:'Goread',      tickets:304, aht:5.27,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.35,adh:0.93, avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, avgLogin:'9h 05m',loginUtil:0.968,productivity:0.303,fulfilledByResp:232},
-    {name:'Suzette Mejia',         lob:'Goread',      tickets:243, aht:6.48,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.50,adh:0.97, avgCustDay:27, handleCust:'6m 29s', chatAHT:'4m 46s',  missedChats:1,  avgLogin:'7h 47m',loginUtil:0.964,productivity:0.389,fulfilledByResp:199},
-    {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:349, aht:5.98,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.60,adh:0.97, avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  avgLogin:'8h 09m',loginUtil:0.909,productivity:0.428,fulfilledByResp:296},
-    {name:'Geal Ann Lorico',       lob:'Follows',     tickets:203, aht:5.98,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.40,adh:0.97, avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 16s',  missedChats:0,  avgLogin:'8h 02m',loginUtil:0.890,productivity:0.283,fulfilledByResp:184},
-    {name:'Jessica Ibañez',        lob:'Follows',     tickets:64,  aht:9.40,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0.71,adh:0.97,partTime:true, avgCustDay:4,  handleCust:'9m 24s', chatAHT:null,       missedChats:0,  avgLogin:'5h 14m',loginUtil:0.957,productivity:0.092,fulfilledByResp:57},
+    {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.901,qaTgt:0.90,csat:null,fcr:0.645,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
+    {name:'Zheraine',              lob:'Path Social', tickets:649, aht:6.02,ahtTgt:5.0,qa:0.974,qaTgt:0.90,csat:null,fcr:0.659,occ:0.89,adh:0.97, avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  avgLogin:'8h 12m',loginUtil:0.889,productivity:0.89,fulfilledByResp:614},
+    {name:'Abigail Aquino',        lob:'Path Social', tickets:618, aht:5.97,ahtTgt:5.0,qa:0.961,qaTgt:0.90,csat:null,fcr:0.622,occ:0.81,adh:0.97, avgCustDay:58, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'7h 44m',loginUtil:0.896,productivity:0.81,fulfilledByResp:587},
+    {name:'Benedict Catbagan',     lob:'Path Social', tickets:682, aht:5.58,ahtTgt:5.0,qa:0.934,qaTgt:0.90,csat:null,fcr:0.579,occ:0.81,adh:0.97, avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  avgLogin:'8h 9m', loginUtil:0.909,productivity:0.78,fulfilledByResp:654},
+    {name:'Kaila May Membredo',    lob:'Path Social', tickets:677, aht:6.18,ahtTgt:5.0,qa:0.957,qaTgt:0.90,csat:null,fcr:0.549,occ:0.85,adh:0.97, avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, avgLogin:'8h 15m',loginUtil:0.909,productivity:0.85,fulfilledByResp:633},
+    {name:'Jennilen Manosa',       lob:'Path Social', tickets:28,  aht:5.52,ahtTgt:5.0,qa:1.0,  qaTgt:0.90,csat:null,fcr:0.857,occ:0.38,adh:0.97, avgCustDay:14, handleCust:'5m 31s', chatAHT:null,       missedChats:0,  avgLogin:'8h 13m',loginUtil:0.912,productivity:0.34,fulfilledByResp:22},
+    {name:'Pherbia',               lob:'Path Social', tickets:237, aht:7.30,ahtTgt:5.0,qa:0.97, qaTgt:0.90,csat:null,fcr:0.3128,occ:0.61,adh:0.97,esc:true, avgCustDay:22, handleCust:'7m 18s', chatAHT:null,       missedChats:0,  avgLogin:'7h 50m',loginUtil:0.891,productivity:0.38,fulfilledByResp:221},
+    {name:'Janelle Decena',        lob:'Path Social', tickets:270, aht:3.90,ahtTgt:5.0,qa:0.984,qaTgt:0.90,csat:null,fcr:0.562,occ:0.23,adh:0.97,esc:true, avgCustDay:25, handleCust:'3m 54s', chatAHT:null,       missedChats:0,  avgLogin:'8h 12m',loginUtil:0.989,productivity:0.22,fulfilledByResp:171},
+    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:304, aht:6.13,ahtTgt:5.0,qa:0.957,qaTgt:0.90,csat:null,fcr:0.545,occ:0.62,adh:0.97, avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  avgLogin:'8h 03m',loginUtil:0.901,productivity:0.429,fulfilledByResp:247},
+    {name:'Faye',                  lob:'Crowd Ignite',tickets:291, aht:4.02,ahtTgt:5.0,qa:0.972,qaTgt:0.90,csat:null,fcr:0.585,occ:0.44,adh:0.97, avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  avgLogin:'6h 52m',loginUtil:0.930,productivity:0.235,fulfilledByResp:175},
+    {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:234, aht:4.75,ahtTgt:5.0,qa:1.0,  qaTgt:0.90,csat:null,fcr:0.644,occ:0.30,adh:0.97, avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'8h 07m',loginUtil:0.877,productivity:0.237,fulfilledByResp:139},
+    {name:'Rosie Eslao',           lob:'High Social', tickets:585, aht:2.72,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.458,occ:0.40,adh:0.97, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  avgLogin:'7h 39m',loginUtil:0.952,productivity:0.363,fulfilledByResp:281},
+    {name:'Rockwell De Mesa',      lob:'High Social', tickets:426, aht:3.45,ahtTgt:5.0,qa:0.43, qaTgt:0.90,csat:null,fcr:0.57, occ:0.39,adh:0.97, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  avgLogin:'8h 07m',loginUtil:0.918,productivity:0.367,fulfilledByResp:246},
+    {name:'Samantha Mae Parrilla', lob:'High Social', tickets:614, aht:3.82,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.417,occ:0.42,adh:0.97, avgCustDay:51, handleCust:'3m 49s', chatAHT:'6m 03s',  missedChats:5,  avgLogin:'8h 45m',loginUtil:0.929,productivity:0.401,fulfilledByResp:328},
+    {name:'Charito Mencedez',      lob:'High Social', tickets:433, aht:3.08,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.475,occ:0.30,adh:0.97, avgCustDay:43, handleCust:'3m 05s', chatAHT:'6m 33s',  missedChats:8,  avgLogin:'8h 03m',loginUtil:0.926,productivity:0.299,fulfilledByResp:231},
+    {name:'Polly Yanah Salanatin', lob:'High Social', tickets:485, aht:3.57,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.415,occ:0.35,adh:0.97, avgCustDay:48, handleCust:'3m 34s', chatAHT:'7m 10s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.940,productivity:0.375,fulfilledByResp:302},
+    {name:'Christine Joy M Salvador',lob:'High Social',tickets:157,aht:4.52,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.467,occ:0.39,adh:0.97, avgCustDay:39, handleCust:'4m 31s', chatAHT:'7m 34s',  missedChats:4,  avgLogin:'8h 04m',loginUtil:0.917,productivity:0.400,fulfilledByResp:85},
+    {name:'Jaycel Napa',           lob:'Plixi',       tickets:431, aht:6.17,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.563,occ:0.57,adh:0.97, avgCustDay:39, handleCust:'6m 10s', chatAHT:'5m 47s',  missedChats:2,  avgLogin:'8h 26m',loginUtil:0.941,productivity:0.507,fulfilledByResp:417},
+    {name:'Trisha Joy Cads',       lob:'Plixi',       tickets:325, aht:7.40,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.608,occ:0.70,adh:0.97, avgCustDay:41, handleCust:'7m 24s', chatAHT:'7m 07s',  missedChats:0,  avgLogin:'8h 05m',loginUtil:0.935,productivity:0.664,fulfilledByResp:312},
+    {name:'Mary Rose Sebastian',   lob:'Plixi',       tickets:303, aht:7.75,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.55, occ:0.57,adh:0.97, avgCustDay:25, handleCust:'7m 45s', chatAHT:'9m 29s',  missedChats:0,  avgLogin:'7h 30m',loginUtil:0.941,productivity:0.462,fulfilledByResp:284},
+    {name:'Rhian de Belen',        lob:'Plixi',       tickets:352, aht:7.38,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.598,occ:0.59,adh:0.97, avgCustDay:27, handleCust:'7m 23s', chatAHT:'7m 44s',  missedChats:6,  avgLogin:'6h 42m',loginUtil:0.906,productivity:0.549,fulfilledByResp:338},
+    {name:'Djamillah Maria Abaya', lob:'Plixi',       tickets:280, aht:9.70,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.431,occ:0.59,adh:0.97, avgCustDay:25, handleCust:'9m 42s', chatAHT:'7m 49s',  missedChats:0,  avgLogin:'7h 27m',loginUtil:0.938,productivity:0.590,fulfilledByResp:267},
+    {name:'Anne Nicole Asistio',   lob:'Plixi',       tickets:270, aht:8.62,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.426,occ:0.51,adh:0.93, avgCustDay:27, handleCust:'8m 37s', chatAHT:'7m 46s',  missedChats:2,  avgLogin:'8h 16m',loginUtil:0.973,productivity:0.483,fulfilledByResp:261},
+    {name:'Eunice Jeremiah Valiao',lob:'Plixi',       tickets:242, aht:8.45,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.366,occ:0.47,adh:0.97, avgCustDay:19, handleCust:'8m 27s', chatAHT:'8m 23s',  missedChats:3,  avgLogin:'6h 27m',loginUtil:0.939,productivity:0.433,fulfilledByResp:241},
+    {name:'Rushelle',              lob:'Plixi',       tickets:184, aht:15.52,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.584,occ:0.61,adh:0.97, avgCustDay:17, handleCust:'15m 31s',chatAHT:'2m 37s',  missedChats:0,  avgLogin:'7h 44m',loginUtil:0.933,productivity:0.600,fulfilledByResp:170},
+    {name:'Monica',                lob:'Plixi',       tickets:156, aht:9.37,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.554,occ:0.34,adh:0.97, avgCustDay:13, handleCust:'9m 22s', chatAHT:null,       missedChats:0,  avgLogin:'6h 47m',loginUtil:0.939,productivity:0.319,fulfilledByResp:145},
+    {name:'Dencio Almag, Jr.',     lob:'Goread',      tickets:447, aht:6.10,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.728,occ:0.68,adh:0.94, avgCustDay:41, handleCust:'6m 06s', chatAHT:'4m 40s',  missedChats:40, avgLogin:'8h 33m',loginUtil:0.929,productivity:0.521,fulfilledByResp:339},
+    {name:'Moses Eragbai',         lob:'Goread',      tickets:577, aht:5.27,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.693,occ:0.67,adh:0.97, avgCustDay:52, handleCust:'5m 16s', chatAHT:'5m 58s',  missedChats:7,  avgLogin:'8h 30m',loginUtil:0.926,productivity:0.586,fulfilledByResp:429},
+    {name:'Nay Nuttida',           lob:'Goread',      tickets:304, aht:5.27,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.645,occ:0.35,adh:0.93, avgCustDay:30, handleCust:'5m 16s', chatAHT:'2m 53s',  missedChats:47, avgLogin:'9h 05m',loginUtil:0.968,productivity:0.303,fulfilledByResp:232},
+    {name:'Suzette Mejia',         lob:'Goread',      tickets:243, aht:6.48,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:0.669,occ:0.50,adh:0.97, avgCustDay:27, handleCust:'6m 29s', chatAHT:'4m 46s',  missedChats:1,  avgLogin:'7h 47m',loginUtil:0.964,productivity:0.389,fulfilledByResp:199},
+    {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:349, aht:5.98,ahtTgt:5.0,qa:0.951,qaTgt:0.90,csat:null,fcr:0.462,occ:0.60,adh:0.97, avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  avgLogin:'8h 09m',loginUtil:0.909,productivity:0.428,fulfilledByResp:296},
+    {name:'Geal Ann Lorico',       lob:'Follows',     tickets:203, aht:5.98,ahtTgt:5.0,qa:0.98, qaTgt:0.90,csat:null,fcr:0.419,occ:0.40,adh:0.97, avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 16s',  missedChats:0,  avgLogin:'8h 02m',loginUtil:0.890,productivity:0.283,fulfilledByResp:184},
+    {name:'Jessica Ibañez',        lob:'Follows',     tickets:64,  aht:9.40,ahtTgt:5.0,qa:0.801,qaTgt:0.90,csat:null,fcr:0.577,occ:0.71,adh:0.97,partTime:true, avgCustDay:4,  handleCust:'9m 24s', chatAHT:null,       missedChats:0,  avgLogin:'5h 14m',loginUtil:0.957,productivity:0.092,fulfilledByResp:57},
   ],
 
   // ── 12-MONTH DATA (Jan 2025 – Jun 2026 · sourced from Agent Reporting CSV) ──
@@ -1149,6 +1151,87 @@ function loadFromStorage(){
   }catch(e){ console.warn('Load error:', e.message); }
 }
 
+// ── FCR/QA HELPERS ────────────────────────────────────────────────────────────
+function normName(s){
+  return (s||'').trim().replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').replace(/Ã¡/g,'á').replace(/Ã³/g,'ó');
+}
+function parseCSVRow(line){
+  var res=[],cur='',inQ=false;
+  for(var i=0;i<=line.length;i++){
+    var c=i<line.length?line[i]:',';
+    if(inQ){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;}else cur+=c;}
+    else{if(c==='"')inQ=true;else if(c===','){res.push(cur);cur='';}else cur+=c;}
+  }
+  return res;
+}
+function parseFCRSheetIdx(text){
+  var lines=text.split('\n');
+  var hIdx=-1;
+  for(var i=0;i<Math.min(lines.length,5);i++){if(lines[i].indexOf('Assigned Agent Name')>=0){hIdx=i;break;}}
+  if(hIdx<0) return null;
+  var now=new Date(), months12=[];
+  for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push(d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1));}
+  var latestMon=months12[months12.length-1];
+  var byAgent={};
+  for(var i=hIdx+1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<8) continue;
+    var name=normName((f[3]||'').trim());
+    if(!name) continue;
+    var dp=(f[4]||'').trim().split('/');
+    if(dp.length<3) continue;
+    var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+dp[0];
+    if(months12.indexOf(mon)<0) continue;
+    var fc=parseFloat(f[6])||0,el=parseFloat(f[7])||0;
+    if(!byAgent[name]) byAgent[name]={};
+    if(!byAgent[name][mon]) byAgent[name][mon]=[0,0];
+    byAgent[name][mon][0]+=fc; byAgent[name][mon][1]+=el;
+  }
+  var result=[];
+  for(var nm in byAgent){
+    var mdata=byAgent[nm];
+    var lv=mdata[latestMon];
+    var fcr=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
+    result.push({name:nm,fcr:fcr});
+  }
+  return result;
+}
+function parseQASheetIdx(text){
+  var lines=text.split('\n');
+  var hIdx=2;
+  var now=new Date(), months12=[];
+  for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());}
+  var latestMon=months12[months12.length-1], prevMon=months12[months12.length-2];
+  var byAgent={};
+  for(var i=hIdx+1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<21) continue;
+    var qaType=(f[20]||'').trim();
+    if(qaType.toLowerCase()!=='qa') continue;
+    var name=normName((f[3]||'').trim());
+    if(!name) continue;
+    var mon=(f[1]||'').trim();
+    if(months12.indexOf(mon)<0) continue;
+    var score=parseFloat(f[6]);
+    if(isNaN(score)) continue;
+    var hasZTP=f.length>21&&(f[21]||'').trim()!=='';
+    if(!byAgent[name]) byAgent[name]={};
+    if(!byAgent[name][mon]) byAgent[name][mon]=[0,0,false];
+    byAgent[name][mon][0]+=score; byAgent[name][mon][1]++;
+    if(hasZTP) byAgent[name][mon][2]=true;
+  }
+  var result=[];
+  for(var nm in byAgent){
+    var mdata=byAgent[nm];
+    var lv=mdata[latestMon];
+    var qa=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
+    if(qa===null){for(var mk in mdata){var v=mdata[mk];if(v&&v[1]>0){qa=Math.round(v[0]/v[1]*1000)/1000;}}}
+    var ztpFlag=(mdata[latestMon]&&mdata[latestMon][2])||(mdata[prevMon]&&mdata[prevMon][2])||false;
+    result.push({name:nm,qa:qa,ztpFlag:ztpFlag});
+  }
+  return result;
+}
+
 async function loadFromSheets(){
   D = JSON.parse(JSON.stringify(DEFAULT_DATA));
   setChip('wait','⏳ Updating from Sheets…');
@@ -1166,7 +1249,9 @@ async function loadFromSheets(){
     var resps = await Promise.all([
       safeFetch(SHEETS_AGENT_URL),
       safeFetch(SHEETS_VOLUME_URL),
-      safeFetch(SHEETS_SLA_URL)
+      safeFetch(SHEETS_SLA_URL),
+      safeFetch(SHEETS_FCR_URL),
+      safeFetch(SHEETS_QA_URL)
     ]);
 
     // Agent reporting (MTD + 12M)
@@ -1209,6 +1294,28 @@ async function loadFromSheets(){
       }
     }
 
+    // FCR sheet
+    if(SHEETS_FCR_URL && resps[3] && resps[3].ok){
+      var fcrResult = parseFCRSheetIdx(await resps[3].text());
+      if(fcrResult) fcrResult.forEach(function(lv){
+        var def = D.agents.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        if(def && lv.fcr !== null) def.fcr = lv.fcr;
+        var def12 = D.agents12m && D.agents12m.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        if(def12 && lv.fcr !== null) def12.fcr = lv.fcr;
+      });
+    }
+
+    // QA sheet
+    if(SHEETS_QA_URL && resps[4] && resps[4].ok){
+      var qaResult = parseQASheetIdx(await resps[4].text());
+      if(qaResult) qaResult.forEach(function(lv){
+        var def = D.agents.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        if(def){ if(lv.qa!==null) def.qa=lv.qa; def.ztpFlag=lv.ztpFlag; }
+        var def12 = D.agents12m && D.agents12m.find(function(a){ return a.name===lv.name || normName(a.name)===lv.name; });
+        if(def12){ if(lv.qa!==null) def12.qa=lv.qa; def12.ztpFlag=lv.ztpFlag; }
+      });
+    }
+
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     var anyLive = resps.some(function(r){ return r && r.ok; });
     setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data');
@@ -1219,7 +1326,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
