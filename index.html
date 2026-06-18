@@ -1158,13 +1158,13 @@ async function loadFromSheets(){
   setChip('wait','⏳ Updating from Sheets…');
   render(); // show embedded data immediately while sheets load
   try{
-    // Fetch all sheets in parallel
-    var fetches = [
-      SHEETS_AGENT_URL  ? fetch(SHEETS_AGENT_URL)  : Promise.resolve(null),
-      SHEETS_VOLUME_URL ? fetch(SHEETS_VOLUME_URL) : Promise.resolve(null),
-      SHEETS_SLA_URL    ? fetch(SHEETS_SLA_URL)    : Promise.resolve(null)
-    ];
-    var resps = await Promise.all(fetches);
+    // Fetch all sheets in parallel — each wrapped so one failure won't block others
+    function safeFetch(url){ return url ? fetch(url,{credentials:'omit',redirect:'follow'}).catch(function(){ return null; }) : Promise.resolve(null); }
+    var resps = await Promise.all([
+      safeFetch(SHEETS_AGENT_URL),
+      safeFetch(SHEETS_VOLUME_URL),
+      safeFetch(SHEETS_SLA_URL)
+    ]);
 
     // Agent reporting (MTD + 12M)
     if(resps[0] && resps[0].ok){
@@ -1207,7 +1207,8 @@ async function loadFromSheets(){
     }
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    setChip('ok','🔗 Sheets live · '+ts);
+    var anyLive = resps.some(function(r){ return r && r.ok; });
+    setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · showing embedded data');
     render(); return;
   }catch(e){ console.warn('Sheets fetch error:', e.message); }
   setChip('ok','⚠️ Sheets unreachable · showing embedded data');
