@@ -461,7 +461,7 @@ function renderMetrics(a){
     },
     {
       label: 'QA Score',
-      display: a.qa !== null ? pct(a.qa) : '—',
+      display: a.qa !== null ? pct(a.qa,2) : '—',
       tgt: '≥ 90% target · 95%+ excellent',
       status: a.qa === null ? 'neutral' : (a.qa >= 0.95 ? 'excellent' : a.qa >= 0.90 ? 'met' : 'miss'),
       badge: a.qa !== null,
@@ -539,13 +539,13 @@ function renderCoaching(a){
   if(a.qa !== null){
     if(a.qa >= 0.95){
       flags.push({c:'g', icon:'📋', title:'QA score — Excellent',
-        detail:'Your QA score of '+pct(a.qa)+' exceeds the 95% excellence threshold. Outstanding work!'});
+        detail:'Your QA score of '+pct(a.qa,2)+' exceeds the 95% excellence threshold. Outstanding work!'});
     } else if(a.qa >= 0.90){
       flags.push({c:'g', icon:'📋', title:'QA score — Passing',
-        detail:'Your QA score of '+pct(a.qa)+' meets the 90% passing target. Aim for 95%+ for excellence.'});
+        detail:'Your QA score of '+pct(a.qa,2)+' meets the 90% passing target. Aim for 95%+ for excellence.'});
     } else {
       flags.push({c:'r', icon:'📋', title:'QA score below passing',
-        detail:'Current: '+pct(a.qa)+' · Passing: 90% · Excellent: 95%. Review your QA feedback and focus on the lowest-scoring categories.'});
+        detail:'Current: '+pct(a.qa,2)+' · Passing: 90% · Excellent: 95%. Review your QA feedback and focus on the lowest-scoring categories.'});
     }
   }
 
@@ -1073,7 +1073,7 @@ function parseQASheet(text){
     var aData = byAgent[k];
     var mdata = aData.months;
     var qaH = months12.map(function(mk){
-      var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*10)/1000 : null;
+      var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*100)/10000 : null;
     });
     var qa = null;
     for(var j=qaH.length-1; j>=0; j--){ if(qaH[j]!==null){ qa=qaH[j]; break; } }

@@ -1218,10 +1218,25 @@ function parseFCRSheetIdx(text){
     if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0];
     byAgent[key].m[mon][0]+=fc; byAgent[key].m[mon][1]+=el;
   }
+  // Debug: log row counts for mismatched agents (remove after diagnosis)
+  for(var i=hIdx+1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<8) continue;
+    var name=normName((f[3]||'').trim());
+    if(name==='janelle decena'||name==='mariam riasat'||name==='mark lora'){
+      var dp=(f[4]||'').trim().split('/');
+      if(dp.length<3) continue;
+      var mon=dp[2]+'-'+(parseInt(dp[0])<10?'0':'')+parseInt(dp[0]);
+      if(mon!==months12[months12.length-1]) continue;
+      console.log('[FCR-ROW]',name,'date:',f[4],'f[5]:',f[5],'f[6](fc):',f[6],'f[7](el):',f[7],'f[8](email):',f[8],'f[9]:',f[9]);
+    }
+  }
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
   for(var _k in byAgent){if(_k.indexOf('@')>=0&&byAgent[_k].name)_n2e[byAgent[_k].name]=_k;}
   for(var _k in byAgent){if(_k.indexOf('@')<0&&byAgent[_k].name&&_n2e[byAgent[_k].name]){var _ek=_n2e[byAgent[_k].name];for(var _m in byAgent[_k].m){if(!byAgent[_ek].m[_m])byAgent[_ek].m[_m]=[0,0];byAgent[_ek].m[_m][0]+=byAgent[_k].m[_m][0];byAgent[_ek].m[_m][1]+=byAgent[_k].m[_m][1];}delete byAgent[_k];}}
+  // Summary after consolidation
+  ['janelle@pathsocial.com','mariam@pathsocial.com','mark@pathsocial.com'].forEach(function(e){var a=byAgent[e];var lm=months12[months12.length-1];if(a&&a.m[lm])console.log('[FCR-TOTAL]',e,'fc='+a.m[lm][0],'el='+a.m[lm][1],'='+((a.m[lm][0]/a.m[lm][1]*100).toFixed(2))+'%');});
   var result=[];
   for(var k in byAgent){
     var ag=byAgent[k]; var mons=ag.m;
@@ -1277,11 +1292,11 @@ function parseQASheetIdx(text){
     var ag=byAgent[k]; var mons=ag.m;
     // MTD: current month average
     var lv=mons[latestMon];
-    var qaMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10)/1000:null;
+    var qaMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*100)/10000:null;
     // 12m: weighted average across all months
     var t12=[0,0];
     months12.forEach(function(mk){var v=mons[mk];if(v&&v[1]>0){t12[0]+=v[0];t12[1]+=v[1];}});
-    var qa12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*10)/1000:null;
+    var qa12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*100)/10000:null;
     var ztpFlag=(mons[latestMon]&&mons[latestMon][2])||(mons[prevMon]&&mons[prevMon][2])||false;
     result.push({name:ag.name,email:ag.email,qaMTD:qaMTD,qa12m:qa12m,ztpFlag:ztpFlag});
   }
@@ -1674,7 +1689,7 @@ function renderAgents(){
     var dotColor = prodMet===null ? '#94a3b8' : (prodMet ? '#16a34a' : '#dc2626');
     var escBadge = a.esc ? '<span style="background:#ede9fe;color:#7c3aed;border-radius:3px;font-size:9px;font-weight:700;padding:1px 4px;margin-left:4px">ESC</span>' : '';
     var qaCell = a.qa!==null
-      ? '<span style="font-weight:700;color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(a.qa)+'</span>'
+      ? '<span style="font-weight:700;color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(a.qa,2)+'</span>'
       : '<span style="color:var(--text3)">—</span>';
     var fcrCell = a.fcr!==null
       ? '<span style="font-weight:700;color:'+(fcrMet?'var(--green)':'var(--red)')+'">'+pct(a.fcr,2)+'</span>'
@@ -1704,7 +1719,7 @@ function renderAgents(){
     +'<td class="r" style="border-right:2px solid var(--border)">'+Math.round(avgLoginUtil*100)+'%</td>'
     +'<td class="r">'+Math.round(avgProd*100)+'%</td>'
     +'<td class="r">'+Math.round(avgByResp)+'</td>'
-    +'<td class="r">'+(avgQA!==null?pct(avgQA):'<span style="color:var(--text3)">—</span>')+'</td>'
+    +'<td class="r">'+(avgQA!==null?pct(avgQA,2):'<span style="color:var(--text3)">—</span>')+'</td>'
     +'<td class="r">'+(avgFCR!==null?pct(avgFCR,2):'<span style="color:var(--text3)">—</span>')+'</td></tr>';
 }
 
@@ -1764,7 +1779,7 @@ function renderFlags(){
     if(r.fcr&&r.fcr<r.fcrTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — FCR '+pct(r.fcr)+' is below target of '+pct(r.fcrTgt)});
   });
   D.agents.forEach(function(a){
-    if(a.qa&&a.qaTgt&&a.qa<a.qaTgt) flags.push({c:'w', msg:'⚠️ '+a.name+' ('+a.lob+') — QA '+pct(a.qa)+' below target '+pct(a.qaTgt)});
+    if(a.qa&&a.qaTgt&&a.qa<a.qaTgt) flags.push({c:'w', msg:'⚠️ '+a.name+' ('+a.lob+') — QA '+pct(a.qa,2)+' below target '+pct(a.qaTgt,2)});
   });
   var critical=D.escalations.filter(function(e){ return e.pri==='Critical'&&e.status==='Open'; });
   if(critical.length) flags.push({c:'r', msg:'🔴 '+critical.length+' Critical escalation'+(critical.length>1?'s':'')+' currently open — '+critical.map(function(e){return e.id;}).join(', ')});
