@@ -1259,7 +1259,7 @@ function parseQASheetIdx(text, text2, text3){
     for(var i=hIdx+1;i<lines.length;i++){
       var f=parseCSVRow(lines[i]);
       var name, email, rawMon, score, hasZTP;
-      if(f.length>=29&&/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
+      if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
         // ── PX / HS / Cloutify format ──
         // f[0]=Timestamp  f[1]=AgentName  f[4]=Score  f[17]=AuditType  f[20]=ZTP  f[28]=MonthYear
         var qaType=(f[17]||'').trim();
@@ -1267,6 +1267,8 @@ function parseQASheetIdx(text, text2, text3){
         name=normName((f[1]||'').trim()); name=QA_ALIAS[name]||name;
         email='';
         rawMon=(f[28]||'').trim();
+        // Fallback: extract MM-YYYY from timestamp if f[28] missing/empty
+        if(!rawMon){var _fb=(f[0]||'').trim().split(' ')[0].split('/');if(_fb.length===3)rawMon=(_fb[0].length<2?'0':'')+_fb[0]+'-'+_fb[2];}
         score=parseFloat(f[4]);
         hasZTP=(f[20]||'').trim()!==''&&!/^(na|no)$/i.test((f[20]||'').trim());
       } else {

@@ -193,7 +193,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <footer>CX Agent Scorecard &nbsp;·&nbsp; <span id="footerPeriod"></span> &nbsp;·&nbsp; Personal view only</footer>
 </div>
 
-<script>/* v2026-06-18c */
+<script>/* v2026-06-18d */
 'use strict';
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -465,13 +465,15 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
     for(var i=hIdx+1;i<lines.length;i++){
       var f=parseCSVRow(lines[i]);
       var rowName, rowEmail, rawMon, score, hasZTP, link;
-      if(f.length>=29&&/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
+      if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
         // ── PX / HS / Cloutify format ──
         var qaType=(f[17]||'').trim();
         if(qaType&&!/^(qa|focused\s*qa)/i.test(qaType)) continue;
         rowName=normName((f[1]||'').trim()); rowName=QA_ALIAS[rowName]||rowName;
         rowEmail='';
         rawMon=(f[28]||'').trim();
+        // Fallback: extract MM-YYYY from timestamp if f[28] missing/empty
+        if(!rawMon){var _fb=(f[0]||'').trim().split(' ')[0].split('/');if(_fb.length===3)rawMon=(_fb[0].length<2?'0':'')+_fb[0]+'-'+_fb[2];}
         score=parseFloat(f[4]);
         hasZTP=(f[20]||'').trim()!==''&&!/^(na|no)$/i.test((f[20]||'').trim());
         link=(f[2]||'').trim();
@@ -506,7 +508,7 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
       if(hasZTP) byMon[mon][2]=true;
       // Store display date: for PX/HS/CL use raw timestamp date portion; else use mon
       var dispDate=mon; // fallback: month key like "06-2026"
-      if(f.length>=29&&/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
+      if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
         // Extract date portion from "6/18/2026 10:30:00" → "Jun 18, 2026"
         var _ts=(f[0]||'').trim().split(' ')[0]; // "6/18/2026"
         var _tp=_ts.split('/');
