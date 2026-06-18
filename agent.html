@@ -193,7 +193,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <footer>CX Agent Scorecard &nbsp;·&nbsp; <span id="footerPeriod"></span> &nbsp;·&nbsp; Personal view only</footer>
 </div>
 
-<script>
+<script>/* v2026-06-18c */
 'use strict';
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -504,7 +504,18 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
       if(!byMon[mon]) byMon[mon]=[0,0,false];
       byMon[mon][0]+=score; byMon[mon][1]++;
       if(hasZTP) byMon[mon][2]=true;
-      allRows.push({mon:mon,score:score,hasZTP:hasZTP,link:link});
+      // Store display date: for PX/HS/CL use raw timestamp date portion; else use mon
+      var dispDate=mon; // fallback: month key like "06-2026"
+      if(f.length>=29&&/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[0]||'').trim())){
+        // Extract date portion from "6/18/2026 10:30:00" → "Jun 18, 2026"
+        var _ts=(f[0]||'').trim().split(' ')[0]; // "6/18/2026"
+        var _tp=_ts.split('/');
+        if(_tp.length===3){
+          var _mns=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          dispDate=_mns[parseInt(_tp[0])-1]+' '+parseInt(_tp[1])+', '+_tp[2];
+        }
+      }
+      allRows.push({mon:mon,score:score,hasZTP:hasZTP,link:link,date:dispDate});
     }
   }
   parseInto(text);
@@ -536,10 +547,12 @@ async function loadFromSheets(agentName, agentEmail){
       if(fr.fcrMTD!==null) a.fcr=fr.fcrMTD;
       if(fr.fcrH.some(function(v){return v!==null;})) a.fcrH=fr.fcrH;
     }
-    if(resps[1]&&resps[1].ok){
-      var qa2text=(SHEETS_QA2_URL&&resps[2]&&resps[2].ok)?await resps[2].text():null;
-      var qa3text=(SHEETS_QA3_URL&&resps[3]&&resps[3].ok)?await resps[3].text():null;
-      var qr=parseQASheetAg(await resps[1].text(), qa2text, qa3text, agentEmail, agentName);
+    // QA: parse main + Goread + PX/HS/CL; QA1 not required if QA3 has data
+    var qa1text=(resps[1]&&resps[1].ok)?await resps[1].text():null;
+    var qa2text=(SHEETS_QA2_URL&&resps[2]&&resps[2].ok)?await resps[2].text():null;
+    var qa3text=(SHEETS_QA3_URL&&resps[3]&&resps[3].ok)?await resps[3].text():null;
+    if(qa1text||qa3text){
+      var qr=parseQASheetAg(qa1text||'', qa2text, qa3text, agentEmail, agentName);
       if(qr.qaMTD!==null) a.qa=qr.qaMTD;
       if(qr.qaH.some(function(v){return v!==null;})) a.qaH=qr.qaH;
       a.ztpFlag=qr.ztpFlag;
@@ -562,7 +575,7 @@ function renderChart(a){
       labels:labels,
       datasets:[
         {label:'FCR %',data:(a.fcrH||[]).map(function(v){return v===null?null:+(v*100).toFixed(2);}),borderColor:'#3b82f6',backgroundColor:'transparent',pointRadius:3,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y'},
-        {label:'QA %',data:(a.qaH||[]).map(function(v){return v===null?null:+(v*100).toFixed(2);}),borderColor:'#16a34a',backgroundColor:'transparent',pointRadius:3,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y'},
+        {label:'QA %',data:(a.qaH||[]).map(function(v){return v===null?null:+(v*100).toFixed(2);}),borderColor:'#16a34a',backgroundColor:'transparent',pointRadius:5,pointHoverRadius:7,tension:.35,spanGaps:true,yAxisID:'y'},
         {label:'Avg/Day',data:(a.avgDayH||[]),borderColor:'#f59e0b',backgroundColor:'transparent',pointRadius:3,pointHoverRadius:5,tension:.35,spanGaps:true,yAxisID:'y2',borderDash:[4,3]}
       ]
     },
@@ -662,7 +675,7 @@ function renderQAInsights(a){
   function rowHtml(r){
     var sc=r.score>=95?'win':r.score>=90?'ok':r.score>=80?'opp':'crit';
     var lnk=r.link?'<a href="'+r.link+'" target="_blank">View →</a>':'';
-    return '<tr><td class="col-score qa-eval-score '+sc+'">'+r.score.toFixed(2)+'%'+(r.hasZTP?'<span class="qa-eval-ztp">ZTP</span>':'')+'</td><td>'+r.mon+'</td><td class="col-link">'+lnk+'</td></tr>';
+    return '<tr><td class="col-score qa-eval-score '+sc+'">'+r.score.toFixed(2)+'%'+(r.hasZTP?'<span class="qa-eval-ztp">ZTP</span>':'')+'</td><td style="font-size:11px;color:var(--text2)">'+((r.date&&r.date!==r.mon)?r.date:r.mon)+'</td><td class="col-link">'+lnk+'</td></tr>';
   }
   var html='<div class="qa-insight-summary">Recent evaluations &nbsp;·&nbsp; Avg <strong>'+pct(avg/100,2)+'</strong></div>';
   if(wins.length) html+='<div class="qa-section-hdr wins-hdr">✅ Wins (≥95%)</div><table class="qa-table">'+wins.map(rowHtml).join('')+'</table>';
