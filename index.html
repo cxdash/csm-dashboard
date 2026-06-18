@@ -1159,7 +1159,14 @@ async function loadFromSheets(){
   render(); // show embedded data immediately while sheets load
   try{
     // Fetch all sheets in parallel — each wrapped so one failure won't block others
-    function safeFetch(url){ return url ? fetch(url,{credentials:'omit',redirect:'follow'}).catch(function(){ return null; }) : Promise.resolve(null); }
+    var cb = '&_cb='+Date.now(); // cache-buster prevents stale redirects
+    function safeFetch(url){
+      if(!url) return Promise.resolve(null);
+      var u = url + cb;
+      return fetch(u,{credentials:'omit',redirect:'follow',cache:'no-store'})
+        .then(function(r){ console.log('[Sheets] fetch ok='+r.ok+' status='+r.status+' url='+url.slice(0,80)); return r; })
+        .catch(function(e){ console.warn('[Sheets] fetch error for '+url.slice(0,80)+': '+e.message); return null; });
+    }
     var resps = await Promise.all([
       safeFetch(SHEETS_AGENT_URL),
       safeFetch(SHEETS_VOLUME_URL),
