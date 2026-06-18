@@ -202,7 +202,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   </div>
 </div>
 
-<div class="upload-zone" id="dropZone">
+<div class="upload-zone" id="dropZone" style="display:none">
   <div class="up-icon">⬆</div>
   <div class="up-text">
     <b>Drop your monthly xlsx here or click Browse</b>
@@ -1208,10 +1208,10 @@ async function loadFromSheets(){
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     var anyLive = resps.some(function(r){ return r && r.ok; });
-    setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · showing embedded data');
+    setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data');
     render(); return;
   }catch(e){ console.warn('Sheets fetch error:', e.message); }
-  setChip('ok','⚠️ Sheets unreachable · showing embedded data');
+  setChip('ok','⚠️ Sheets unreachable · please reload to update data');
   render();
 }
 
@@ -1531,7 +1531,6 @@ function renderEscalations(){
     {val:escs.length,lbl:'Total',c:'n'},{val:open,lbl:'Open',c:'w'},
     {val:resolved,lbl:'Resolved',c:'g'},{val:critical,lbl:'Critical',c:'r'}
   ].map(function(s){ return '<div class="esc-stat"><div class="esc-stat-val" style="color:'+(s.c==='r'?'var(--red)':s.c==='g'?'var(--green)':s.c==='w'?'var(--amber)':'var(--text)')+'">'+s.val+'</div><div class="esc-stat-lbl">'+s.lbl+'</div></div>'; }).join('');
-
   document.getElementById('escBody').innerHTML = escs.map(function(e){
     var overdue = e.status==='Open' && e.daysOpen>e.ttr;
     return '<tr>'
@@ -1565,34 +1564,29 @@ function renderStaffing(){
 
 function renderFlags(){
   var flags = [];
-  if(!D) { document.getElementById('flagsEl').innerHTML='<div class="empty"><strong>No data loaded</strong></div>'; return; }
-
-  // LOB flags
+  if(!D){ document.getElementById('flagsEl').innerHTML='<div class="empty"><strong>No data loaded</strong></div>'; return; }
   D.sla.forEach(function(r){
     if(r.sla<r.slaTgt) flags.push({c:'r', msg:'🔴 '+r.lob+' — SLA '+pct(r.sla)+' is below target of '+pct(r.slaTgt)});
-    if(r.csat!==null && r.csat<r.csatTgt) flags.push({c:'r', msg:'🔴 '+r.lob+' — CSAT '+pct(r.csat)+' is below target of '+pct(r.csatTgt)});
-    if(r.nps!==null && r.nps<r.npsTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — NPS '+r.nps.toFixed(1)+' is below target of '+r.npsTgt});
-    if(r.fcr!==null && r.fcr<r.fcrTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — FCR '+pct(r.fcr)+' is below target of '+pct(r.fcrTgt)});
+    if(r.csat&&r.csat<r.csatTgt) flags.push({c:'r', msg:'🔴 '+r.lob+' — CSAT '+pct(r.csat)+' is below target of '+pct(r.csatTgt)});
+    if(r.nps&&r.nps<r.npsTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — NPS '+r.nps.toFixed(1)+' is below target of '+r.npsTgt});
+    if(r.fcr&&r.fcr<r.fcrTgt) flags.push({c:'w', msg:'⚠️ '+r.lob+' — FCR '+pct(r.fcr)+' is below target of '+pct(r.fcrTgt)});
   });
-
-  // Agent flags
   D.agents.forEach(function(a){
-    if(a.qa!==null && a.qa<a.qaTgt) flags.push({c:'w', msg:'⚠️ '+a.name+' ('+a.lob+') — QA '+pct(a.qa)+' below target '+pct(a.qaTgt)});
-    if(a.aht>a.ahtTgt*1.2) flags.push({c:'w', msg:'⚠️ '+a.name+' ('+a.lob+') — AHT '+a.aht+'min is significantly above '+a.ahtTgt+'min target'});
+    if(a.qa&&a.qaTgt&&a.qa<a.qaTgt) flags.push({c:'w', msg:'⚠️ '+a.name+' ('+a.lob+') — QA '+pct(a.qa)+' below target '+pct(a.qaTgt)});
   });
-
-  // Escalation flags
-  var critical = D.escalations.filter(function(e){ return e.pri==='Critical' && e.status==='Open'; });
+  var critical=D.escalations.filter(function(e){ return e.pri==='Critical'&&e.status==='Open'; });
   if(critical.length) flags.push({c:'r', msg:'🔴 '+critical.length+' Critical escalation'+(critical.length>1?'s':'')+' currently open — '+critical.map(function(e){return e.id;}).join(', ')});
-  var overdue = D.escalations.filter(function(e){ return e.status==='Open' && e.daysOpen>e.ttr; });
+  var overdue=D.escalations.filter(function(e){ return e.status==='Open'&&e.daysOpen>e.ttr; });
   if(overdue.length) flags.push({c:'r', msg:'🔴 '+overdue.length+' escalation'+(overdue.length>1?'s':'')+' breached SLA target resolution time'});
-
   if(!flags.length) flags.push({c:'g', msg:'✅ No critical flags — all key metrics look healthy'});
-
-  document.getElementById('flagsEl').innerHTML = '<div class="alerts">'+flags.map(function(f){ return '<div class="alert '+f.c+'">'+f.msg+'</div>'; }).join('')+'</div>';
+  document.getElementById('flagsEl').innerHTML='<div class="alerts">'+flags.map(function(f){ return '<div class="alert '+f.c+'">'+f.msg+'</div>'; }).join('')+'</div>';
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
+// Show upload zone only when URL contains ?admin (for CSM use only)
+if(window.location.search.indexOf('admin')>=0){
+  document.getElementById('dropZone').style.display='flex';
+}
 loadData();
 </script>
 </body>
