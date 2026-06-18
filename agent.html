@@ -183,6 +183,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
       <div class="sec-bar" style="background:#16a34a"></div>
       <div class="sec-label">QA Evaluations</div>
       <span id="qaInsightMeta" style="font-size:10px;color:var(--text3);margin-left:6px"></span>
+      <span id="qaAuditBadge" style="margin-left:auto;background:#dcfce7;color:#15803d;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;display:none"></span>
     </div>
     <div class="card" id="qaInsightCard" style="display:none">
       <div id="qaInsightList"></div>
@@ -228,7 +229,7 @@ var DEFAULT_DATA = {
   period: 'Jun 2026 MTD',
   agents: [
     // Path Social
-    {name:'Geric Vallar',            lob:'Path Social', tickets:678,  emailTkts:561, chatTkts:117, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  qa:0.901, fcr:0.645, ztpFlag:false, qaRows:[], loginUtil:0.895, aht:6.25, ahtTgt:5.0,
+    {name:'Geric Vallar',            lob:'Path Social', tickets:678,  emailTkts:561, chatTkts:117, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  qa:0.901, fcr:0.6393, ztpFlag:false, qaRows:[], loginUtil:0.895, aht:6.25, ahtTgt:5.0,
      fcrH:[0.52,0.688,0.534,0.577,0.543,0.593,0.572,0.48,0.451,0.6,0.573,0.645],
      qaH:[0.866,0.923,0.887,0.928,0.963,0.919,0.912,0.929,0.908,0.93,0.895,0.901],
      avgDayH:[36,93,51,43,52,64,60,46,43,51,60,56]},
@@ -473,7 +474,7 @@ function renderMetrics(a){
     },
     {
       label: 'FCR',
-      display: a.fcr !== null ? pct(a.fcr) : '—',
+      display: a.fcr !== null ? pct(a.fcr,2) : '—',
       tgt: '≥ 60% good · 55%+ acceptable',
       status: a.fcr === null ? 'neutral' : (a.fcr >= 0.60 ? 'met' : a.fcr >= 0.55 ? 'caution' : 'miss'),
       badge: a.fcr !== null,
@@ -556,13 +557,13 @@ function renderCoaching(a){
   if(a.fcr !== null){
     if(a.fcr >= 0.60){
       flags.push({c:'g', icon:'🔁', title:'FCR — Good',
-        detail:'Your first contact resolution rate of '+pct(a.fcr)+' meets the ≥ 60% good threshold.'});
+        detail:'Your first contact resolution rate of '+pct(a.fcr,2)+' meets the ≥ 60% good threshold.'});
     } else if(a.fcr >= 0.55){
       flags.push({c:'w', icon:'🔁', title:'FCR — acceptable but below target',
-        detail:'Current: '+pct(a.fcr)+' · Good: ≥ 60% · Acceptable floor: 55%. Work to close tickets fully on first contact to improve FCR.'});
+        detail:'Current: '+pct(a.fcr,2)+' · Good: ≥ 60% · Acceptable floor: 55%. Work to close tickets fully on first contact to improve FCR.'});
     } else {
       flags.push({c:'r', icon:'🔁', title:'FCR below acceptable threshold',
-        detail:'Current: '+pct(a.fcr)+' · Acceptable minimum: 55%. Check that customer issues are fully resolved before closing tickets.'});
+        detail:'Current: '+pct(a.fcr,2)+' · Acceptable minimum: 55%. Check that customer issues are fully resolved before closing tickets.'});
     }
   }
 
@@ -581,6 +582,15 @@ function renderCoaching(a){
     flags.unshift({c:'g', icon:'🌟', title:'All metrics on target!',
       detail:'You are meeting all performance targets this month. Excellent work!'});
   }
+
+  // Sort: highlights (green) first, then caution (amber), then coaching (red)
+  // ZTP stays pinned — it was pushed first so sort is stable for equal priority
+  var order = {g:0, w:1, r:2};
+  // Separate ZTP (already first) from the rest before sorting
+  var ztp   = flags.filter(function(f){ return f.icon==='🚨'; });
+  var rest  = flags.filter(function(f){ return f.icon!=='🚨'; });
+  rest.sort(function(a,b){ return (order[a.c]||0)-(order[b.c]||0); });
+  flags = ztp.concat(rest);
 
   document.getElementById('coachList').innerHTML =
     '<div class="coach-list">'+flags.map(function(f){
@@ -692,32 +702,38 @@ function qaCoachingTip(score, ztpFlag){
   var gap = Math.round((0.90 - score) * 100);
   var tip = '';
   if(score >= 0.85){
-    tip = 'Just ' + gap + ' point' + (gap!==1?'s':'') + ' below passing. Open the evaluation and identify the specific deduction — often a single missed step in SOP adherence or resolution accuracy. Correcting one habit can push this to a pass.';
+    tip = 'Just ' + gap + ' pt' + (gap!==1?'s':'') + ' below passing — check the evaluation for the specific deduction. Often a single SOP step or resolution detail.';
   } else if(score >= 0.75){
-    tip = gap + ' points below passing. Review the evaluation for deduction categories. Common gaps at this range: SOP adherence, incomplete resolution, or tone/empathy markers. Schedule a self-review or peer feedback session.';
+    tip = gap + ' pts below passing. Review deduction categories: SOP adherence, incomplete resolution, tone/empathy. Consider a peer feedback session.';
   } else if(score >= 0.65){
-    tip = 'Significant gap (' + gap + ' points). Priority areas to revisit: SOP adherence, communication quality, and resolution completeness. Recommend reviewing the QA rubric and comparing against a high-scoring evaluation.';
+    tip = 'Significant gap (' + gap + ' pts). Revisit SOP adherence, communication quality, and resolution completeness. Compare against a high-scoring evaluation.';
   } else {
-    tip = 'Critical — ' + gap + ' points below passing. Immediate coaching required. Review SOP guidelines from scratch, identify recurring failure patterns across evaluations, and set a 2-week improvement target with your manager.';
+    tip = 'Critical (' + gap + ' pts below). Immediate coaching required — revisit SOP guidelines and set a 2-week improvement target with your manager.';
   }
-  if(ztpFlag) tip += ' ⚠️ This evaluation has a Zero Tolerance Policy flag — a ZTP violation overrides the score and requires mandatory review.';
+  if(ztpFlag) tip += ' ⚠ ZTP flag requires mandatory review.';
   return tip;
 }
 
 function renderQAInsights(agent){
-  var hdr  = document.getElementById('qaInsightHdr');
-  var card = document.getElementById('qaInsightCard');
-  var list = document.getElementById('qaInsightList');
-  var meta = document.getElementById('qaInsightMeta');
+  var hdr   = document.getElementById('qaInsightHdr');
+  var card  = document.getElementById('qaInsightCard');
+  var list  = document.getElementById('qaInsightList');
+  var meta  = document.getElementById('qaInsightMeta');
+  var badge = document.getElementById('qaAuditBadge');
 
   var rows = agent.qaRows || [];
   if(rows.length === 0 && agent.qa === null){
-    hdr.style.display  = 'none';
-    card.style.display = 'none';
+    hdr.style.display = card.style.display = 'none';
+    if(badge) badge.style.display = 'none';
     return;
   }
-  hdr.style.display  = '';
-  card.style.display = '';
+  hdr.style.display = card.style.display = '';
+
+  // MTD audit count badge
+  if(badge){
+    badge.textContent = rows.length + ' MTD audit' + (rows.length!==1?'s':'');
+    badge.style.display = rows.length > 0 ? '' : 'none';
+  }
 
   if(rows.length === 0){
     meta.textContent = '';
@@ -725,80 +741,63 @@ function renderQAInsights(agent){
     return;
   }
 
-  var winRows  = rows.filter(function(r){ return r.score >= 0.90; }).sort(function(a,b){ return b.score-a.score; });
-  var oppRows  = rows.filter(function(r){ return r.score <  0.90; }).sort(function(a,b){ return a.score-b.score; });
-  var topWins  = winRows.filter(function(r){ return r.score >= 0.95; }).length;
-  var avg      = rows.reduce(function(s,r){ return s+r.score; },0) / rows.length;
+  var winRows = rows.filter(function(r){ return r.score >= 0.90; }).sort(function(a,b){ return b.score-a.score; });
+  var oppRows = rows.filter(function(r){ return r.score <  0.90; }).sort(function(a,b){ return a.score-b.score; });
+  var avg     = rows.reduce(function(s,r){ return s+r.score; }, 0) / rows.length;
+  var topWins = rows.filter(function(r){ return r.score >= 0.95; }).length;
 
-  meta.textContent = rows.length + ' evaluation' + (rows.length!==1?'s':'')
-    + ' · ' + winRows.length + ' win' + (winRows.length!==1?'s':'')
-    + (oppRows.length > 0 ? ' · ' + oppRows.length + ' opportunit' + (oppRows.length!==1?'ies':'y') : '');
+  meta.textContent = winRows.length + ' pass' + (winRows.length!==1?'es':'') +
+    (oppRows.length > 0 ? ' · ' + oppRows.length + ' opportunit' + (oppRows.length!==1?'ies':'y') : ' · all passing') +
+    ' · avg ' + pct(avg);
 
-  // Overall insight banner
-  var insightClass = oppRows.length === 0 ? '' : (oppRows.length >= rows.length/2 ? 'needs-work' : 'mixed');
-  var insightText  = '';
-  if(oppRows.length === 0 && topWins === rows.length){
-    insightText = '🌟 All evaluations scored 95%+ this period — outstanding quality work!';
-  } else if(oppRows.length === 0){
-    insightText = '✅ All evaluations passed (≥90%). Avg: ' + pct(avg) + '. Push for 95%+ to reach excellence tier.';
-  } else if(oppRows.length === rows.length){
-    insightText = '⚠️ All evaluations fell below the 90% passing threshold. Avg: ' + pct(avg) + '. Open each evaluation link, review the deductions, and focus on SOP adherence as a first priority.';
-  } else {
-    insightText = 'Avg: ' + pct(avg) + ' — ' + winRows.length + ' passing, ' + oppRows.length
-      + ' below threshold. Review each opportunity evaluation and target the specific deduction categories before the next QA cycle.';
-  }
+  // Insight banner
+  var iCls = oppRows.length === 0 ? '' : (oppRows.length >= rows.length/2 ? 'needs-work' : 'mixed');
+  var iText = oppRows.length === 0 && topWins === rows.length
+    ? '🌟 All ' + rows.length + ' evaluations scored 95%+ — outstanding quality!'
+    : oppRows.length === 0
+      ? '✅ All ' + rows.length + ' evaluations passed (≥90%). Avg ' + pct(avg) + '. Target 95%+ for excellence.'
+      : oppRows.length === rows.length
+        ? '⚠️ All ' + rows.length + ' evaluations below 90%. Avg ' + pct(avg) + '. Open each link and review deductions — prioritise SOP adherence.'
+        : 'Avg ' + pct(avg) + ' · ' + winRows.length + ' passing, ' + oppRows.length + ' below threshold.';
 
-  // Build wins table
-  function buildRow(r){
+  // Row builder
+  function row(r, i, showTip){
     var sc  = r.score;
-    var cls = sc >= 0.95 ? 'win' : 'ok';
-    var ztp = r.ztpFlag ? '<span class="qa-eval-ztp" style="margin-left:6px">ZTP</span>' : '';
+    var cls = sc >= 0.95 ? 'win' : sc >= 0.90 ? 'ok' : sc >= 0.75 ? 'opp' : 'crit';
+    var ztp = r.ztpFlag ? ' <span class="qa-eval-ztp">ZTP</span>' : '';
     var lnk = r.link
-      ? '<a href="'+r.link+'" target="_blank" rel="noopener">View →</a>'
-      : '<span style="color:var(--text3);font-size:11px">—</span>';
+      ? '<a href="' + r.link + '" target="_blank" rel="noopener">View →</a>'
+      : '<span style="color:var(--text3)">—</span>';
+    var tipHtml = '';
+    if(showTip){
+      var tipCls = sc < 0.75 ? 'crit-coaching' : '';
+      tipHtml = '<tr><td colspan="3" style="padding:0 0 5px 36px;border:none">'
+        + '<div class="qa-coaching ' + tipCls + '">💡 ' + qaCoachingTip(sc, r.ztpFlag) + '</div>'
+        + '</td></tr>';
+    }
     return '<tr>'
-      +'<td class="col-score qa-eval-score '+cls+'">'+pct(sc)+ztp+'</td>'
-      +'<td class="col-link">'+lnk+'</td>'
-      +'</tr>';
+      + '<td style="color:var(--text3);font-size:11px;width:24px;padding-left:18px">' + (i+1) + '.</td>'
+      + '<td class="col-score qa-eval-score ' + cls + '">' + pct(sc) + ztp + '</td>'
+      + '<td class="col-link">' + lnk + '</td>'
+      + '</tr>' + tipHtml;
   }
 
-  function buildOppRow(r){
-    var sc   = r.score;
-    var cls  = sc >= 0.75 ? 'opp' : 'crit';
-    var ztp  = r.ztpFlag ? '<span class="qa-eval-ztp" style="margin-left:6px">ZTP</span>' : '';
-    var lnk  = r.link
-      ? '<a href="'+r.link+'" target="_blank" rel="noopener">View →</a>'
-      : '<span style="color:var(--text3);font-size:11px">—</span>';
-    var tip  = qaCoachingTip(sc, r.ztpFlag);
-    var tipCls = sc < 0.75 ? 'crit-coaching' : '';
-    return '<tr>'
-      +'<td class="col-score qa-eval-score '+cls+'">'+pct(sc)+ztp+'</td>'
-      +'<td class="col-link">'+lnk+'</td>'
-      +'</tr>'
-      +'<tr><td colspan="2" style="padding:0 0 4px 0;border:none">'
-      +'<div class="qa-coaching '+tipCls+'">💡 '+tip+'</div>'
-      +'</td></tr>';
-  }
-
-  var winsHtml = '';
+  var wHtml = '', oHtml = '';
   if(winRows.length){
-    winsHtml = '<div class="qa-section-hdr wins-hdr">✓ Wins &amp; Passes <span style="font-weight:400;margin-left:4px">('+winRows.length+')</span></div>'
-      +'<table class="qa-table"><tbody>'
-      + winRows.map(buildRow).join('')
-      +'</tbody></table>';
+    wHtml = '<div class="qa-section-hdr wins-hdr">✓ Passes &amp; Wins <span style="font-weight:400;opacity:.7">(' + winRows.length + ')</span></div>'
+      + '<table class="qa-table" style="table-layout:fixed;width:100%"><colgroup><col style="width:28px"><col style="width:80px"><col></colgroup><tbody>'
+      + winRows.map(function(r,i){ return row(r,i,false); }).join('')
+      + '</tbody></table>';
   }
-
-  var oppsHtml = '';
   if(oppRows.length){
-    oppsHtml = (winRows.length ? '<div class="qa-section-divider"></div>' : '')
-      +'<div class="qa-section-hdr opps-hdr">⚠ Opportunities <span style="font-weight:400;margin-left:4px">('+oppRows.length+')</span></div>'
-      +'<table class="qa-table"><tbody>'
-      + oppRows.map(buildOppRow).join('')
-      +'</tbody></table>';
+    oHtml = (winRows.length ? '<div class="qa-section-divider"></div>' : '')
+      + '<div class="qa-section-hdr opps-hdr">⚠ Opportunities <span style="font-weight:400;opacity:.7">(' + oppRows.length + ')</span></div>'
+      + '<table class="qa-table" style="table-layout:fixed;width:100%"><colgroup><col style="width:28px"><col style="width:80px"><col></colgroup><tbody>'
+      + oppRows.map(function(r,i){ return row(r,i,true); }).join('')
+      + '</tbody></table>';
   }
 
-  list.innerHTML = '<div class="qa-insight-box '+insightClass+'">'+insightText+'</div>'
-    + winsHtml + oppsHtml;
+  list.innerHTML = '<div class="qa-insight-box ' + iCls + '">' + iText + '</div>' + wHtml + oHtml;
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1003,10 +1002,10 @@ function parseFCRSheet(text){
     var meta = byAgent[key];
     var mdata = byAgent[key];
     var fcrH = months12.map(function(mk){
-      var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*1000)/1000 : null;
+      var v=mdata[mk]; return (v&&v[1]>0) ? Math.round(v[0]/v[1]*10000)/10000 : null;
     });
     var lv = mdata[latestMon];
-    var fcr = (lv&&lv[1]>0) ? Math.round(lv[0]/lv[1]*1000)/1000 : null;
+    var fcr = (lv&&lv[1]>0) ? Math.round(lv[0]/lv[1]*10000)/10000 : null;
     result.push({name:meta.name, email:meta.email, fcr:fcr, fcrH:fcrH});
   }
   return result;

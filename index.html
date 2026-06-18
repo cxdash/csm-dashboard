@@ -444,7 +444,7 @@ var DEFAULT_DATA = {
     {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:null,fcrTgt:0.75,jun:626,  may:1998},
   ],
   agents: [
-    {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.901,qaTgt:0.90,csat:null,fcr:0.645,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
+    {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.901,qaTgt:0.90,csat:null,fcr:0.6393,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
     {name:'Zheraine',              lob:'Path Social', tickets:649, aht:6.02,ahtTgt:5.0,qa:0.974,qaTgt:0.90,csat:null,fcr:0.659,occ:0.89,adh:0.97, avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  avgLogin:'8h 12m',loginUtil:0.889,productivity:0.89,fulfilledByResp:614},
     {name:'Abigail Aquino',        lob:'Path Social', tickets:618, aht:5.97,ahtTgt:5.0,qa:0.961,qaTgt:0.90,csat:null,fcr:0.622,occ:0.81,adh:0.97, avgCustDay:58, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'7h 44m',loginUtil:0.896,productivity:0.81,fulfilledByResp:587},
     {name:'Benedict Catbagan',     lob:'Path Social', tickets:682, aht:5.58,ahtTgt:5.0,qa:0.934,qaTgt:0.90,csat:null,fcr:0.579,occ:0.81,adh:0.97, avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  avgLogin:'8h 9m', loginUtil:0.909,productivity:0.78,fulfilledByResp:654},
@@ -1223,11 +1223,11 @@ function parseFCRSheetIdx(text){
     var ag=byAgent[k]; var mons=ag.m;
     // MTD: current month only
     var lv=mons[latestMon];
-    var fcrMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*1000)/1000:null;
+    var fcrMTD=(lv&&lv[1]>0)?Math.round(lv[0]/lv[1]*10000)/10000:null;
     // 12m: weighted aggregate across all months
     var t12=[0,0];
     months12.forEach(function(mk){var v=mons[mk];if(v&&v[1]>0){t12[0]+=v[0];t12[1]+=v[1];}});
-    var fcr12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*1000)/1000:null;
+    var fcr12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*10000)/10000:null;
     result.push({name:ag.name,email:ag.email,fcrMTD:fcrMTD,fcr12m:fcr12m});
   }
   return result;
@@ -1665,7 +1665,7 @@ function renderAgents(){
       ? '<span style="font-weight:700;color:'+(qaMet?'var(--green)':'var(--red)')+'">'+pct(a.qa)+'</span>'
       : '<span style="color:var(--text3)">—</span>';
     var fcrCell = a.fcr!==null
-      ? '<span style="font-weight:700;color:'+(fcrMet?'var(--green)':'var(--red)')+'">'+pct(a.fcr)+'</span>'
+      ? '<span style="font-weight:700;color:'+(fcrMet?'var(--green)':'var(--red)')+'">'+pct(a.fcr,2)+'</span>'
       : '<span style="color:var(--text3)">—</span>';
     var codeStr = AGENT_CODE_MAP[a.name] || '—';
     return '<tr>'
@@ -1693,7 +1693,7 @@ function renderAgents(){
     +'<td class="r">'+Math.round(avgProd*100)+'%</td>'
     +'<td class="r">'+Math.round(avgByResp)+'</td>'
     +'<td class="r">'+(avgQA!==null?pct(avgQA):'<span style="color:var(--text3)">—</span>')+'</td>'
-    +'<td class="r">'+(avgFCR!==null?pct(avgFCR):'<span style="color:var(--text3)">—</span>')+'</td></tr>';
+    +'<td class="r">'+(avgFCR!==null?pct(avgFCR,2):'<span style="color:var(--text3)">—</span>')+'</td></tr>';
 }
 
 function setAgLOB(lob){ agLOB=lob; renderAgents(); }
