@@ -393,7 +393,11 @@ var CHARTS = {};
 // Chat AHT, QA, FCR: leave blank if no data
 // ESC / Part Time: enter TRUE or leave blank
 //
-var SHEETS_AGENT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';  // Gladly Agent Reporting — "Data" tab
+var SHEETS_AGENT_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';  // Gladly Agent Reporting — "Data" tab
+// Step 1: In the same Google Sheet → open the "VolDA" tab
+// Step 2: File → Share → Publish to web → select "VolDA" tab → CSV → Publish
+// Step 3: Paste the URL below and push to GitHub
+var SHEETS_VOLUME_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=271621784&single=true&output=csv';  // VolDA tab
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -850,6 +854,119 @@ function parseGladlyCSV(text){
   return { mtd: buildAgents(mtdMap), all: buildAgents(allMap) };
 }
 
+// ── VOLDA SHEET PARSER ───────────────────────────────────────────────────────
+// Parses the VolDA Google Sheet tab (published as CSV).
+// Finds "MoM" section for volume and "Within/Exceeded SLA Count" for SLA.
+// Returns { inbound:{lobs,months,values}, sla:[{lob,sla,jun,may}] }
+function parseVolDaSheet(text){
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  function csvRow(line){
+    var r=[],c='',q=false;
+    for(var i=0;i<line.length;i++){
+      if(line[i]==='"'){q=!q;}
+      else if(line[i]===','&&!q){r.push(c);c='';}
+      else c+=line[i];
+    }
+    r.push(c); return r;
+  }
+  var rows = lines.map(csvRow);
+  function parseNum(s){ return parseFloat((s||'').replace(/,/g,'').trim())||0; }
+  function findSection(name){
+    for(var i=0;i<rows.length;i++){
+      if(rows[i][0]&&rows[i][0].trim()===name) return i;
+    }
+    return -1;
+  }
+
+  // MoM row → merged LOB (key = lowercase no-spaces)
+  var MOM_LOB = {
+    'pathsocial':'Path Social','crowdignite':'Crowd Ignite',
+    'highsocial':'High Social','cloutify':'High Social',
+    'plixi':'Plixi','goread':'Goread','viralpush':'Goread',
+    'followspy':'Follows','recentfollow':'Follows'
+  };
+  // Inbox row → LOB
+  function inboxLOB(name){
+    var n = name.toLowerCase().replace(/\s+/g,'');
+    if(n.startsWith('path'))          return 'Path Social';
+    if(n.startsWith('crowdignite'))   return 'Crowd Ignite';
+    if(n.startsWith('highsocial'))    return 'High Social';
+    if(n.startsWith('cloutify'))      return 'High Social';
+    if(n.startsWith('plixi'))         return 'Plixi';
+    if(n.startsWith('goread'))        return 'Goread';
+    if(n.startsWith('viralpush'))     return 'Goread';
+    if(n.startsWith('followspy'))     return 'Follows';
+    if(n.startsWith('recentfollow'))  return 'Follows';
+    return null;
+  }
+
+  var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+
+  // ── MoM volume ──────────────────────────────────────────────────────────────
+  var momIdx = findSection('MoM');
+  if(momIdx<0) return null;
+  var momHdr = rows[momIdx];
+  // months in reverse-chron: ['Jun-2026','May-2026',...]
+  var months = [];
+  for(var i=1;i<momHdr.length;i++){
+    if(momHdr[i]&&momHdr[i].trim()) months.push(momHdr[i].trim());
+  }
+  if(!months.length) return null;
+  var N = months.length;
+
+  var lobVol = {};
+  LOB_ORDER.forEach(function(l){ lobVol[l]=new Array(N).fill(0); });
+  for(var rv=momIdx+1;rv<rows.length;rv++){
+    if(!rows[rv][0]||!rows[rv][0].trim()) break;
+    var key = rows[rv][0].trim().toLowerCase().replace(/\s+/g,'');
+    var lob = MOM_LOB[key];
+    if(!lob) continue;
+    for(var cv=1;cv<=N;cv++) lobVol[lob][cv-1]+=parseNum(rows[rv][cv]);
+  }
+
+  // Chart: last 6 months, chronological (months[0]=newest → slice & reverse)
+  var showN = Math.min(6,N);
+  var chartLabels = months.slice(0,showN).reverse().map(function(m){ return m.split('-')[0]; });
+  var chartVals = {};
+  LOB_ORDER.forEach(function(l){ chartVals[l]=lobVol[l].slice(0,showN).reverse(); });
+
+  // ── Within / Exceeded SLA counts ────────────────────────────────────────────
+  var withinIdx   = findSection('Within SLA Count');
+  var exceededIdx = findSection('Exceeded SLA Count');
+  var withinMap   = {};
+  var exceededMap = {};
+  LOB_ORDER.forEach(function(l){ withinMap[l]=new Array(N).fill(0); exceededMap[l]=new Array(N).fill(0); });
+
+  function extractSLA(secIdx, map){
+    if(secIdx<0) return;
+    var hdr = rows[secIdx];
+    var colMo = [];
+    for(var j=1;j<hdr.length;j++) colMo.push((hdr[j]||'').trim());
+    for(var rs=secIdx+1;rs<rows.length;rs++){
+      if(!rows[rs][0]||!rows[rs][0].trim()) break;
+      var lob2 = inboxLOB(rows[rs][0].trim());
+      if(!lob2) continue;
+      for(var cs=1;cs<rows[rs].length;cs++){
+        var moIdx = months.indexOf(colMo[cs-1]);
+        if(moIdx>=0) map[lob2][moIdx]+=parseNum(rows[rs][cs]);
+      }
+    }
+  }
+  extractSLA(withinIdx,  withinMap);
+  extractSLA(exceededIdx,exceededMap);
+
+  // Current month = months[0]; prev = months[1]
+  var slaResult = LOB_ORDER.map(function(lob){
+    var w=withinMap[lob][0], e=exceededMap[lob][0];
+    return { lob:lob, sla:(w+e)>0?w/(w+e):null, jun:lobVol[lob][0], may:N>1?lobVol[lob][1]:0 };
+  });
+
+  return {
+    inbound:{ lobs:LOB_ORDER, months:chartLabels, values:LOB_ORDER.map(function(l){ return chartVals[l]; }) },
+    sla: slaResult
+  };
+}
+
 // ── DATA LOADING ──────────────────────────────────────────────────────────────
 function setChip(cls, text){
   var chip = document.getElementById('fileChip');
@@ -876,25 +993,47 @@ async function loadFromSheets(){
   setChip('wait','⏳ Fetching from Google Sheets…');
   D = JSON.parse(JSON.stringify(DEFAULT_DATA));
   try{
-    var resp = await fetch(SHEETS_AGENT_URL);
-    if(resp.ok){
-      var result = parseGladlyCSV(await resp.text());
-      if(result){
-        if(result.mtd.length)  D.agents    = result.mtd;
-        if(result.all.length)  D.agents12m = result.all;
-        var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-        setChip('ok','🔗 Sheets live · '+ts);
-        render();
-        return;
+    // Fetch agent and volume sheets in parallel
+    var fetches = [SHEETS_AGENT_URL ? fetch(SHEETS_AGENT_URL) : Promise.resolve(null)];
+    if(SHEETS_VOLUME_URL) fetches.push(fetch(SHEETS_VOLUME_URL));
+    var resps = await Promise.all(fetches);
+
+    // Agent reporting (MTD + 12M)
+    if(resps[0] && resps[0].ok){
+      var agResult = parseGladlyCSV(await resps[0].text());
+      if(agResult){
+        if(agResult.mtd.length)  D.agents    = agResult.mtd;
+        if(agResult.all.length)  D.agents12m = agResult.all;
       }
     }
+
+    // Volume + SLA (VolDA tab)
+    if(SHEETS_VOLUME_URL && resps[1] && resps[1].ok){
+      var volResult = parseVolDaSheet(await resps[1].text());
+      if(volResult){
+        D.inbound = volResult.inbound;
+        // Merge: update sla/jun/may, preserve targets + csat/nps/fcr from DEFAULT_DATA
+        volResult.sla.forEach(function(vs){
+          var def = D.sla.find(function(s){ return s.lob===vs.lob; });
+          if(def){
+            if(vs.sla!==null) def.sla = vs.sla;
+            def.jun = vs.jun;
+            def.may = vs.may;
+          }
+        });
+      }
+    }
+
+    var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    setChip('ok','🔗 Sheets live · '+ts);
+    render(); return;
   }catch(e){ console.warn('Sheets fetch error:', e.message); }
   setChip('ok','⚠️ Sheets unreachable · showing embedded data');
   render();
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
