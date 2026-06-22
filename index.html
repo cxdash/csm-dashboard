@@ -423,6 +423,8 @@ var SHEETS_QA_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQ
 var SHEETS_QA2_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1209230234&single=true&output=csv';  // Goread QA tab
 var SHEETS_QA3_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeQRp3nRG-wmesyi92QfWskCdCMXNGivUeMES44LpZ3YWx_QHY5ux2t7RwT_n-5GcZYBrh8q2B0y2c/pub?gid=1110854295&single=true&output=csv';  // Plixi+HighSocial+Cloutify QA tab
 var SHEETS_CONTACT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=763263392&single=true&output=csv';  // ContactExport — f[3]=Channel, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year
+var SHEETS_ESC_PS_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqCVNRgfLzFCjTNv5ADwkdPxY9GYawEKGmUWbs0Lru0Uv7eahb86rVoqqzl665QRMNt5gFXXYQmSbK/pub?gid=1155672077&single=true&output=csv';  // Path Social escalations: f[0]=MonthName f[1]=Date f[3]=Agent f[4]=Company f[7]=Reason f[10]=Specialist f[11]=Priority f[12]=Status f[14]=Category
+var SHEETS_ESC_CI_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS8wiWEgBmssCoYYSmGQnst46C9CG5Jeekjx81XfCvTnQdFBxONfzMVjGg6deddFoZkn-2N2w4vdLm1/pub?gid=670231814&single=true&output=csv';  // Crowd Ignite escalations: f[0]=Date f[1]=Category f[2]=RootCause f[6]=Plan f[11]=Agent
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -536,8 +538,8 @@ var DEFAULT_DATA = {
     {id:'CI-011',date:'6/9/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'flvibesugc@gmail.com',           plan:'Standard Annual',   reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Approved Refund'},
     {id:'CI-012',date:'6/9/2026', lob:'Crowd Ignite',agent:'Faye',   customer:'mariskadub@vodamail.co.za',      plan:'Standard Annual',   reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Refunded'},
     {id:'CI-013',date:'6/14/2026',lob:'Crowd Ignite',agent:'Jennilen',customer:'denali252@gmail.com',           plan:'Standard Monthly',  reason:'Refund',   specialist:'Janelle Decena',priority:'Medium',status:'Resolved',action:'Denied refund request'},
-    {id:'PS-001',date:'06/15/2026',lob:'Path Social', agent:'Abigail',customer:'exxportband@gmail.com',          plan:'Expert Annual',     reason:'Dispute/Chargeback Threats',specialist:'Pherbia',priority:'High',status:'Resolved',action:''},
-    {id:'PS-002',date:'06/15/2026',lob:'Path Social', agent:'Benedict',customer:'sabrinadupontricard@hotmail.com',plan:'Elite Lite',       reason:'Post Renewal Charge',       specialist:'Pherbia',priority:'Medium',status:'Resolved',action:''},
+    {id:'PS-001',date:'06/15/2026',lob:'Path Social', agent:'Abigail', customer:'exxportband@gmail.com',           plan:'Expert Annual',  category:'Billing',   reason:'Dispute/Chargeback Threats',specialist:'Pherbia',priority:'High',  status:'Resolved',action:''},
+    {id:'PS-002',date:'06/15/2026',lob:'Path Social', agent:'Benedict',customer:'sabrinadupontricard@hotmail.com', plan:'Elite Lite',     category:'Billing',   reason:'Post Renewal Charge',       specialist:'Pherbia',priority:'Medium',status:'Resolved',action:''},
   ],
   staffing: [
     {lob:'Path Social', hc:25,openReqs:0,adh:0.969,adhTgt:0.90,abs:0.03,absTgt:0.05,util:0.71,aht:4.7},
@@ -1381,6 +1383,91 @@ function parseQASheetIdx(text, text2, text3){
   return result;
 }
 
+function parseEscalations(psText, ciText){
+  // Returns array of escalation objects for current calendar month
+  var result = [];
+  var now = new Date();
+  var curYear = now.getFullYear();
+  var curMon  = now.getMonth()+1; // 1-12
+  var monNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var curMonName = monNames[curMon-1].toLowerCase();
+  var idxPS=0, idxCI=0;
+
+  function companyToLOB(c){
+    c=(c||'').toLowerCase().replace(/\s/g,'');
+    if(c==='path'||c==='')  return 'Path Social';
+    if(c==='crowd')         return 'Crowd Ignite';
+    if(c==='recentfollow'||c==='followspy') return 'Follows';
+    return 'Path Social';
+  }
+
+  // ── Path Social sheet ──────────────────────────────────────────────────────
+  // Row 0: junk, Row 1: headers, Row 2+: data
+  // f[0]=MonthName, f[1]=Date(MM/DD/YYYY), f[3]=Agent, f[4]=Company,
+  // f[7]=Reason, f[10]=Specialist, f[11]=Priority, f[12]=Status, f[14]=Category
+  if(psText){
+    var psLines = psText.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    for(var i=2;i<psLines.length;i++){
+      var f=parseCSVRow(psLines[i]);
+      if(!f||!f[1]||!f[1].trim()) continue;
+      var mon=(f[0]||'').trim().toLowerCase();
+      var dateStr=(f[1]||'').trim();
+      var dateParts=dateStr.split('/');
+      if(dateParts.length!==3) continue;
+      var rowYear=parseInt(dateParts[2]);
+      if(mon!==curMonName||rowYear!==curYear) continue;
+      idxPS++;
+      var status=(f[12]||'').trim()||'Open';
+      var priority=(f[11]||'').trim()||'Medium';
+      var lob=companyToLOB((f[4]||'').trim());
+      result.push({
+        id:(lob==='Path Social'?'PS-':'OTH-')+String(idxPS).padStart(3,'0'),
+        date:dateStr, lob:lob,
+        agent:(f[3]||'').trim(),
+        customer:(f[5]||'').trim(),
+        plan:(f[6]||'').trim(),
+        category:(f[14]||'').trim()||(f[7]||'').trim(),
+        reason:(f[7]||'').trim(),
+        specialist:(f[10]||'').trim(),
+        priority:priority, status:status,
+        action:(f[9]||'').trim()
+      });
+    }
+  }
+
+  // ── Crowd Ignite sheet ─────────────────────────────────────────────────────
+  // Row 0: junk, Row 1: headers, Row 2+: data
+  // f[0]=Date(M/D/YYYY), f[1]=Category, f[2]=RootCause, f[4]=Email,
+  // f[6]=Plan, f[10]=Resolution, f[11]=Agent
+  if(ciText){
+    var ciLines = ciText.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    for(var j=2;j<ciLines.length;j++){
+      var g=parseCSVRow(ciLines[j]);
+      if(!g||!g[0]||!g[0].trim()) continue;
+      var ciDate=(g[0]||'').trim();
+      var ciParts=ciDate.split('/');
+      if(ciParts.length!==3) continue;
+      if(parseInt(ciParts[0])!==curMon||parseInt(ciParts[2])!==curYear) continue;
+      idxCI++;
+      var ciStatus=(g[10]||'').trim()?'Resolved':'Open';
+      result.push({
+        id:'CI-'+String(idxCI).padStart(3,'0'),
+        date:ciDate, lob:'Crowd Ignite',
+        agent:(g[11]||'').trim(),
+        customer:(g[4]||'').trim(),
+        plan:(g[6]||'').trim(),
+        category:(g[1]||'').trim(),
+        reason:(g[2]||'').trim(),
+        specialist:'',
+        priority:'Medium', status:ciStatus,
+        action:(g[10]||'').trim()
+      });
+    }
+  }
+
+  return result;
+}
+
 async function loadFromSheets(){
   // Start from last cached live data (if any) so the screen shows real data during reload
   try{ var _c=localStorage.getItem(STORAGE_KEY); D=_c?JSON.parse(_c):JSON.parse(JSON.stringify(DEFAULT_DATA)); }
@@ -1405,7 +1492,9 @@ async function loadFromSheets(){
       safeFetch(SHEETS_QA_URL),
       safeFetch(SHEETS_QA2_URL),
       safeFetch(SHEETS_QA3_URL),
-      safeFetch(SHEETS_CONTACT_URL)
+      safeFetch(SHEETS_CONTACT_URL),
+      safeFetch(SHEETS_ESC_PS_URL),
+      safeFetch(SHEETS_ESC_CI_URL)
     ]);
 
     // Agent reporting (MTD + 12M)
@@ -1515,6 +1604,14 @@ async function loadFromSheets(){
       }
     }
 
+    // Escalations — resps[8]=Path Social, resps[9]=Crowd Ignite
+    var escPsText  = (SHEETS_ESC_PS_URL && resps[8] && resps[8].ok)  ? await resps[8].text()  : null;
+    var escCiText  = (SHEETS_ESC_CI_URL && resps[9] && resps[9].ok)  ? await resps[9].text()  : null;
+    if(escPsText || escCiText){
+      var escResult = parseEscalations(escPsText, escCiText);
+      if(escResult && escResult.length) D.escalations = escResult;
+    }
+
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     var anyLive = resps.some(function(r){ return r && r.ok; });
     // Cache live data to localStorage so next load shows last known good data
@@ -1527,7 +1624,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL || SHEETS_CONTACT_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL || SHEETS_CONTACT_URL || SHEETS_ESC_PS_URL || SHEETS_ESC_CI_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
@@ -1759,13 +1856,12 @@ function renderCharts(){
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
       scales:{
         x:{grid:{display:false}, ticks:{font:{size:10},maxRotation:30}},
-        y:{min:50, max:100, grid:{color:'#f1f5f9'}, ticks:{font:{size:11},callback:function(v){return v+'%';}}}
+        y:{min:0, max:100, grid:{color:'#f1f5f9'}, ticks:{font:{size:11},callback:function(v){return v+'%';}}}
       }
     }
   });
 }
 
-// ── RENDER: AGENTS ────────────────────────────────────────────────────────────
 function renderAgents(){
   // Tabs
   var tabs = document.getElementById('agTabs');
@@ -1782,7 +1878,7 @@ function renderAgents(){
   if(agSort.col>=0){
     var sk = sortKeys[agSort.col];
     agents = agents.slice().sort(function(a,b){
-      var v1=a[sk]!==null&&a[sk]!==undefined?a[sk]:( typeof a[sk]==='string'?'':0);
+      var v1=a[sk]!==null&&a[sk]!==undefined?a[sk]:(typeof a[sk]==='string'?'':0);
       var v2=b[sk]!==null&&b[sk]!==undefined?b[sk]:(typeof b[sk]==='string'?'':0);
       return (typeof v1==='string'?v1.localeCompare(v2):(v1-v2))*agSort.dir;
     });
@@ -1804,7 +1900,7 @@ function renderAgents(){
     Object.keys(AGENT_CODES).forEach(function(code){ codeMap[AGENT_CODES[code]]=code; });
   }
 
-  function nullPct(v,dec,tgt,cls){
+  function nullPct(v,dec,tgt){
     if(v===null||v===undefined) return '<span style="color:var(--text3)">—</span>';
     var met = tgt!==null&&tgt!==undefined ? v>=tgt : null;
     var col = met===null?'var(--text1)':(met?'var(--green)':'var(--red)');
@@ -1814,13 +1910,10 @@ function renderAgents(){
     if(v===null||v===undefined) return '<span style="color:var(--text3)">—</span>';
     return neutral?String(v):'<span style="font-weight:600">'+v+'</span>';
   }
-
-  // helper: average of non-null values in array
   function avgNonNull(arr){ var v=arr.filter(function(x){return x!==null&&x!==undefined&&!isNaN(x);}); return v.length?v.reduce(function(s,x){return s+x;},0)/v.length:null; }
 
   var rows = agents.map(function(a){
     var qaMet=a.qa!==null&&a.qa!==undefined&&a.qa>=(a.qaTgt||0.90);
-    var fcrMet=a.fcr!==null&&a.fcr!==undefined&&a.fcr>=0.75;
     var ahtMet=a.aht&&a.ahtTgt?a.aht<=a.ahtTgt:null;
     var code=codeMap[a.name]||'—';
     return '<tr>'
@@ -1842,6 +1935,145 @@ function renderAgents(){
 
   // Team average row helpers
   function _parseTimeStr(s){var m=0,sec=0;var mm=(s||'').match(/(\d+)m/);if(mm)m=parseInt(mm[1]);var sm=(s||'').match(/(\d+)s/);if(sm)sec=parseInt(sm[1]);return m*60+sec;}
+  function _fmtSecs(n){if(isNaN(n)||n===null)return '—';n=Math.round(n);var m=Math.floor(n/60),s=n%60;return m+'m '+(s<10?'0':'')+s+'s';}
+  function _parseHM(s){if(!s)return null;var m=s.match(/(\d+)h\s*(\d+)m/);return m?parseInt(m[1])*60+parseInt(m[2]):null;}
+  function _fmtHM(mins){if(mins===null||isNaN(mins))return '—';var h=Math.floor(mins/60),m=Math.round(mins%60);return h+'h '+(m<10?'0':'')+m+'m';}
+
+  var avgableAgents = agents.filter(function(a){return !a.esc && !a.partTime;});
+  var avgDay      = avgNonNull(avgableAgents.filter(function(a){return a.avgCustDay>0;}).map(function(a){return a.avgCustDay;}));
+  var avgUtil     = avgNonNull(agents.filter(function(a){return a.loginUtil!=null;}).map(function(a){return a.loginUtil;}));
+  var avgProd     = avgNonNull(agents.filter(function(a){return a.productivity!=null;}).map(function(a){return a.productivity;}));
+  var avgByResp   = agents.reduce(function(s,a){return s+(a.fulfilledByResp||0);},0);
+  var avgQA       = avgNonNull(agents.filter(function(a){return a.qa!=null;}).map(function(a){return a.qa;}));
+  var avgFCR      = avgNonNull(agents.filter(function(a){return a.fcr!=null;}).map(function(a){return a.fcr;}));
+  var avgMissed   = avgNonNull(agents.filter(function(a){return a.missedChats!=null;}).map(function(a){return a.missedChats;}));
+  var avgAHTSecs  = avgNonNull(agents.filter(function(a){return a.handleCust;}).map(function(a){return _parseTimeStr(a.handleCust);}));
+  var avgChatSecs = avgNonNull(agents.filter(function(a){return a.chatAHT;}).map(function(a){return _parseTimeStr(a.chatAHT);}));
+  var avgLoginMins= avgNonNull(agents.filter(function(a){return a.avgLogin;}).map(function(a){return _parseHM(a.avgLogin);}));
+
+  var avgRow = '<tr style="background:var(--bg2);font-weight:700;border-top:2px solid var(--border)">'
+    +'<td colspan="3" style="color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Team Average</td>'
+    +'<td class="r">'+(avgDay!==null?Math.round(avgDay):'—')+'</td>'
+    +'<td class="r">'+(avgAHTSecs!==null?_fmtSecs(avgAHTSecs):'—')+'</td>'
+    +'<td class="r">'+(avgChatSecs!==null?_fmtSecs(avgChatSecs):'—')+'</td>'
+    +'<td class="r">'+(avgMissed!==null?Math.round(avgMissed):'—')+'</td>'
+    +'<td class="r">'+(avgLoginMins!==null?_fmtHM(avgLoginMins):'—')+'</td>'
+    +'<td class="r" style="border-right:2px solid var(--border)">'+nullPct(avgUtil,1,0.85)+'</td>'
+    +'<td class="r">'+nullPct(avgProd,1,null)+'</td>'
+    +'<td class="r">'+(avgByResp||'—')+'</td>'
+    +'<td class="r">'+nullPct(avgQA,2,0.90)+'</td>'
+    +'<td class="r">'+nullPct(avgFCR,2,0.75)+'</td>'
+    +'</tr>';
+
+  document.getElementById('agBody').innerHTML = rows + avgRow;
+}
+
+function renderEscalations(){
+  var escs = D.escalations || [];
+  var total    = escs.length;
+  var open     = escs.filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');}).length;
+  var resolved = escs.filter(function(e){return /resolv/i.test(e.status||'');}).length;
+  var critical = escs.filter(function(e){return /high|critical/i.test(e.priority||'');}).length;
+
+  document.getElementById('escStats').innerHTML =
+    '<div class="esc-stat"><div class="esc-stat-val">'+total+'</div><div class="esc-stat-lbl">Total MTD</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(open>0?'var(--amber)':'var(--green)')+'">'+open+'</div><div class="esc-stat-lbl">Open</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--green)">'+resolved+'</div><div class="esc-stat-lbl">Resolved</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(critical>0?'var(--red)':'var(--green)')+'">'+critical+'</div><div class="esc-stat-lbl">High Priority</div></div>';
+
+  if(!total){
+    document.getElementById('escBody').innerHTML='<tr><td colspan="9"><div class="empty">No escalations this period</div></td></tr>';
+    return;
+  }
+
+  var sorted = escs.slice().sort(function(a,b){
+    var aOpen = /(open|review|monitoring)/i.test(a.status||'');
+    var bOpen = /(open|review|monitoring)/i.test(b.status||'');
+    if(aOpen!==bOpen) return aOpen?-1:1;
+    return (b.date||'').localeCompare(a.date||'');
+  });
+
+  var priorityColor = {'High':'var(--red)','Critical':'var(--red)','Medium':'var(--amber)','Low':'var(--text3)'};
+
+  document.getElementById('escBody').innerHTML = sorted.map(function(e){
+    var pri = (e.priority||'Medium');
+    var priCol = priorityColor[pri]||'var(--text3)';
+    var isOpen = /(open|review|monitoring)/i.test(e.status||'');
+    var statusCol = isOpen?'var(--amber)':'var(--green)';
+    var cat = (e.category||e.reason||'—').replace(/\n/g,' ');
+    return '<tr>'
+      +'<td><code style="font-size:10px;color:var(--text3)">'+(e.id||'—')+'</code></td>'
+      +'<td><span style="'+pillClass(e.lob)+'">'+e.lob+'</span></td>'
+      +'<td style="color:var(--text2)">'+e.date+'</td>'
+      +'<td>'+cat+'</td>'
+      +'<td style="color:'+priCol+';font-weight:600">'+pri+'</td>'
+      +'<td>'+(e.agent||'—')+'</td>'
+      +'<td class="r" style="color:var(--text3)">—</td>'
+      +'<td style="color:'+statusCol+';font-weight:600">'+(e.status||'Open')+'</td>'
+      +'<td class="r" style="color:var(--text3)">—</td>'
+      +'</tr>';
+  }).join('');
+}
+
+function renderStaffing(){
+  var sf = D.staffing || [];
+  if(!sf.length){
+    document.getElementById('staffGrid').innerHTML='<div class="card" style="grid-column:1/-1"><div class="empty">No staffing data</div></div>';
+    return;
+  }
+  document.getElementById('staffGrid').innerHTML = sf.map(function(s){
+    var color = LOB_COLORS[s.lob]||'#64748b';
+    var adhOk = s.adh>=(s.adhTgt||0.90);
+    var absOk = s.abs<=(s.absTgt||0.05);
+    return '<div class="staff-card" style="border-top-color:'+color+'">'
+      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">'
+      +'<span class="ldot" style="background:'+color+'"></span>'
+      +'<span style="font-weight:700;font-size:12px">'+s.lob+'</span>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">'
+      +'<div><div style="font-size:10px;color:var(--text3)">Headcount</div><div style="font-weight:800;font-size:20px;line-height:1.1">'+s.hc+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3)">Open Reqs</div><div style="font-weight:800;font-size:20px;line-height:1.1;color:'+(s.openReqs>0?'var(--amber)':'var(--text1)')+'">'+s.openReqs+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3)">Adherence</div><div style="font-weight:600;font-size:13px;color:'+(adhOk?'var(--green)':'var(--red)')+'">'+pct(s.adh,1)+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3)">Absenteeism</div><div style="font-weight:600;font-size:13px;color:'+(absOk?'var(--green)':'var(--red)')+'">'+pct(s.abs,1)+'</div></div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function renderFlags(){
+  var flags = [];
+  (D.sla||[]).forEach(function(s){
+    if(s.sla<(s.slaTgt||0.80)) flags.push({type:'warn',msg:s.lob+' SLA below target ('+pct(s.sla,1)+' vs '+pct(s.slaTgt||0.80,0)+' target)'});
+  });
+  var lowQA = (D.agents||[]).filter(function(a){return a.qa!=null&&a.qa<(a.qaTgt||0.90);});
+  if(lowQA.length) flags.push({type:'warn',msg:lowQA.length+' agent'+(lowQA.length>1?'s':'')+' below QA target: '+lowQA.map(function(a){return a.name.split(' ')[0];}).join(', ')});
+  var lowFCR = (D.agents||[]).filter(function(a){return a.fcr!=null&&a.fcr<0.75;});
+  if(lowFCR.length) flags.push({type:'info',msg:lowFCR.length+' agent'+(lowFCR.length>1?'s':'')+' below FCR 75%: '+lowFCR.map(function(a){return a.name.split(' ')[0];}).join(', ')});
+  var openEsc = (D.escalations||[]).filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');});
+  if(openEsc.length) flags.push({type:'warn',msg:openEsc.length+' escalation'+(openEsc.length>1?'s':'')+' still open or in review'});
+
+  if(!flags.length){
+    document.getElementById('flagsEl').innerHTML='<div style="color:var(--green);font-weight:600;padding:8px 0">✅ No active flags — all metrics on track</div>';
+    return;
+  }
+  document.getElementById('flagsEl').innerHTML = flags.map(function(f){
+    var icon = f.type==='warn'?'⚠️':'ℹ️';
+    return '<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">'+icon+' '+f.msg+'</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
+gsEl').innerHTML='<div style="color:var(--green);font-weight:600;padding:8px 0">✅ No active flags — all metrics on track</div>';
+    return;
+  }
+  document.getElementById('flagsEl').innerHTML = flags.map(function(f){
+    var icon = f.type==='warn'?'⚠️':'ℹ️';
+    return '<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">'+icon+' '+f.msg+'</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
   function _fmtSecs(n){var m=Math.floor(n/60),sec=Math.round(n%60);return m+'m '+(sec<10?'0':'')+sec+'s';}
   function _parseHM(s){var h=0,m=0;var hm=(s||'').match(/(\d+)h/);if(hm)h=parseInt(hm[1]);var mm=(s||'').match(/(\d+)m/);if(mm)m=parseInt(mm[1]);return h*60+m;}
   function _fmtHM(mins){var h=Math.floor(mins/60),m=Math.round(mins%60);return h+'h '+(m<10?'0':'')+m+'m';}
