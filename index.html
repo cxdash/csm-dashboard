@@ -587,6 +587,23 @@ var agLOB = 'Path Social', agSort = {col:3, dir:-1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 
+function setAgLOB(lob){ agLOB = lob; renderAgents(); }
+function setAgPeriod(p){
+  agPeriod = p;
+  document.getElementById('btnMTD').className = 'view-btn'+(p==='mtd'?' on':'');
+  document.getElementById('btn12M').className = 'view-btn'+(p==='12m'?' on':'');
+  renderAgents();
+}
+function setAgSort(col){
+  if(agSort.col===col) agSort.dir *= -1; else { agSort.col=col; agSort.dir=-1; }
+  renderAgents();
+}
+// Wire search input after DOM ready
+document.addEventListener('DOMContentLoaded', function(){
+  var s = document.getElementById('agSearch');
+  if(s) s.addEventListener('input', function(){ agSearch = this.value.toLowerCase().trim(); renderAgents(); });
+});
+
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function pct(v,dec){ dec=dec||1; return (v*100).toFixed(dec)+'%'; }
 function parseTime(s){ if(!s) return null; var m=s.match(/(\d+)m\s*(\d+)s/); return m ? parseInt(m[1])*60+parseInt(m[2]) : null; }
@@ -1881,6 +1898,8 @@ function renderAgents(){
   document.querySelectorAll('#agTable thead th').forEach(function(th,i){
     th.classList.remove('asc','desc');
     if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc');
+    th.style.cursor='pointer';
+    th.onclick = function(){ setAgSort(i); };
   });
 
   if(!agents.length){
@@ -1980,21 +1999,21 @@ function renderEscalations(){
   document.getElementById('escStats').innerHTML =
     // Row 1: Total MTD (full width)
     '<div class="esc-stat"><div class="esc-stat-val">'+total+'</div><div class="esc-stat-lbl">Total MTD</div></div>'
-    // Row 2: Path + CI breakdown
-    +'<div class="esc-stats-row">'
-    +'<div class="esc-stat"><div class="esc-stat-val">'+psEscs.length+'</div><div class="esc-stat-lbl">Path Social</div></div>'
-    +'<div class="esc-stat"><div class="esc-stat-val">'+ciEscs.length+'</div><div class="esc-stat-lbl">Crowd Ignite</div></div>'
-    +'</div>'
-    // Row 3: Resolution + Open
-    +'<div class="esc-stats-row">'
-    +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--green)">'+resRate+'</div><div class="esc-stat-lbl">Resolution</div></div>'
-    +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(open>0?'var(--amber)':'var(--green)')+'">'+open+'</div><div class="esc-stat-lbl">Open</div></div>'
-    +'</div>'
-    // Row 4: Saves (successful retention)
+    // Row 2: Saves (successful retention)
     +'<div class="esc-stat" style="border-color:var(--green)">'
     +'<div class="esc-stat-val" style="color:var(--green)">'+savePct+'</div>'
     +'<div class="esc-stat-lbl">Saves (Retention)</div>'
     +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+savedCount+' converted</div>'
+    +'</div>'
+    // Row 3: Path + CI breakdown
+    +'<div class="esc-stats-row">'
+    +'<div class="esc-stat"><div class="esc-stat-val">'+psEscs.length+'</div><div class="esc-stat-lbl">Path Social</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val">'+ciEscs.length+'</div><div class="esc-stat-lbl">Crowd Ignite</div></div>'
+    +'</div>'
+    // Row 4: Resolution + Open
+    +'<div class="esc-stats-row">'
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--green)">'+resRate+'</div><div class="esc-stat-lbl">Resolution</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(open>0?'var(--amber)':'var(--green)')+'">'+open+'</div><div class="esc-stat-lbl">Open</div></div>'
     +'</div>';
 
   // Helpers
