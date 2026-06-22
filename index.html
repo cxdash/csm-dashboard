@@ -237,6 +237,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="kpi"><div class="kpi-lbl">Avg NPS</div><div class="kpi-val" id="kNPS">—</div><div class="kpi-sub">Target ≥ 30</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg FCR</div><div class="kpi-val" id="kFCR">—</div><div class="kpi-sub">Target ≥ 75%</div></div>
     <div class="kpi"><div class="kpi-lbl">Active Agents</div><div class="kpi-val" id="kAgents">—</div><div class="kpi-sub">This period</div></div>
+    <div class="kpi"><div class="kpi-lbl">Avg Wait Time</div><div class="kpi-val" id="kWait">—</div><div class="kpi-sub">Queued-to-fulfilled</div></div>
   </div>
 
   <!-- ══ 2 — LOB PERFORMANCE ══ -->
@@ -426,6 +427,7 @@ var SHEETS_QA3_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeQRp3
 var DEFAULT_DATA = {
   period: 'June 2026',
   _filename: 'ContactExport_AgentData_June2026.csv',
+  avgWait: null,
   inbound: {
     lobs: ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'],
     months: ['Jan','Feb','Mar','Apr','May','Jun'],
@@ -1205,7 +1207,7 @@ function parseFCRSheetIdx(text){
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push(d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1));}
   var latestMon=months12[months12.length-1];
   // byAgent: key=email(col I) or name; months nested under .m
-  var byAgent={};
+  var byAgent={}, waitSum=0, waitCount=0;
   for(var i=hIdx+1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
     if(f.length<8) continue;
@@ -1224,6 +1226,8 @@ function parseFCRSheetIdx(text){
     else if(!byAgent[key].name&&name) byAgent[key].name=name;
     if(!byAgent[key].m[mon]) byAgent[key].m[mon]=[0,0];
     byAgent[key].m[mon][0]+=rate; byAgent[key].m[mon][1]++;
+    // f[11] = Queued-to-Fulfilled (sec) — collect for current month only
+    if(mon===latestMon){var wt=parseFloat(f[11]);if(!isNaN(wt)&&wt>0){waitSum+=wt;waitCount++;}}
   }
   // Consolidate: merge name-keyed entries into email-keyed entries for same agent
   var _n2e={};
@@ -1241,7 +1245,7 @@ function parseFCRSheetIdx(text){
     var fcr12m=(t12[1]>0)?Math.round(t12[0]/t12[1]*10000)/10000:null;
     result.push({name:ag.name,email:ag.email,fcrMTD:fcrMTD,fcr12m:fcr12m});
   }
-  return result;
+  return {agents:result, avgWait: waitCount>0 ? waitSum/waitCount : null};
 }
 function parseQASheetIdx(text, text2, text3){
   var hIdx=0;
@@ -1392,7 +1396,8 @@ async function loadFromSheets(){
     // FCR sheet
     if(SHEETS_FCR_URL && resps[3] && resps[3].ok){
       var fcrResult = parseFCRSheetIdx(await resps[3].text());
-      if(fcrResult) fcrResult.forEach(function(lv){
+      if(fcrResult && fcrResult.avgWait!==null) D.avgWait = fcrResult.avgWait;
+      if(fcrResult) fcrResult.agents.forEach(function(lv){
         var resolved = resolveSheetName(lv.name);
         function findAgent(arr){
           return arr && arr.find(function(a){
@@ -1504,6 +1509,10 @@ function renderKPIs(){
   setKPI('kNPS', aNps.toFixed(1), cls(aNps,30));
   setKPI('kFCR', pct(aFcr), cls(aFcr,0.75));
   setKPI('kAgents', d.agents.length, 'n');
+  if(d.avgWait!==null&&d.avgWait!==undefined){
+    var _wm=Math.floor(d.avgWait/60), _ws=Math.round(d.avgWait%60);
+    setKPI('kWait', _wm+'m '+(_ws<10?'0':'')+_ws+'s', 'n');
+  }
 }
 
 function setKPI(id, val, c){
@@ -1734,23 +1743,37 @@ function renderAgents(){
       +'</tr>';
   }).join('');
 
+  // Team average row helpers
+  function _parseTimeStr(s){var m=0,sec=0;var mm=(s||'').match(/(\d+)m/);if(mm)m=parseInt(mm[1]);var sm=(s||'').match(/(\d+)s/);if(sm)sec=parseInt(sm[1]);return m*60+sec;}
+  function _fmtSecs(n){var m=Math.floor(n/60),sec=Math.round(n%60);return m+'m '+(sec<10?'0':'')+sec+'s';}
+  function _parseHM(s){var h=0,m=0;var hm=(s||'').match(/(\d+)h/);if(hm)h=parseInt(hm[1]);var mm=(s||'').match(/(\d+)m/);if(mm)m=parseInt(mm[1]);return h*60+m;}
+  function _fmtHM(mins){var h=Math.floor(mins/60),m=Math.round(mins%60);return h+'h '+(m<10?'0':'')+m+'m';}
   // Team average row
-  var avgDay   = avgNonNull(agents.filter(function(a){return !a.esc&&!a.partTime;}).map(function(a){return a.avgCustDay;}));
-  var avgLogin = avgNonNull(agents.map(function(a){return a.loginUtil;}));
-  var avgProd  = avgNonNull(agents.map(function(a){return a.productivity;}));
-  var avgQA    = avgNonNull(agents.map(function(a){return a.qa;}));
-  var avgFCR   = avgNonNull(agents.map(function(a){return a.fcr;}));
-  var avgMissed= avgNonNull(agents.map(function(a){return a.missedChats;}));
-  var avgResp  = agents.reduce(function(s,a){return s+(a.fulfilledByResp||0);},0);
+  var avgDay     = avgNonNull(agents.filter(function(a){return !a.esc&&!a.partTime;}).map(function(a){return a.avgCustDay;}));
+  var avgUtil    = avgNonNull(agents.map(function(a){return a.loginUtil;}));
+  var avgProd    = avgNonNull(agents.map(function(a){return a.productivity;}));
+  var avgQA      = avgNonNull(agents.map(function(a){return a.qa;}));
+  var avgFCR     = avgNonNull(agents.map(function(a){return a.fcr;}));
+  var avgMissed  = avgNonNull(agents.map(function(a){return a.missedChats;}));
+  var avgResp    = agents.reduce(function(s,a){return s+(a.fulfilledByResp||0);},0);
+  // AHT (email): average aht (decimal minutes), format as "Xm Ys"
+  var avgAHTMins = avgNonNull(agents.filter(function(a){return a.aht&&a.aht>0;}).map(function(a){return a.aht;}));
+  var avgAHTStr  = avgAHTMins!==null ? _fmtSecs(avgAHTMins*60) : '—';
+  // Chat AHT: parse "Xm Ys" strings → seconds, average, format back
+  var avgChatSecs= avgNonNull(agents.filter(function(a){return a.chatAHT;}).map(function(a){return _parseTimeStr(a.chatAHT);}));
+  var avgChatStr = avgChatSecs!==null ? _fmtSecs(avgChatSecs) : '—';
+  // Avg Login: parse "Xh Ym" strings → minutes, average, format back
+  var avgLoginMins= avgNonNull(agents.filter(function(a){return a.avgLogin;}).map(function(a){return _parseHM(a.avgLogin);}));
+  var avgLoginStr = avgLoginMins!==null ? _fmtHM(avgLoginMins) : '—';
   var s = 'font-weight:700;font-size:11px;color:var(--text2);background:var(--bg2)';
   var avgRow = '<tr style="'+s+';border-top:2px solid var(--border)">'
     +'<td colspan="3" style="'+s+'">Team Average</td>'
     +'<td class="r" style="'+s+'">'+(avgDay!==null?Math.round(avgDay):'—')+'</td>'
-    +'<td class="r" style="'+s+'">—</td>'
-    +'<td class="r" style="'+s+'">—</td>'
+    +'<td class="r" style="'+s+'">'+avgAHTStr+'</td>'
+    +'<td class="r" style="'+s+'">'+avgChatStr+'</td>'
     +'<td class="r" style="'+s+'">'+(avgMissed!==null?avgMissed.toFixed(1):'—')+'</td>'
-    +'<td class="r" style="'+s+'">—</td>'
-    +'<td class="r" style="'+s+';border-right:2px solid var(--border)">'+(avgLogin!==null?(avgLogin*100).toFixed(1)+'%':'—')+'</td>'
+    +'<td class="r" style="'+s+'">'+avgLoginStr+'</td>'
+    +'<td class="r" style="'+s+';border-right:2px solid var(--border)">'+(avgUtil!==null?(avgUtil*100).toFixed(1)+'%':'—')+'</td>'
     +'<td class="r" style="'+s+'">'+(avgProd!==null?(avgProd*100).toFixed(1)+'%':'—')+'</td>'
     +'<td class="r" style="'+s+'">'+avgResp+'</td>'
     +'<td class="r" style="'+s+'">'+(avgQA!==null?(avgQA*100).toFixed(2)+'%':'—')+'</td>'
