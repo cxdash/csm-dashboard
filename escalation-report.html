@@ -585,18 +585,16 @@ function render(d){
   document.getElementById('sv3').textContent = d.saves.savesConverted.length + (d.saves.hiddenSaves.length?' + '+d.saves.hiddenSaves.length+' hidden':'');
   document.getElementById('sv4').textContent = saveRatePct;
 
-  var OFFER_LABELS = [
-    'Refund Difference','Refund 50% + Downgrade','Applied Credit',
-    'Applied Credit + 1 Month Free','Applied 1 Month Free','Applied 1 Month Free Addon',
-    'Applied Discount 50%x3','Applied Discount 50%x1','Applied Discount 20%x3','Applied Discount 20%x1'
-  ];
   var totalSaves = d.saves.savesConverted.length || 1;
-  var offerRows = OFFER_LABELS.map(function(lbl){
-    var cnt = d.saves.offerCounts[lbl]||0;
-    return {lbl:lbl, cnt:cnt, pct:cnt?((cnt/totalSaves)*100).toFixed(1)+'%':'—'};
-  }).filter(function(r){return r.cnt>0;});
+  // Build offer rows from actual data — sorted by count desc, no hardcoded label list
+  var offerRows = Object.keys(d.saves.offerCounts)
+    .sort(function(a,b){ return d.saves.offerCounts[b]-d.saves.offerCounts[a]; })
+    .map(function(lbl){
+      var cnt = d.saves.offerCounts[lbl];
+      return {lbl:lbl||'(no action recorded)', cnt:cnt, pct:((cnt/totalSaves)*100).toFixed(1)+'%'};
+    });
   if(d.saves.hiddenSaves.length){
-    offerRows.push({lbl:'Retention (within Refund Escalation) ↳ hidden save',cnt:d.saves.hiddenSaves.length,pct:(d.saves.hiddenSaves.length/totalSaves*100).toFixed(1)+'%'});
+    offerRows.push({lbl:'Retention (within Refund Escalation) — hidden save',cnt:d.saves.hiddenSaves.length,pct:(d.saves.hiddenSaves.length/totalSaves*100).toFixed(1)+'%'});
   }
   var grandTotal = offerRows.reduce(function(s,r){return s+r.cnt;},0);
   document.getElementById('offerBody').innerHTML = (offerRows.length ?
