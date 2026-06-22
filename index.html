@@ -120,7 +120,7 @@ td{padding:7px 10px;vertical-align:middle}
 .lob-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .lob-card-name{font-size:13px;font-weight:700}
 .lob-card-vol{font-size:10px;color:var(--text3);margin-top:2px}
-.lob-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lob-metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .lob-m-lbl{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
 .lob-m-val{font-size:15px;font-weight:800}
 .lob-m-val.g{color:var(--green)}.lob-m-val.r{color:var(--red)}
@@ -1619,10 +1619,11 @@ function renderLOB(){
       +'<span class="b '+(allMet?'g':'r')+'">'+(allMet?'✓ SLA Met':'⚠ Action Needed')+'</span></div>'
       +'<div class="lob-metrics">'
       +lobMetric('SLA', pct(r.sla), pct(r.slaTgt), slaMet)
-      +lobMetricNull('CSAT', r.csat!=null?pct(r.csat):'—', pct(r.csatTgt), r.csat!=null?csatMet:null)
-      +(r.avgWait!=null?lobMetricWait(r.avgWait, r.avgWaitPrev):'')
-      +lobMetricNull('NPS', r.nps!=null?String(r.nps):'—', String(r.npsTgt), r.nps!=null?npsMet:null)
+      +(r.avgWait!=null?lobMetricWait(r.avgWait, r.avgWaitPrev):'<div></div>')
       +lobMetricNull('FCR', r.fcr!=null?pct(r.fcr):'—', pct(r.fcrTgt), r.fcr!=null?fcrMet:null)
+      +'<div style="grid-column:1/-1;border-top:1px solid var(--border);margin:2px 0"></div>'
+      +lobMetricNull('CSAT', r.csat!=null?pct(r.csat):'—', pct(r.csatTgt), r.csat!=null?csatMet:null)
+      +lobMetricNull('NPS', r.nps!=null?String(r.nps):'—', String(r.npsTgt), r.nps!=null?npsMet:null)
       +'</div></div>';
   }).join('');
 }
@@ -1647,17 +1648,15 @@ function lobMetricNull(label, val, tgt, met){
 function lobMetricWait(secs, prevSecs){
   function _fmt(s){ var h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return (h>0?h+'h ':'')+m+'m'; }
   var val=_fmt(secs);
-  var sub=prevSecs!=null ? 'prev '+_fmt(prevSecs) : 'MTD';
   var delta=prevSecs!=null ? Math.round((secs-prevSecs)/prevSecs*100) : null;
   var improved=delta!==null&&delta<0; // lower wait = better
   var arrow=delta!==null?(improved?'↓':'↑'):'';
-  var dStr=delta!==null?' ('+arrow+(Math.abs(delta))+'%)':'';
-  return '<div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:6px;margin-top:2px;display:flex;align-items:baseline;justify-content:space-between">'
-    +'<div><div class="lob-m-lbl">Avg Wait Time</div>'
-    +'<div class="lob-m-val" style="font-size:13px;color:var(--text)">'+val+'</div></div>'
-    +'<div style="text-align:right"><div class="lob-m-tgt">'+sub+'</div>'
-    +(delta!==null?'<div style="font-size:11px;font-weight:700;color:'+(improved?'var(--green)':'var(--amber)')+'">'+arrow+Math.abs(delta)+'%</div>':'')
-    +'</div></div>';
+  var prevStr=prevSecs!=null?'prev '+_fmt(prevSecs):'MTD';
+  return '<div><div class="lob-m-lbl">Avg Wait</div>'
+    +'<div class="lob-m-val" style="font-size:14px;color:var(--text)">'+val+'</div>'
+    +'<div class="lob-m-tgt">'+prevStr+'</div>'
+    +(delta!==null?'<div style="font-size:10px;font-weight:700;color:'+(improved?'var(--green)':'var(--amber)')+'">'+arrow+Math.abs(delta)+'%</div>':'')
+    +'</div>';
 }
 
 function setChartView(v){
