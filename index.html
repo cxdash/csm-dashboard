@@ -335,16 +335,8 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
       <div class="esc-stat"><div class="esc-stat-val">—</div><div class="esc-stat-lbl">Resolved</div></div>
       <div class="esc-stat"><div class="esc-stat-val">—</div><div class="esc-stat-lbl">Critical</div></div>
     </div>
-    <div class="card" style="margin:0">
-      <div style="overflow-x:auto">
-        <table id="escTable">
-          <thead><tr>
-            <th>Ticket</th><th>LOB</th><th>Date</th><th>Category</th>
-            <th>Priority</th><th>Agent</th><th>Days Open</th><th>Status</th><th class="r">CSAT</th>
-          </tr></thead>
-          <tbody id="escBody"><tr><td colspan="9"><div class="empty"><strong>Upload xlsx to see escalations</strong></div></td></tr></tbody>
-        </table>
-      </div>
+    <div class="card" style="margin:0;padding:0">
+      <table id="escTable" style="width:100%"><tbody id="escBody"></tbody></table>
     </div>
   </div>
 
@@ -1972,48 +1964,102 @@ function renderAgents(){
 function renderEscalations(){
   var escs = D.escalations || [];
   var total    = escs.length;
-  var open     = escs.filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');}).length;
+  var psEscs   = escs.filter(function(e){return /path/i.test(e.lob);});
+  var ciEscs   = escs.filter(function(e){return /crowd/i.test(e.lob);});
   var resolved = escs.filter(function(e){return /resolv/i.test(e.status||'');}).length;
-  var critical = escs.filter(function(e){return /high|critical/i.test(e.priority||'');}).length;
+  var open     = escs.filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');}).length;
+  var resRate  = total ? (resolved/total*100).toFixed(1)+'%' : '—';
 
   document.getElementById('escStats').innerHTML =
     '<div class="esc-stat"><div class="esc-stat-val">'+total+'</div><div class="esc-stat-lbl">Total MTD</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val">'+psEscs.length+'</div><div class="esc-stat-lbl">Path Social</div></div>'
+    +'<div class="esc-stat"><div class="esc-stat-val">'+ciEscs.length+'</div><div class="esc-stat-lbl">Crowd Ignite</div></div>'
     +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(open>0?'var(--amber)':'var(--green)')+'">'+open+'</div><div class="esc-stat-lbl">Open</div></div>'
-    +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--green)">'+resolved+'</div><div class="esc-stat-lbl">Resolved</div></div>'
-    +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(critical>0?'var(--red)':'var(--green)')+'">'+critical+'</div><div class="esc-stat-lbl">High Priority</div></div>';
+    +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--green)">'+resRate+'</div><div class="esc-stat-lbl">Resolution</div></div>';
+
+  // Helpers
+  function cnt(arr, pat, field){ return arr.filter(function(e){return pat.test((e[field]||''));}).length; }
+  function cntOr(arr, pat){ return arr.filter(function(e){return pat.test((e.category||'')+(e.reason||''));}).length; }
+
+  // Per-company category counts (PS)
+  var psRefunds      = cntOr(psEscs, /refund/i);
+  var psCB           = cntOr(psEscs, /dispute|chargeback|cb/i);
+  var psRetention    = cntOr(psEscs, /retention|manual save|cancell/i);
+  var psService      = cntOr(psEscs, /service issue|dashboard|login|access|block/i);
+  var psFulfillment  = cntOr(psEscs, /fulfillment|fulfilment|stalled|follower loss/i);
+  var psBilling      = cntOr(psEscs, /failed payment|billing|charge inquiry|invoice/i);
+  var psResolved     = psEscs.filter(function(e){return /resolv/i.test(e.status||'');}).length;
+  var psOpen         = psEscs.filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');}).length;
+
+  // CI counts
+  var ciCats = {};
+  ciEscs.forEach(function(e){ var k=(e.category||e.reason||'Other'); ciCats[k]=(ciCats[k]||0)+1; });
+  var topCiCat = Object.keys(ciCats).sort(function(a,b){return ciCats[b]-ciCats[a];})[0]||'—';
+  var ciResolved = ciEscs.filter(function(e){return /resolv/i.test(e.status||'');}).length;
+
+  // Top driver across all escalations
+  var reasonMap = {};
+  escs.forEach(function(e){ var k=(e.reason||e.category||'Other'); reasonMap[k]=(reasonMap[k]||0)+1; });
+  var topReason = Object.keys(reasonMap).sort(function(a,b){return reasonMap[b]-reasonMap[a];})[0]||'—';
+  var topCount = reasonMap[topReason]||0;
+
+  // Build summary panel (replaces table)
+  var escTableEl = document.getElementById('escTable');
+  if(!escTableEl) return;
 
   if(!total){
-    document.getElementById('escBody').innerHTML='<tr><td colspan="9"><div class="empty">No escalations this period</div></td></tr>';
+    escTableEl.outerHTML = '<div id="escTable" style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No escalations this period — <a href="escalation-report.html" style="color:var(--accent)">View Full Report →</a></div>';
     return;
   }
 
-  var sorted = escs.slice().sort(function(a,b){
-    var aOpen = /(open|review|monitoring)/i.test(a.status||'');
-    var bOpen = /(open|review|monitoring)/i.test(b.status||'');
-    if(aOpen!==bOpen) return aOpen?-1:1;
-    return (b.date||'').localeCompare(a.date||'');
-  });
+  function row(label, val, note, color){
+    return '<div style="display:flex;align-items:baseline;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:12px;color:var(--text2);min-width:180px">'+label+'</span>'
+      +'<span style="font-family:\'DM Mono\',monospace;font-size:15px;font-weight:600;color:'+(color||'var(--text1)')+'">'+val+'</span>'
+      +(note?'<span style="font-size:11px;color:var(--text3);margin-left:4px">'+note+'</span>':'')
+      +'</div>';
+  }
 
-  var priorityColor = {'High':'var(--red)','Critical':'var(--red)','Medium':'var(--amber)','Low':'var(--text3)'};
+  function col(title, color, rowsHtml){
+    return '<div style="flex:1;min-width:220px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+color+';margin-bottom:6px">'+title+'</div>'
+      +rowsHtml
+      +'</div>';
+  }
 
-  document.getElementById('escBody').innerHTML = sorted.map(function(e){
-    var pri = (e.priority||'Medium');
-    var priCol = priorityColor[pri]||'var(--text3)';
-    var isOpen = /(open|review|monitoring)/i.test(e.status||'');
-    var statusCol = isOpen?'var(--amber)':'var(--green)';
-    var cat = (e.category||e.reason||'—').replace(/\n/g,' ');
-    return '<tr>'
-      +'<td><code style="font-size:10px;color:var(--text3)">'+(e.id||'—')+'</code></td>'
-      +'<td><span style="'+pillClass(e.lob)+'">'+e.lob+'</span></td>'
-      +'<td style="color:var(--text2)">'+e.date+'</td>'
-      +'<td>'+cat+'</td>'
-      +'<td style="color:'+priCol+';font-weight:600">'+pri+'</td>'
-      +'<td>'+(e.agent||'—')+'</td>'
-      +'<td class="r" style="color:var(--text3)">—</td>'
-      +'<td style="color:'+statusCol+';font-weight:600">'+(e.status||'Open')+'</td>'
-      +'<td class="r" style="color:var(--text3)">—</td>'
-      +'</tr>';
-  }).join('');
+  var psBlock = col('Path Social', '#3b82f6',
+    row('Total escalations', psEscs.length) +
+    row('Resolved / Open', psResolved+' / '+psOpen, psOpen>0?'open items':'', psOpen>0?'var(--amber)':undefined) +
+    row('Refunds', psRefunds, psRefunds>10?'⚠ elevated':undefined, psRefunds>10?'var(--amber)':undefined) +
+    row('Chargebacks / Disputes', psCB, psCB>15?'⚠ high':undefined, psCB>15?'var(--red)':undefined) +
+    row('Cancellations / Retention', psRetention) +
+    row('Service Issues', psService) +
+    row('Fulfillment', psFulfillment) +
+    row('Billing / Payments', psBilling)
+  );
+
+  var ciBlock = col('Crowd Ignite', '#8b5cf6',
+    row('Total escalations', ciEscs.length) +
+    row('Resolved', ciResolved, ciResolved===ciEscs.length&&ciEscs.length>0?'✅ all clear':undefined, ciResolved===ciEscs.length&&ciEscs.length>0?'var(--green)':undefined) +
+    row('Top category', topCiCat.length>22?topCiCat.slice(0,22)+'…':topCiCat) +
+    row('Open items', ciEscs.length-ciResolved, (ciEscs.length-ciResolved)>0?'in progress':undefined, (ciEscs.length-ciResolved)>0?'var(--amber)':undefined)
+  );
+
+  var summaryHtml = '<div id="escTable" style="padding:12px 14px">'
+    +'<div style="display:flex;gap:12px;background:var(--amber-bg,#fffbeb);border:1px solid var(--amber-bd,#fde68a);border-radius:7px;padding:8px 12px;margin-bottom:14px;align-items:center">'
+    +'<span style="font-size:11px;font-weight:700;color:var(--amber)">TOP DRIVER</span>'
+    +'<span style="font-size:13px;font-weight:600;color:var(--text1)">'+topReason+'</span>'
+    +'<span style="font-size:11px;color:var(--text3)">'+topCount+' of '+total+' escalations ('+(total?(topCount/total*100).toFixed(0):0)+'%)</span>'
+    +'<a href="escalation-report.html" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
+    +'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:20px">'
+    +psBlock
+    +'<div style="width:1px;background:var(--border)"></div>'
+        +ciBlock
+    +'</div>'
+    +'</div>';
+
+  escTableEl.outerHTML = summaryHtml;
 }
 
 function renderStaffing(){
@@ -2048,21 +2094,25 @@ function renderFlags(){
   var lowQA = (D.agents||[]).filter(function(a){return a.qa!=null&&a.qa<(a.qaTgt||0.90);});
   if(lowQA.length) flags.push({type:'warn',msg:lowQA.length+' agent'+(lowQA.length>1?'s':'')+' below QA target: '+lowQA.map(function(a){return a.name.split(' ')[0];}).join(', ')});
   var lowFCR = (D.agents||[]).filter(function(a){return a.fcr!=null&&a.fcr<0.75;});
-  if(lowFCR.length) flags.push({type:'info',msg:lowFCR.length+' agent'+(lowFCR.length>1?'s':'')+' below FCR 75%: '+lowFCR.map(function(a){return a.name.split(' ')[0];}).join(', ')});
+  if(lowFCR.length) flags.push({type:'warn',msg:lowFCR.length+' agent'+(lowFCR.length>1?'s':'')+' below FCR target: '+lowFCR.map(function(a){return a.name.split(' ')[0];}).join(', ')});
   var openEsc = (D.escalations||[]).filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');});
   if(openEsc.length) flags.push({type:'warn',msg:openEsc.length+' escalation'+(openEsc.length>1?'s':'')+' still open or in review'});
-
-  if(!flags.length){
-    document.getElementById('flagsEl').innerHTML='<div style="color:var(--green);font-weight:600;padding:8px 0">✅ No active flags — all metrics on track</div>';
-    return;
-  }
-  document.getElementById('flagsEl').innerHTML = flags.map(function(f){
-    var icon = f.type==='warn'?'⚠️':'ℹ️';
-    return '<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">'+icon+' '+f.msg+'</div>';
+  var el = document.getElementById('flagsGrid');
+  if(!el) return;
+  if(!flags.length){ el.innerHTML='<div style="color:var(--green);font-size:13px;padding:8px 0">✅ No active flags — all metrics within target range.</div>'; return; }
+  el.innerHTML = flags.map(function(f){
+    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">'
+      +'<span style="color:var(--amber);font-size:14px">⚠</span>'
+      +'<span style="color:var(--text2)">'+f.msg+'</span>'
+      +'</div>';
   }).join('');
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
+�────────────────────
 loadData();
 </script>
 </body>
