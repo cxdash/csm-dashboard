@@ -237,7 +237,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="kpi"><div class="kpi-lbl">Avg NPS</div><div class="kpi-val" id="kNPS">—</div><div class="kpi-sub">Target ≥ 30</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg FCR</div><div class="kpi-val" id="kFCR">—</div><div class="kpi-sub">Target ≥ 75%</div></div>
     <div class="kpi"><div class="kpi-lbl">Active Agents</div><div class="kpi-val" id="kAgents">—</div><div class="kpi-sub">This period</div></div>
-    <div class="kpi"><div class="kpi-lbl">Avg Wait Time</div><div class="kpi-val" id="kWait">—</div><div class="kpi-sub">Queued-to-fulfilled</div></div>
+    <div class="kpi"><div class="kpi-lbl">Avg Wait Time</div><div class="kpi-val" id="kWait">—</div><div class="kpi-sub" id="kWaitSub">Email MTD</div></div>
   </div>
 
   <!-- ══ 2 — LOB PERFORMANCE ══ -->
@@ -422,12 +422,13 @@ var SHEETS_FCR_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQ
 var SHEETS_QA_URL     = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv';  // QA tab (main)
 var SHEETS_QA2_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1209230234&single=true&output=csv';  // Goread QA tab
 var SHEETS_QA3_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeQRp3nRG-wmesyi92QfWskCdCMXNGivUeMES44LpZ3YWx_QHY5ux2t7RwT_n-5GcZYBrh8q2B0y2c/pub?gid=1110854295&single=true&output=csv';  // Plixi+HighSocial+Cloutify QA tab
+var SHEETS_CONTACT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=763263392&single=true&output=csv';  // ContactExport — f[3]=Channel, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
   period: 'June 2026',
   _filename: 'ContactExport_AgentData_June2026.csv',
-  avgWait: null,
+  avgWait: {emailMTD:5475, chatMTD:46, emailPrev:5416, chatPrev:76},
   inbound: {
     lobs: ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'],
     months: ['Jan','Feb','Mar','Apr','May','Jun'],
@@ -1198,6 +1199,37 @@ function parseCSVRow(line){
   }
   return res;
 }
+function parseContactWait(text){
+  // Parses raw ContactExport CSV: f[3]=Channel, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year (MM-YYYY)
+  var lines=text.split('\n');
+  var now=new Date();
+  var curMon=(now.getMonth()<9?'0':'')+(now.getMonth()+1)+'-'+now.getFullYear();
+  var prev=new Date(now.getFullYear(),now.getMonth()-1,1);
+  var prevMon=(prev.getMonth()<9?'0':'')+(prev.getMonth()+1)+'-'+prev.getFullYear();
+  var buckets={emailMTD:[],chatMTD:[],emailPrev:[],chatPrev:[]};
+  for(var i=1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<16) continue;
+    var ch=(f[3]||'').trim().toUpperCase();
+    var mon=(f[15]||'').trim();
+    var w=parseFloat(f[11]);
+    if(isNaN(w)||w<0) continue;
+    if(mon===curMon){
+      if(ch==='EMAIL') buckets.emailMTD.push(w);
+      else if(ch==='CHAT') buckets.chatMTD.push(w);
+    } else if(mon===prevMon){
+      if(ch==='EMAIL') buckets.emailPrev.push(w);
+      else if(ch==='CHAT') buckets.chatPrev.push(w);
+    }
+  }
+  function avg(arr){return arr.length?arr.reduce(function(s,v){return s+v;},0)/arr.length:null;}
+  return {
+    emailMTD: avg(buckets.emailMTD),
+    chatMTD:  avg(buckets.chatMTD),
+    emailPrev:avg(buckets.emailPrev),
+    chatPrev: avg(buckets.chatPrev)
+  };
+}
 function parseFCRSheetIdx(text){
   var lines=text.split('\n');
   var hIdx=-1;
@@ -1330,9 +1362,11 @@ function parseQASheetIdx(text, text2, text3){
 }
 
 async function loadFromSheets(){
-  D = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  // Start from last cached live data (if any) so the screen shows real data during reload
+  try{ var _c=localStorage.getItem(STORAGE_KEY); D=_c?JSON.parse(_c):JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+  catch(e){ D=JSON.parse(JSON.stringify(DEFAULT_DATA)); }
   setChip('wait','⏳ Updating from Sheets…');
-  render(); // show embedded data immediately while sheets load
+  render(); // show last known good data immediately while sheets refresh
   try{
     // Fetch all sheets in parallel — each wrapped so one failure won't block others
     var cb = '&_cb='+Date.now(); // cache-buster prevents stale redirects
@@ -1350,7 +1384,8 @@ async function loadFromSheets(){
       safeFetch(SHEETS_FCR_URL),
       safeFetch(SHEETS_QA_URL),
       safeFetch(SHEETS_QA2_URL),
-      safeFetch(SHEETS_QA3_URL)
+      safeFetch(SHEETS_QA3_URL),
+      safeFetch(SHEETS_CONTACT_URL)
     ]);
 
     // Agent reporting (MTD + 12M)
@@ -1447,8 +1482,16 @@ async function loadFromSheets(){
       });
     }
 
+    // Contact export (wait time) — resps[7]
+    if(SHEETS_CONTACT_URL && resps[7] && resps[7].ok){
+      var waitResult = parseContactWait(await resps[7].text());
+      if(waitResult && (waitResult.emailMTD!==null||waitResult.chatMTD!==null)) D.avgWait = waitResult;
+    }
+
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     var anyLive = resps.some(function(r){ return r && r.ok; });
+    // Cache live data to localStorage so next load shows last known good data
+    if(anyLive){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(D)); localStorage.setItem(STORAGE_KEY+'_ts', new Date().toISOString()); }catch(e){} }
     setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data');
     render(); return;
   }catch(e){ console.warn('Sheets fetch error:', e.message); }
@@ -1457,7 +1500,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL || SHEETS_CONTACT_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
@@ -1509,9 +1552,21 @@ function renderKPIs(){
   setKPI('kNPS', aNps.toFixed(1), cls(aNps,30));
   setKPI('kFCR', pct(aFcr), cls(aFcr,0.75));
   setKPI('kAgents', d.agents.length, 'n');
-  if(d.avgWait!==null&&d.avgWait!==undefined){
-    var _wm=Math.floor(d.avgWait/60), _ws=Math.round(d.avgWait%60);
-    setKPI('kWait', _wm+'m '+(_ws<10?'0':'')+_ws+'s', 'n');
+  if(d.avgWait&&d.avgWait.emailMTD!==null&&d.avgWait.emailMTD!==undefined){
+    var _ew=d.avgWait.emailMTD;
+    var _eh=Math.floor(_ew/3600), _em=Math.floor((_ew%3600)/60);
+    var _wStr=(_eh>0?_eh+'h ':'')+_em+'m';
+    var _wEl=document.getElementById('kWait');
+    if(_wEl){ _wEl.textContent=_wStr; _wEl.className='kpi-val n'; }
+    var _wSub=document.getElementById('kWaitSub');
+    if(_wSub){
+      if(d.avgWait.emailPrev){
+        var _delta=Math.round((_ew-d.avgWait.emailPrev)/d.avgWait.emailPrev*100);
+        var _ph=Math.floor(d.avgWait.emailPrev/3600), _pm=Math.floor((d.avgWait.emailPrev%3600)/60);
+        var _pStr=(_ph>0?_ph+'h ':'')+_pm+'m';
+        _wSub.textContent='Email MTD · prev '+_pStr+' ('+(_delta>=0?'+':'')+_delta+'%)';
+      } else { _wSub.textContent='Email MTD'; }
+    }
   }
 }
 
