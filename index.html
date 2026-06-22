@@ -442,12 +442,12 @@ var DEFAULT_DATA = {
     ]
   },
   sla: [
-    {lob:'Path Social', sla:0.808,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5809,fcrTgt:0.75,jun:4025, may:8970},
-    {lob:'Crowd Ignite',sla:0.921,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5462,fcrTgt:0.75,jun:761,  may:2543},
-    {lob:'High Social', sla:0.922,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4655,fcrTgt:0.75,jun:2641, may:5952},
-    {lob:'Plixi',       sla:0.998,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5285,fcrTgt:0.75,jun:2519, may:6260},
-    {lob:'Goread',      sla:0.954,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.6806,fcrTgt:0.75,jun:1566, may:3812},
-    {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4703,fcrTgt:0.75,jun:626,  may:1998},
+    {lob:'Path Social', sla:0.808,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5809,fcrTgt:0.75,jun:4025, may:8970, avgWait:5452, avgWaitPrev:6715},
+    {lob:'Crowd Ignite',sla:0.921,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5462,fcrTgt:0.75,jun:761,  may:2543, avgWait:4512, avgWaitPrev:4037},
+    {lob:'High Social', sla:0.922,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4655,fcrTgt:0.75,jun:2641, may:5952, avgWait:3033, avgWaitPrev:3210},
+    {lob:'Plixi',       sla:0.998,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5285,fcrTgt:0.75,jun:2519, may:6260, avgWait:1415, avgWaitPrev:1507},
+    {lob:'Goread',      sla:0.954,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.6806,fcrTgt:0.75,jun:1566, may:3812, avgWait:2657, avgWaitPrev:3797},
+    {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4703,fcrTgt:0.75,jun:626,  may:1998, avgWait:3576, avgWaitPrev:7046},
   ],
   agents: [
     {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.901,qaTgt:0.90,csat:null,fcr:0.6393,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
@@ -1200,13 +1200,27 @@ function parseCSVRow(line){
   return res;
 }
 function parseContactWait(text){
-  // Parses raw ContactExport CSV: f[3]=Channel, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year (MM-YYYY)
+  // Parses raw ContactExport CSV: f[3]=Channel, f[9]=Inbox, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year (MM-YYYY)
   var lines=text.split('\n');
   var now=new Date();
   var curMon=(now.getMonth()<9?'0':'')+(now.getMonth()+1)+'-'+now.getFullYear();
   var prev=new Date(now.getFullYear(),now.getMonth()-1,1);
   var prevMon=(prev.getMonth()<9?'0':'')+(prev.getMonth()+1)+'-'+prev.getFullYear();
+  function _inboxLOB(name){
+    var n=(name||'').toLowerCase().replace(/[\s\-]/g,'');
+    if(n.startsWith('path'))         return 'Path Social';
+    if(n.startsWith('crowdignite'))  return 'Crowd Ignite';
+    if(n.startsWith('highsocial'))   return 'High Social';
+    if(n.startsWith('cloutify'))     return 'High Social';
+    if(n.startsWith('plixi'))        return 'Plixi';
+    if(n.startsWith('goread'))       return 'Goread';
+    if(n.startsWith('viralpush'))    return 'Goread';
+    if(n.startsWith('followspy'))    return 'Follows';
+    if(n.startsWith('recentfollow')) return 'Follows';
+    return null;
+  }
   var buckets={emailMTD:[],chatMTD:[],emailPrev:[],chatPrev:[]};
+  var lobBuckets={};
   for(var i=1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
     if(f.length<16) continue;
@@ -1214,20 +1228,26 @@ function parseContactWait(text){
     var mon=(f[15]||'').trim();
     var w=parseFloat(f[11]);
     if(isNaN(w)||w<0) continue;
+    var lob=_inboxLOB((f[9]||'').trim());
     if(mon===curMon){
       if(ch==='EMAIL') buckets.emailMTD.push(w);
       else if(ch==='CHAT') buckets.chatMTD.push(w);
+      if(lob){ if(!lobBuckets[lob]) lobBuckets[lob]={mtd:[],prev:[]}; lobBuckets[lob].mtd.push(w); }
     } else if(mon===prevMon){
       if(ch==='EMAIL') buckets.emailPrev.push(w);
       else if(ch==='CHAT') buckets.chatPrev.push(w);
+      if(lob){ if(!lobBuckets[lob]) lobBuckets[lob]={mtd:[],prev:[]}; lobBuckets[lob].prev.push(w); }
     }
   }
-  function avg(arr){return arr.length?arr.reduce(function(s,v){return s+v;},0)/arr.length:null;}
+  function avg(arr){return arr.length?Math.round(arr.reduce(function(s,v){return s+v;},0)/arr.length):null;}
+  var byLOB={};
+  for(var k in lobBuckets){ byLOB[k]={mtd:avg(lobBuckets[k].mtd), prev:avg(lobBuckets[k].prev)}; }
   return {
     emailMTD: avg(buckets.emailMTD),
     chatMTD:  avg(buckets.chatMTD),
     emailPrev:avg(buckets.emailPrev),
-    chatPrev: avg(buckets.chatPrev)
+    chatPrev: avg(buckets.chatPrev),
+    byLOB: byLOB
   };
 }
 function parseFCRSheetIdx(text){
@@ -1485,7 +1505,14 @@ async function loadFromSheets(){
     // Contact export (wait time) — resps[7]
     if(SHEETS_CONTACT_URL && resps[7] && resps[7].ok){
       var waitResult = parseContactWait(await resps[7].text());
-      if(waitResult && (waitResult.emailMTD!==null||waitResult.chatMTD!==null)) D.avgWait = waitResult;
+      if(waitResult && (waitResult.emailMTD!==null||waitResult.chatMTD!==null)){
+        D.avgWait = waitResult;
+        // Push per-LOB wait times into D.sla
+        if(waitResult.byLOB) D.sla.forEach(function(ls){
+          var lb=waitResult.byLOB[ls.lob];
+          if(lb){ if(lb.mtd!==null) ls.avgWait=lb.mtd; if(lb.prev!==null) ls.avgWaitPrev=lb.prev; }
+        });
+      }
     }
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
@@ -1593,6 +1620,7 @@ function renderLOB(){
       +'<div class="lob-metrics">'
       +lobMetric('SLA', pct(r.sla), pct(r.slaTgt), slaMet)
       +lobMetricNull('CSAT', r.csat!=null?pct(r.csat):'—', pct(r.csatTgt), r.csat!=null?csatMet:null)
+      +(r.avgWait!=null?lobMetricWait(r.avgWait, r.avgWaitPrev):'')
       +lobMetricNull('NPS', r.nps!=null?String(r.nps):'—', String(r.npsTgt), r.nps!=null?npsMet:null)
       +lobMetricNull('FCR', r.fcr!=null?pct(r.fcr):'—', pct(r.fcrTgt), r.fcr!=null?fcrMet:null)
       +'</div></div>';
@@ -1615,6 +1643,21 @@ function lobMetricNull(label, val, tgt, met){
       +'<div class="prog"><div class="prog-fill" style="width:0%;background:var(--border)"></div></div></div>';
   }
   return lobMetric(label, val, tgt, met);
+}
+function lobMetricWait(secs, prevSecs){
+  function _fmt(s){ var h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return (h>0?h+'h ':'')+m+'m'; }
+  var val=_fmt(secs);
+  var sub=prevSecs!=null ? 'prev '+_fmt(prevSecs) : 'MTD';
+  var delta=prevSecs!=null ? Math.round((secs-prevSecs)/prevSecs*100) : null;
+  var improved=delta!==null&&delta<0; // lower wait = better
+  var arrow=delta!==null?(improved?'↓':'↑'):'';
+  var dStr=delta!==null?' ('+arrow+(Math.abs(delta))+'%)':'';
+  return '<div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:6px;margin-top:2px;display:flex;align-items:baseline;justify-content:space-between">'
+    +'<div><div class="lob-m-lbl">Avg Wait Time</div>'
+    +'<div class="lob-m-val" style="font-size:13px;color:var(--text)">'+val+'</div></div>'
+    +'<div style="text-align:right"><div class="lob-m-tgt">'+sub+'</div>'
+    +(delta!==null?'<div style="font-size:11px;font-weight:700;color:'+(improved?'var(--green)':'var(--amber)')+'">'+arrow+Math.abs(delta)+'%</div>':'')
+    +'</div></div>';
 }
 
 function setChartView(v){
