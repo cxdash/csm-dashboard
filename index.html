@@ -1971,6 +1971,12 @@ function renderEscalations(){
   var open     = escs.filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');}).length;
   var resRate  = total ? (resolved/total*100).toFixed(1)+'%' : '—';
 
+  // Saves: action = applied credit / applied discount / refund difference
+  var savedEscs  = psEscs.filter(function(e){ return /applied credit|applied discount|refund difference/i.test(e.action||''); });
+  var savedCount = savedEscs.length;
+  var saveEscs   = psEscs.filter(function(e){ return /manual save|refund dg difference/i.test(e.reason||''); });
+  var savePct    = saveEscs.length ? (savedCount/saveEscs.length*100).toFixed(1)+'%' : (total ? (savedCount/total*100).toFixed(1)+'%' : '—');
+
   document.getElementById('escStats').innerHTML =
     // Row 1: Total MTD (full width)
     '<div class="esc-stat"><div class="esc-stat-val">'+total+'</div><div class="esc-stat-lbl">Total MTD</div></div>'
@@ -1983,6 +1989,12 @@ function renderEscalations(){
     +'<div class="esc-stats-row">'
     +'<div class="esc-stat"><div class="esc-stat-val" style="color:var(--green)">'+resRate+'</div><div class="esc-stat-lbl">Resolution</div></div>'
     +'<div class="esc-stat"><div class="esc-stat-val" style="color:'+(open>0?'var(--amber)':'var(--green)')+'">'+open+'</div><div class="esc-stat-lbl">Open</div></div>'
+    +'</div>'
+    // Row 4: Saves (successful retention)
+    +'<div class="esc-stat" style="border-color:var(--green)">'
+    +'<div class="esc-stat-val" style="color:var(--green)">'+savePct+'</div>'
+    +'<div class="esc-stat-lbl">Saves (Retention)</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+savedCount+' converted</div>'
     +'</div>';
 
   // Helpers
