@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Escalation Report — CX Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --masthead:#1A1A2E;
+  --accent:#4F8EF7;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-bd:#bbf7d0;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-bd:#fde68a;
+  --red:#dc2626;--red-bg:#fef2f2;--red-bd:#fecaca;
+  --blue-bg:#eff6ff;--blue-bd:#bfdbfe;
+  --card:#fff;--bg:#f8fafc;--border:#e2e8f0;
+  --text1:#0f172a;--text2:#334155;--text3:#64748b;
+  font-family:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text1);min-height:100vh}
+
+/* ── MASTHEAD ── */
+.masthead{background:var(--masthead);color:#fff;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.masthead-left h1{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;letter-spacing:.3px}
+.masthead-left p{font-size:12px;color:#94a3b8;margin-top:3px;font-family:'DM Mono',monospace}
+.masthead-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.toggle-group{display:flex;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden}
+.toggle-btn{padding:6px 14px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;border:none;background:transparent;color:#94a3b8;cursor:pointer;transition:.15s}
+.toggle-btn.on{background:var(--accent);color:#fff}
+.print-btn{padding:6px 14px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.print-btn:hover{background:rgba(255,255,255,.1)}
+.chip-live{font-size:10px;font-family:'DM Mono',monospace;padding:3px 8px;background:rgba(255,255,255,.08);border-radius:4px;color:#94a3b8}
+
+/* ── LAYOUT ── */
+.main{max-width:1100px;margin:0 auto;padding:28px 24px;display:flex;flex-direction:column;gap:28px}
+
+/* ── SECTION HEADERS ── */
+.sec{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.sec-hdr{padding:14px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sec-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sec-title{font-family:'DM Serif Display',serif;font-size:16px;font-weight:400;color:var(--text1)}
+.sec-sub{font-size:11px;color:var(--text3);margin-top:1px;font-family:'DM Mono',monospace}
+.sec-body{padding:18px 20px}
+
+/* ── KEY HIGHLIGHTS ── */
+.highlights-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hl-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.hl-col.wins h4{color:var(--green)}
+.hl-col.flags h4{color:var(--amber)}
+.hl-item{font-size:13px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border);line-height:1.5}
+.hl-item:last-child{border-bottom:none}
+.email-block{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:14px}
+.email-block h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px}
+.email-block p{font-size:12.5px;color:var(--text2);line-height:1.6;white-space:pre-wrap;font-family:'DM Mono',monospace}
+.copy-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border);background:#fff;border-radius:4px;cursor:pointer;margin-top:8px;font-family:'DM Sans',sans-serif}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.kpi-card{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.kpi-val{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;line-height:1;margin-bottom:3px}
+.kpi-lbl{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.kpi-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat-card{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.stat-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500}
+.stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+
+/* ── INSIGHT ROWS ── */
+.insight-table{width:100%;border-collapse:collapse;font-size:13px}
+.insight-table td{padding:9px 12px;vertical-align:top;border-bottom:1px solid var(--border)}
+.insight-table td:first-child{width:160px;font-weight:600;color:var(--text2);background:#f8fafc;white-space:nowrap}
+.insight-table tr:last-child td{border-bottom:none}
+
+/* ── LOB BADGE ── */
+.lob-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;margin-bottom:14px}
+
+/* ── OFFER TABLE ── */
+.offer-table{width:100%;border-collapse:collapse;font-size:13px}
+.offer-table th{background:var(--masthead);color:#fff;padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.offer-table th.r{text-align:right}
+.offer-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.offer-table td.r{text-align:right;font-family:'DM Mono',monospace}
+.offer-table tr:last-child td{border-bottom:none;font-weight:700;background:#f8fafc}
+.offer-table tr.total td{font-weight:700;background:#f1f5f9}
+
+/* ── RECURRING TABLE ── */
+.rec-table{width:100%;border-collapse:collapse;font-size:13px}
+.rec-table th{background:#f1f5f9;padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3)}
+.rec-table th.r{text-align:right}
+.rec-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.rec-table td.r{text-align:right;font-family:'DM Mono',monospace}
+.rec-table tr:last-child td{border-bottom:none}
+
+/* ── VOLUME TABLE ── */
+.vol-table{width:100%;border-collapse:collapse;font-size:13px}
+.vol-table th{background:var(--masthead);color:#fff;padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.vol-table th.r{text-align:right}
+.vol-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.vol-table td.r{text-align:right;font-family:'DM Mono',monospace}
+.vol-table tr.socials-avg td{background:var(--masthead);color:#fff;font-weight:700}
+.vol-table tr.follows-row td{background:var(--amber-bg)}
+.vol-table tr.overall-avg td{background:#f1f5f9;font-weight:700}
+.vol-table tr.inbox-row td{padding-left:24px;color:var(--text3);font-size:12px}
+
+/* ── ALERT BOXES ── */
+.alert{border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:12px}
+.alert.red{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red)}
+.alert.amber{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)}
+.alert.green{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)}
+.alert.blue{background:var(--blue-bg);border:1px solid var(--blue-bd);color:#1d4ed8}
+.alert strong{font-weight:700}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* ── SAVES LEVEL 1 ── */
+.saves-l1{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff}
+  .masthead-right{display:none}
+  .main{padding:0}
+  .sec{border:1px solid #ddd;break-inside:avoid;margin-bottom:16px}
+  .print-btn,.copy-btn{display:none}
+}
+
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .stat-row,.saves-l1{grid-template-columns:repeat(2,1fr)}
+  .highlights-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-left">
+    <h1>Escalation Report</h1>
+    <p id="periodLabel">Loading…</p>
+  </div>
+  <div class="masthead-right">
+    <div class="toggle-group">
+      <button class="toggle-btn on" id="btnWeekly" onclick="setPeriod('weekly')">Weekly</button>
+      <button class="toggle-btn" id="btnMonthly" onclick="setPeriod('monthly')">Monthly</button>
+    </div>
+    <span class="chip-live" id="statusChip">⏳ Loading…</span>
+    <button class="print-btn" onclick="window.print()">⎙ Print / PDF</button>
+    <a href="index.html" style="font-size:12px;color:#94a3b8;text-decoration:none">← Dashboard</a>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 1 — KEY HIGHLIGHTS -->
+  <div class="sec" id="s1">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#4F8EF7"></div>
+      <div><div class="sec-title">1 — Key Highlights</div><div class="sec-sub" id="s1sub">Period summary</div></div>
+    </div>
+    <div class="sec-body">
+      <div class="highlights-grid" id="hlGrid">
+        <div class="hl-col wins"><h4>✅ Wins</h4><div id="hlWins"></div></div>
+        <div class="hl-col flags"><h4>⚠ Needs Attention</h4><div id="hlFlags"></div></div>
+      </div>
+      <div class="email-block">
+        <h4>📧 Ready-to-Copy Email Opening</h4>
+        <p id="emailOpening">Loading…</p>
+        <button class="copy-btn" onclick="copyEmail()">Copy to clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 — AT A GLANCE -->
+  <div class="sec" id="s2">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#8b5cf6"></div>
+      <div><div class="sec-title">2 — At a Glance</div><div class="sec-sub">Key escalation KPIs</div></div>
+    </div>
+    <div class="sec-body">
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card"><div class="kpi-val" id="kTotal">—</div><div class="kpi-lbl">Total Escs</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kResolved" style="color:var(--green)">—</div><div class="kpi-lbl">Resolution Rate</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kSaveReceived">—</div><div class="kpi-lbl">Save Escs Received</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kSaveConverted" style="color:var(--green)">—</div><div class="kpi-lbl">Save Conv. Rate</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kCB" style="color:var(--red)">—</div><div class="kpi-lbl">CB / Disputes</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 — PATH SOCIAL ESCALATIONS -->
+  <div class="sec" id="s3">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#3b82f6"></div>
+      <div><div class="sec-title">3 — Path Social Escalations</div><div class="sec-sub">Filter: Company = "Path"</div></div>
+    </div>
+    <div class="sec-body">
+      <div class="lob-badge" style="background:#eff6ff;color:#1d4ed8">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6"></span>
+        Path Social
+      </div>
+      <div class="stat-row" id="psStatRow">
+        <div class="stat-card"><div class="stat-val" id="psTotal">—</div><div class="stat-lbl">Total Escalations</div></div>
+        <div class="stat-card"><div class="stat-val" id="psRefunds" style="color:var(--amber)">—</div><div class="stat-lbl">Refunds</div></div>
+        <div class="stat-card"><div class="stat-val" id="psCB" style="color:var(--red)">—</div><div class="stat-lbl">CB / Disputes</div></div>
+        <div class="stat-card"><div class="stat-val" id="psCancellations">—</div><div class="stat-lbl">Cancellations</div></div>
+      </div>
+      <table class="insight-table" id="psInsights"></table>
+    </div>
+  </div>
+
+  <!-- 4 — SAVES & RETENTION -->
+  <div class="sec" id="s4">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#16a34a"></div>
+      <div><div class="sec-title">4 — Saves &amp; Retention</div><div class="sec-sub">Manual Save + DG Difference + hidden saves</div></div>
+    </div>
+    <div class="sec-body">
+      <div class="saves-l1" id="savesL1">
+        <div class="kpi-card"><div class="kpi-val" id="sv1">—</div><div class="kpi-lbl">Total Escalations</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="sv2">—</div><div class="kpi-lbl">Save Escs Received</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="sv3" style="color:var(--green)">—</div><div class="kpi-lbl">Saves Converted</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="sv4" style="color:var(--green)">—</div><div class="kpi-lbl">Conversion Rate</div></div>
+      </div>
+      <table class="offer-table" id="offerTable">
+        <thead><tr><th>Retention Offer</th><th class="r">Count</th><th class="r">% of Saves</th></tr></thead>
+        <tbody id="offerBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5 — RECURRING ISSUES -->
+  <div class="sec" id="s5">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#f59e0b"></div>
+      <div><div class="sec-title">5 — Recurring Issues</div><div class="sec-sub">Top reasons by volume</div></div>
+    </div>
+    <div class="sec-body">
+      <table class="rec-table" id="recTable">
+        <thead><tr><th>Reason / Root Cause</th><th>Category</th><th class="r">Count</th><th class="r">% of Total</th><th>Trend Note</th></tr></thead>
+        <tbody id="recBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6 — CROWD IGNITE ESCALATIONS -->
+  <div class="sec" id="s6">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#8b5cf6"></div>
+      <div><div class="sec-title">6 — Crowd Ignite Escalations</div><div class="sec-sub">Separate CI tracker</div></div>
+    </div>
+    <div class="sec-body">
+      <div class="lob-badge" style="background:#f5f3ff;color:#6d28d9">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6"></span>
+        Crowd Ignite
+      </div>
+      <div class="stat-row" id="ciStatRow">
+        <div class="stat-card"><div class="stat-val" id="ciTotal">—</div><div class="stat-lbl">Total Escalations</div></div>
+        <div class="stat-card"><div class="stat-val" id="ciResolved" style="color:var(--green)">—</div><div class="stat-lbl">Resolved</div></div>
+        <div class="stat-card"><div class="stat-val" id="ciOpen" style="color:var(--amber)">—</div><div class="stat-lbl">Open</div></div>
+        <div class="stat-card"><div class="stat-val" id="ciTopCat">—</div><div class="stat-lbl">Top Category</div></div>
+      </div>
+      <div id="ciInsight"></div>
+    </div>
+  </div>
+
+  <!-- 7 — CONTACT VOLUME & SLA -->
+  <div class="sec" id="s7">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#0ea5e9"></div>
+      <div><div class="sec-title">7 — Contact Volume &amp; SLA</div><div class="sec-sub">Email + Chat · Inbound only · SLA target 92.3%</div></div>
+    </div>
+    <div class="sec-body">
+      <div style="overflow-x:auto">
+        <table class="vol-table" id="volTable">
+          <thead><tr>
+            <th>LOB / Inbox</th>
+            <th class="r">Volume</th>
+            <th class="r">SLA %</th>
+            <th class="r">vs Target</th>
+            <th class="r">FRT (min)</th>
+            <th class="r">vs Target</th>
+          </tr></thead>
+          <tbody id="volBody"></tbody>
+        </table>
+      </div>
+      <div id="volAlerts" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+'use strict';
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+var SHEETS_ESC_PS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqCVNRgfLzFCjTNv5ADwkdPxY9GYawEKGmUWbs0Lru0Uv7eahb86rVoqqzl665QRMNt5gFXXYQmSbK/pub?gid=1155672077&single=true&output=csv';
+var SHEETS_ESC_CI_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS8wiWEgBmssCoYYSmGQnst46C9CG5Jeekjx81XfCvTnQdFBxONfzMVjGg6deddFoZkn-2N2w4vdLm1/pub?gid=670231814&single=true&output=csv';
+var SHEETS_CONTACT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=763263392&single=true&output=csv';
+
+// SLA + FRT targets
+var SLA_TARGET = 92.3;
+var FRT_TARGET = 10; // minutes
+
+// LOB inbox mapping
+var INBOX_LOB = [
+  {lob:'Path Social',    inboxes:['path - general','path - escalations','path - billing','path - win-back','path - failed payments','path - onboarding insights']},
+  {lob:'Plixi',          inboxes:['plixi - general','plixi - billing']},
+  {lob:'High Social',    inboxes:['high social - general','high social - escalations','cloutify - general']},
+  {lob:'Goread',         inboxes:['goread - general','viralpush - general']},
+  {lob:'Crowd Ignite',   inboxes:['crowd ignite - general','crowd ignite - onboarding insights']},
+  {lob:'Follows',        inboxes:['followspy - general','recent follow - general']}
+];
+var SOCIALS_LOBS = ['Path Social','Plixi','High Social','Goread','Crowd Ignite'];
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var period = 'weekly';
+var D = null; // parsed data
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function pct(v,d){ return (v*(d===0?1:1)*100).toFixed(d===undefined?1:d)+'%'; }
+function fmtNum(n){ return n>=1000?(n/1000).toFixed(1)+'k':String(n); }
+
+function parseCSVRow(line){
+  var res=[],cur='',inQ=false;
+  for(var i=0;i<=line.length;i++){
+    var c=i<line.length?line[i]:',';
+    if(inQ){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;}else cur+=c;}
+    else{if(c==='"')inQ=true;else if(c===','){res.push(cur);cur='';}else cur+=c;}
+  }
+  return res;
+}
+
+function getMonday(d){ var day=d.getDay(),diff=d.getDate()-(day===0?6:day-1); return new Date(d.getFullYear(),d.getMonth(),diff); }
+
+function inPeriod(dateStr, mode){
+  // dateStr: MM/DD/YYYY or M/D/YYYY
+  var parts = dateStr.split('/');
+  if(parts.length!==3) return false;
+  var d = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+  if(isNaN(d.getTime())) return false;
+  var now = new Date();
+  if(mode==='monthly'){
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  } else {
+    var mon = getMonday(now);
+    var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    return d >= new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()) &&
+           d <= new Date(sun.getFullYear(),sun.getMonth(),sun.getDate());
+  }
+}
+
+function inboxToLOB(name){
+  var n=(name||'').toLowerCase().trim();
+  for(var i=0;i<INBOX_LOB.length;i++){
+    var entry=INBOX_LOB[i];
+    for(var j=0;j<entry.inboxes.length;j++){
+      if(n.indexOf(entry.inboxes[j])>=0||entry.inboxes[j].indexOf(n)>=0) return entry.lob;
+    }
+  }
+  // fuzzy
+  if(n.startsWith('path')) return 'Path Social';
+  if(n.startsWith('crowd')) return 'Crowd Ignite';
+  if(n.startsWith('high')||n.startsWith('cloutify')) return 'High Social';
+  if(n.startsWith('plixi')) return 'Plixi';
+  if(n.startsWith('goread')||n.startsWith('viral')) return 'Goread';
+  if(n.startsWith('follow')||n.startsWith('recent')) return 'Follows';
+  return null;
+}
+
+function periodLabel(){
+  var now = new Date();
+  if(period==='monthly'){
+    return now.toLocaleString('default',{month:'long'})+' '+now.getFullYear()+' — Month to Date';
+  } else {
+    var mon = getMonday(now);
+    var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    var opts={month:'short',day:'numeric'};
+    return 'Week of '+mon.toLocaleDateString('en-US',opts)+' – '+sun.toLocaleDateString('en-US',opts)+', '+now.getFullYear();
+  }
+}
+
+// ── PARSERS ───────────────────────────────────────────────────────────────────
+function parsePS(text){
+  // PS sheet: 2 header rows, then data
+  // f[1]=Date, f[4]=Company(filter Path), f[6]=Plan, f[7]=Reason, f[8]=Root Cause
+  // f[9]=Action, f[10]=Specialist, f[12]=Status, f[13]=Remarks, f[14]=Category
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var rows = [];
+  for(var i=2;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(!f||!f[1]||!f[1].trim()) continue;
+    var company=(f[4]||'').trim();
+    if(company.toLowerCase()!=='path') continue;
+    var dateStr=(f[1]||'').trim();
+    if(!inPeriod(dateStr, period)) continue;
+    rows.push({
+      date:dateStr,
+      plan:(f[6]||'').trim(),
+      reason:(f[7]||'').trim(),
+      rootCause:(f[8]||'').trim(),
+      action:(f[9]||'').trim(),
+      specialist:(f[10]||'').trim(),
+      status:(f[12]||'').trim(),
+      remarks:(f[13]||'').trim(),
+      category:(f[14]||'').trim()
+    });
+  }
+  return rows;
+}
+
+function parseCI(text){
+  // CI sheet: 2 header rows
+  // f[0]=Date, f[1]=Category, f[2]=Root Cause, f[10]=Action, f[12]=Status (if present)
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var rows = [];
+  for(var i=2;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(!f||!f[0]||!f[0].trim()) continue;
+    var dateStr=(f[0]||'').trim();
+    if(!inPeriod(dateStr, period)) continue;
+    rows.push({
+      date:dateStr,
+      category:(f[1]||'').trim(),
+      rootCause:(f[2]||'').trim(),
+      action:(f[10]||'').trim(),
+      status:(f[12]||'Resolved').trim()||'Resolved'
+    });
+  }
+  return rows;
+}
+
+function parseVolume(text){
+  // ContactExport: f[3]=Channel, f[4]=Direction, f[9]=Inbox, f[12]=SLA diff, f[13]=HandleTime(sec), f[16]=Date
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var byLOB = {};
+  var byInbox = {};
+  INBOX_LOB.forEach(function(e){ byLOB[e.lob]={vol:0,within:0,frtSum:0,frtCount:0}; });
+
+  for(var i=1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(!f||!f[3]) continue;
+    var ch=(f[3]||'').trim().toUpperCase();
+    var dir=(f[4]||'').trim().toUpperCase();
+    if(ch!=='EMAIL'&&ch!=='CHAT') continue;
+    if(dir!=='INBOUND') continue;
+    var dateStr=(f[16]||'').trim();
+    if(!dateStr||!inPeriod(dateStr, period)) continue;
+    var inbox=(f[9]||'').trim();
+    var lob=inboxToLOB(inbox);
+    if(!lob) continue;
+    var slaDiff=parseFloat(f[12]);
+    var frt=parseFloat(f[13]);
+    if(!byLOB[lob]) byLOB[lob]={vol:0,within:0,frtSum:0,frtCount:0};
+    byLOB[lob].vol++;
+    if(!isNaN(slaDiff)&&slaDiff<=0) byLOB[lob].within++;
+    if(!isNaN(frt)&&frt>0){ byLOB[lob].frtSum+=frt; byLOB[lob].frtCount++; }
+    // inbox breakdown for Path
+    if(lob==='Path Social'){
+      var inboxKey=inbox||'Other';
+      if(!byInbox[inboxKey]) byInbox[inboxKey]={vol:0,within:0};
+      byInbox[inboxKey].vol++;
+      if(!isNaN(slaDiff)&&slaDiff<=0) byInbox[inboxKey].within++;
+    }
+  }
+  return {byLOB:byLOB, byInbox:byInbox};
+}
+
+// ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
+function analyzeSaves(psRows){
+  var saveEscs=[], savesConverted=[], hiddenSaves=[];
+  var offerCounts={};
+  psRows.forEach(function(r){
+    var reason=r.reason, action=r.action;
+    var isEsc=false, isSave=false;
+    if(/manual save.*monthly/i.test(reason)||/ms.*monthly/i.test(reason)){
+      isEsc=true;
+      if(/discount|applied/i.test(action)) isSave=true;
+    } else if(/manual save.*annual/i.test(reason)||/ms.*annual/i.test(reason)){
+      isEsc=true;
+      if(/credit|discount|applied/i.test(action)) isSave=true;
+    } else if(/refund dg difference/i.test(reason)){
+      isEsc=true;
+      if(/refunded/i.test(action)) isSave=true;
+    }
+    if(/refund escalation/i.test(reason)&&/retention/i.test(action)){
+      hiddenSaves.push(r);
+    }
+    if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r); offerCounts[action]=(offerCounts[action]||0)+1; } }
+  });
+  return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts};
+}
+
+// ── COMPUTE ───────────────────────────────────────────────────────────────────
+function compute(psRows, ciRows, volData){
+  var totalPS = psRows.length;
+  var resolvedPS = psRows.filter(function(r){return /resolv/i.test(r.status);}).length;
+  var openPS = psRows.filter(function(r){return /(open|review|monitoring)/i.test(r.status);}).length;
+  var cb = psRows.filter(function(r){return /dispute|chargeback/i.test(r.reason);}).length;
+  var refunds = psRows.filter(function(r){return /refund escalation|post renewal|duplicate|charge inquiry/i.test(r.reason);}).length;
+  var cancellations = psRows.filter(function(r){return /retention|cancell/i.test(r.reason)||/retention/i.test(r.category);}).length;
+  var saves = analyzeSaves(psRows);
+  var saveRate = saves.saveEscs.length ? saves.savesConverted.length/saves.saveEscs.length : 0;
+
+  // CI
+  var totalCI = ciRows.length;
+  var resolvedCI = ciRows.filter(function(r){return /resolv|fixed/i.test(r.status||r.action);}).length;
+  var openCI = ciRows.filter(function(r){return !/resolv|fixed/i.test(r.status||r.action);}).length;
+  var ciCats = {};
+  ciRows.forEach(function(r){ ciCats[r.category]=(ciCats[r.category]||0)+1; });
+  var topCatCI = Object.keys(ciCats).sort(function(a,b){return ciCats[b]-ciCats[a];})[0]||'—';
+
+  // Reasons for recurring issues
+  var reasonCounts = {};
+  psRows.forEach(function(r){
+    var key=(r.reason||'Other')+' | '+(r.category||'—');
+    reasonCounts[key]=(reasonCounts[key]||0)+1;
+  });
+  var topReasons = Object.keys(reasonCounts).sort(function(a,b){return reasonCounts[b]-reasonCounts[a];}).slice(0,8).map(function(k){
+    var parts=k.split(' | ');
+    return {reason:parts[0], category:parts[1]||'—', count:reasonCounts[k]};
+  });
+
+  // Insight rows for PS
+  var insightRefunds = psRows.filter(function(r){return /refund/i.test(r.category)||/refund/i.test(r.reason);});
+  var insightService  = psRows.filter(function(r){return /service/i.test(r.category)||/dashboard|login|block/i.test(r.reason);});
+  var insightFulfill  = psRows.filter(function(r){return /fulfillment|fulfilment/i.test(r.category)||/fulfillment|stalled|follower loss/i.test(r.reason);});
+  var insightBilling  = psRows.filter(function(r){return /billing|failed payment/i.test(r.category)||/charge|payment|invoice/i.test(r.reason);});
+
+  // Top action for refunds
+  var refundActions={};
+  insightRefunds.forEach(function(r){refundActions[r.action]=(refundActions[r.action]||0)+1;});
+  var topRefundAction=Object.keys(refundActions).sort(function(a,b){return refundActions[b]-refundActions[a];})[0]||'—';
+
+  return {
+    totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate,
+    totalCI, resolvedCI, openCI, topCatCI,
+    topReasons, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
+    volData
+  };
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(d){
+  var lbl = periodLabel();
+  document.getElementById('periodLabel').textContent = lbl;
+  document.getElementById('s1sub').textContent = lbl;
+
+  var saveRatePct = d.saveRate ? (d.saveRate*100).toFixed(1)+'%' : '—';
+  var resRatePct  = d.totalPS  ? (d.resolvedPS/d.totalPS*100).toFixed(1)+'%' : '—';
+
+  // ── Section 2: At a Glance ──
+  document.getElementById('kTotal').textContent = d.totalPS + (d.totalCI ? ' + '+d.totalCI+' CI' : '');
+  document.getElementById('kResolved').textContent = resRatePct;
+  document.getElementById('kSaveReceived').textContent = d.saves.saveEscs.length;
+  document.getElementById('kSaveConverted').textContent = saveRatePct;
+  document.getElementById('kCB').textContent = d.cb;
+
+  // ── Section 3: Path Social ──
+  document.getElementById('psTotal').textContent = d.totalPS;
+  document.getElementById('psRefunds').textContent = d.refunds;
+  document.getElementById('psCB').textContent = d.cb;
+  document.getElementById('psCancellations').textContent = d.cancellations;
+
+  var psInsights = [
+    ['Refunds & CB', d.insightRefunds.length+' cases — top action: '+d.topRefundAction+'. CB/Dispute threats: '+d.cb+' of '+d.insightRefunds.length+' refund cases.'],
+    ['Cancellations', d.cancellations+' retention escalations. '+
+      (d.saves.saveEscs.length ? d.saves.savesConverted.length+' saves converted ('+saveRatePct+' save rate).' : 'No save escalations tracked.')],
+    ['Service & Tech', d.insightService.length+' service issues (dashboard, login, access). '+(d.insightService.length>5?'Above typical — review for product-side pattern.':'Within normal range.')],
+    ['Fulfillment', d.insightFulfill.length+' fulfillment escalations (stalled, follower loss, quality). '+(d.insightFulfill.length>10?'Elevated — flag to fulfillment team.':'Within normal range.')],
+    ['Billing & Payments', d.insightBilling.length+' billing-related escalations (charges, failed payments, invoices).']
+  ];
+  document.getElementById('psInsights').innerHTML = psInsights.map(function(row){
+    return '<tr><td>'+row[0]+'</td><td>'+row[1]+'</td></tr>';
+  }).join('');
+
+  // ── Section 4: Saves ──
+  document.getElementById('sv1').textContent = d.totalPS;
+  document.getElementById('sv2').textContent = d.saves.saveEscs.length;
+  document.getElementById('sv3').textContent = d.saves.savesConverted.length + (d.saves.hiddenSaves.length?' + '+d.saves.hiddenSaves.length+' hidden':'');
+  document.getElementById('sv4').textContent = saveRatePct;
+
+  var OFFER_LABELS = [
+    'Refund Difference','Refund 50% + Downgrade','Applied Credit',
+    'Applied Credit + 1 Month Free','Applied 1 Month Free','Applied 1 Month Free Addon',
+    'Applied Discount 50%x3','Applied Discount 50%x1','Applied Discount 20%x3','Applied Discount 20%x1'
+  ];
+  var totalSaves = d.saves.savesConverted.length || 1;
+  var offerRows = OFFER_LABELS.map(function(lbl){
+    var cnt = d.saves.offerCounts[lbl]||0;
+    return {lbl:lbl, cnt:cnt, pct:cnt?((cnt/totalSaves)*100).toFixed(1)+'%':'—'};
+  }).filter(function(r){return r.cnt>0;});
+  if(d.saves.hiddenSaves.length){
+    offerRows.push({lbl:'Retention (within Refund Escalation) ↳ hidden save',cnt:d.saves.hiddenSaves.length,pct:(d.saves.hiddenSaves.length/totalSaves*100).toFixed(1)+'%'});
+  }
+  var grandTotal = offerRows.reduce(function(s,r){return s+r.cnt;},0);
+  document.getElementById('offerBody').innerHTML = (offerRows.length ?
+    offerRows.map(function(r){return '<tr><td>'+r.lbl+'</td><td class="r">'+r.cnt+'</td><td class="r">'+r.pct+'</td></tr>';}).join('') :
+    '<tr><td colspan="3" style="color:var(--text3);text-align:center;padding:16px">No save escalations this period</td></tr>'
+  ) + (offerRows.length ? '<tr class="total"><td><strong>TOTAL</strong></td><td class="r"><strong>'+grandTotal+'</strong></td><td class="r">100%</td></tr>' : '');
+
+  // ── Section 5: Recurring Issues ──
+  document.getElementById('recBody').innerHTML = d.topReasons.map(function(r){
+    var pctStr = d.totalPS ? (r.count/d.totalPS*100).toFixed(1)+'%' : '—';
+    var trend = r.count>=20?'⚠ High volume':r.count>=10?'Watch':'Normal';
+    return '<tr><td>'+r.reason+'</td><td>'+r.category+'</td><td class="r">'+r.count+'</td><td class="r">'+pctStr+'</td><td style="color:'+(r.count>=20?'var(--amber)':'var(--text3)')+'">'+trend+'</td></tr>';
+  }).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:16px">No data</td></tr>';
+
+  // ── Section 6: Crowd Ignite ──
+  document.getElementById('ciTotal').textContent = d.totalCI;
+  document.getElementById('ciResolved').textContent = d.resolvedCI;
+  document.getElementById('ciOpen').textContent = d.openCI;
+  var topCatEl = document.getElementById('ciTopCat');
+  topCatEl.textContent = d.topCatCI;
+  topCatEl.style.fontSize = d.topCatCI.length>8?'13px':'20px';
+
+  var ciAlert = d.totalCI===0 ?
+    '<div class="alert blue"><strong>ℹ No CI escalations</strong> — No Crowd Ignite escalations logged for this period.</div>' :
+    (d.openCI>0 ? '<div class="alert amber"><strong>⚠ '+d.openCI+' open</strong> — '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open/in progress.</div>' :
+    '<div class="alert green"><strong>✅ All resolved</strong> — All '+d.totalCI+' Crowd Ignite escalations resolved this period.</div>');
+  document.getElementById('ciInsight').innerHTML = ciAlert;
+
+  // ── Section 7: Volume & SLA ──
+  renderVolume(d.volData);
+
+  // ── Section 1: Key Highlights ──
+  renderHighlights(d);
+}
+
+function renderVolume(volData){
+  if(!volData || !volData.byLOB){ document.getElementById('volBody').innerHTML='<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">Volume data unavailable</td></tr>'; return; }
+  var byLOB = volData.byLOB;
+  var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+  var rows='', socialsVol=0,socialsWithin=0,socialsTotal=0, overallVol=0,overallWithin=0,overallFrtSum=0,overallFrtCount=0;
+
+  LOB_ORDER.forEach(function(lob){
+    var ld=byLOB[lob]||{vol:0,within:0,frtSum:0,frtCount:0};
+    if(!ld.vol) return;
+    var sla=ld.vol?ld.within/ld.vol*100:null;
+    var frt=ld.frtCount?ld.frtSum/ld.frtCount/60:null;
+    var slaOk=sla!==null&&sla>=SLA_TARGET;
+    var frtOk=frt!==null&&frt<=FRT_TARGET;
+    var isFollows=lob==='Follows';
+    overallVol+=ld.vol; overallWithin+=ld.within; overallFrtSum+=ld.frtSum; overallFrtCount+=ld.frtCount;
+    if(!isFollows){ socialsVol+=ld.vol; socialsWithin+=ld.within; socialsTotal++; }
+    var slaDelta=sla!==null?(sla-SLA_TARGET).toFixed(1):null;
+    var frtDelta=frt!==null?(frt-FRT_TARGET).toFixed(1):null;
+    rows+='<tr>'
+      +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+LOB_COLORS[lob]+';margin-right:6px"></span>'+lob+(isFollows?' <span style="font-size:10px;color:var(--amber)">(excl.)</span>':'')+'</td>'
+      +'<td class="r">'+fmtNum(ld.vol)+'</td>'
+      +'<td class="r" style="color:'+(sla===null?'var(--text3)':slaOk?'var(--green)':'var(--red)');+'">'+(sla!==null?sla.toFixed(1)+'%':'—')+'</td>'
+      +'<td class="r" style="color:'+(slaDelta===null?'var(--text3)':parseFloat(slaDelta)>=0?'var(--green)':'var(--red)')+'">'+
+        (slaDelta!==null?(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pp':'—')+'</td>'
+      +'<td class="r" style="color:'+(frt===null?'var(--text3)':frtOk?'var(--green)':'var(--red)')+'">'+
+        (frt!==null?frt.toFixed(1):'—')+'</td>'
+      +'<td class="r" style="color:'+(frtDelta===null?'var(--text3)':parseFloat(frtDelta)<=0?'var(--green)':'var(--red)')+'">'+
+        (frtDelta!==null?(parseFloat(frtDelta)<=0?'':'+')+(frtDelta)+'m':'—')+'</td>'
+      +'</tr>';
+    // Path inbox breakdown
+    if(lob==='Path Social' && volData.byInbox){
+      var inboxes=Object.keys(volData.byInbox).sort(function(a,b){return volData.byInbox[b].vol-volData.byInbox[a].vol;});
+      inboxes.forEach(function(ib){
+        var ib_d=volData.byInbox[ib];
+        var ib_sla=ib_d.vol?ib_d.within/ib_d.vol*100:null;
+        rows+='<tr class="inbox-row"><td style="padding-left:24px">↳ '+ib+'</td><td class="r">'+ib_d.vol+'</td>'
+          +'<td class="r" style="color:'+(ib_sla===null?'var(--text3)':ib_sla>=SLA_TARGET?'var(--green)':'var(--red)')+'">'+
+          (ib_sla!==null?ib_sla.toFixed(1)+'%':'—')+'</td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>';
+      });
+    }
+  });
+
+  // Socials avg
+  var socSLA=socialsVol?socialsWithin/socialsVol*100:null;
+  rows+='<tr class="socials-avg"><td>Socials Avg (excl. Follows)</td><td class="r">'+fmtNum(socialsVol)+'</td>'
+    +'<td class="r">'+(socSLA!==null?socSLA.toFixed(1)+'%':'—')+'</td>'
+    +'<td class="r">'+(socSLA!==null?((socSLA-SLA_TARGET)>=0?'+':'')+(socSLA-SLA_TARGET).toFixed(1)+'pp':'—')+'</td>'
+    +'<td class="r" colspan="2">—</td></tr>';
+
+  // Overall avg
+  var ovSLA=overallVol?overallWithin/overallVol*100:null;
+  var ovFRT=overallFrtCount?overallFrtSum/overallFrtCount/60:null;
+  rows+='<tr class="overall-avg"><td>Overall Avg (incl. Follows)</td><td class="r">'+fmtNum(overallVol)+'</td>'
+    +'<td class="r">'+(ovSLA!==null?ovSLA.toFixed(1)+'%':'—')+'</td>'
+    +'<td class="r">'+(ovSLA!==null?((ovSLA-SLA_TARGET)>=0?'+':'')+(ovSLA-SLA_TARGET).toFixed(1)+'pp':'—')+'</td>'
+    +'<td class="r">'+(ovFRT!==null?ovFRT.toFixed(1):'—')+'</td>'
+    +'<td class="r">'+(ovFRT!==null?((ovFRT-FRT_TARGET)<=0?'':'+')+(ovFRT-FRT_TARGET).toFixed(1)+'m':'—')+'</td></tr>';
+
+  document.getElementById('volBody').innerHTML = rows||'<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">No volume data this period</td></tr>';
+
+  // Alerts
+  var alerts='';
+  LOB_ORDER.forEach(function(lob){
+    var ld=byLOB[lob]||{vol:0,within:0};
+    if(!ld.vol) return;
+    var sla=ld.within/ld.vol*100;
+    if(sla<SLA_TARGET) alerts+='<div class="alert amber"><strong>⚠ '+lob+'</strong> SLA at '+sla.toFixed(1)+'% — '+(SLA_TARGET-sla).toFixed(1)+'pp below target ('+SLA_TARGET+'%).</div>';
+  });
+  if(ovSLA!==null&&ovSLA>=SLA_TARGET) alerts+='<div class="alert green"><strong>✅ Overall SLA on target</strong> — '+ovSLA.toFixed(1)+'% vs '+SLA_TARGET+'% target.</div>';
+  document.getElementById('volAlerts').innerHTML = alerts;
+}
+
+function renderHighlights(d){
+  var wins=[], flags=[];
+  var saveRatePct = d.saveRate ? (d.saveRate*100).toFixed(1)+'%' : '—';
+  var resRatePct  = d.totalPS  ? (d.resolvedPS/d.totalPS*100).toFixed(1)+'%' : '—';
+
+  if(d.totalPS>0){
+    if(d.resolvedPS/d.totalPS>=0.90) wins.push('✅ Resolution rate at '+resRatePct+' — strong execution by escalation team');
+    else flags.push('⚠ Resolution rate at '+resRatePct+' — review open escalations for blockers');
+  }
+  if(d.saves.saveEscs.length>0){
+    if(d.saveRate>=0.80) wins.push('✅ Save conversion '+saveRatePct+' ('+d.saves.savesConverted.length+'/'+d.saves.saveEscs.length+' save escalations)');
+    else flags.push('⚠ Save conversion at '+saveRatePct+' — review offer strategy with escalation team');
+  }
+  if(d.cb>=20) flags.push('⚠ '+d.cb+' CB/dispute escalations — elevated; verify root cause and payment gateway');
+  else if(d.cb>0&&d.cb<15) wins.push('✅ CB/disputes managed at '+d.cb+' cases');
+  if(d.totalCI===0) wins.push('✅ No Crowd Ignite escalations this period');
+  else if(d.openCI>0) flags.push('⚠ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open');
+
+  var topIssue = d.topReasons[0];
+  if(topIssue&&topIssue.count>=20) flags.push('⚠ "'+topIssue.reason+'" leading at '+topIssue.count+' cases — investigate root cause trend');
+
+  if(!wins.length) wins.push('No notable wins to report this period.');
+  if(!flags.length) flags.push('No critical flags — all metrics within acceptable range.');
+
+  document.getElementById('hlWins').innerHTML = wins.map(function(w){return '<div class="hl-item">'+w+'</div>';}).join('');
+  document.getElementById('hlFlags').innerHTML = flags.map(function(f){return '<div class="hl-item">'+f+'</div>';}).join('');
+
+  // Email opening
+  var allBullets = wins.concat(flags);
+  var email = 'Hi [Director],\n\nPlease find the escalation report for '+periodLabel()+'.\n\n'+
+    allBullets.join('\n')+
+    '\n\nFull report attached.\n\nBest,\nLisa';
+  document.getElementById('emailOpening').textContent = email;
+}
+
+function copyEmail(){
+  var text = document.getElementById('emailOpening').textContent;
+  navigator.clipboard&&navigator.clipboard.writeText(text).then(function(){
+    var btn=document.querySelector('.copy-btn');
+    btn.textContent='✅ Copied!';
+    setTimeout(function(){btn.textContent='Copy to clipboard';},2000);
+  });
+}
+
+// ── PERIOD TOGGLE ─────────────────────────────────────────────────────────────
+function setPeriod(p){
+  period=p;
+  document.getElementById('btnWeekly').className='toggle-btn'+(p==='weekly'?' on':'');
+  document.getElementById('btnMonthly').className='toggle-btn'+(p==='monthly'?' on':'');
+  if(D) renderAll(D);
+}
+
+function renderAll(data){
+  var psRows  = data.psText  ? parsePS(data.psText)   : data.psRows  || [];
+  var ciRows  = data.ciText  ? parseCI(data.ciText)   : data.ciRows  || [];
+  var volData = data.volText ? parseVolume(data.volText) : data.volData || null;
+  var computed = compute(psRows, ciRows, volData);
+  render(computed);
+}
+
+// ── LOAD ──────────────────────────────────────────────────────────────────────
+async function load(){
+  document.getElementById('statusChip').textContent = '⏳ Loading…';
+  try{
+    function safeFetch(url){ return url ? fetch(url+'&_cb='+Date.now()).then(function(r){return r.ok?r:null;}).catch(function(){return null;}) : Promise.resolve(null); }
+    var resps = await Promise.all([safeFetch(SHEETS_ESC_PS_URL), safeFetch(SHEETS_ESC_CI_URL), safeFetch(SHEETS_CONTACT_URL)]);
+    D = {};
+    if(resps[0]&&resps[0].ok) D.psText  = await resps[0].text();
+    if(resps[1]&&resps[1].ok) D.ciText  = await resps[1].text();
+    if(resps[2]&&resps[2].ok) D.volText = await resps[2].text();
+    var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    var anyLive = resps.some(function(r){return r&&r.ok;});
+    document.getElementById('statusChip').textContent = anyLive ? '🔗 Live · '+ts : '⚠ Sheets unreachable';
+    renderAll(D);
+  }catch(e){
+    console.warn('Load error:',e.message);
+    document.getElementById('statusChip').textContent = '⚠ Error loading';
+    D = {};
+    renderAll(D);
+  }
+}
+
+load();
+</script>
+</body>
+</html>
