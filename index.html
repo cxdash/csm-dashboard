@@ -2126,4 +2126,32 @@ function renderStaffing(){
       +'<span style="font-weight:700;font-size:12px">'+s.lob+'</span>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">'
-      +'<div><div style="font-size:10px;color:var(--text3)">Headcount</div><div style="font-weight:800;font-size:20px;line-height:1.1
+      +'<div><div style="font-size:10px;color:var(--text3)">Headcount</div><div style="font-weight:800;font-size:20px;line-height:1.2">'+s.headcount+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3)">Schedules</div><div style="font-weight:800;font-size:20px;line-height:1.2">'+s.schedules+'</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3)">Adherence</div><div style="font-weight:700;font-size:16px;color:'+(adhOk?'var(--green)':'var(--red)')+'">'+((s.adh||0)*100).toFixed(0)+'%</div></div>'
+      +'<div><div style="font-size:10px;color:var(--text3)">Absence</div><div style="font-weight:700;font-size:16px;color:'+(absOk?'var(--green)':'var(--red)')+'">'+((s.abs||0)*100).toFixed(0)+'%</div></div>'
+      +'</div></div>';
+  }).join('');
+}
+
+function renderFlags(){
+  var el = document.getElementById('flagsEl');
+  if(!el) return;
+  var flags = D.flags || [];
+  if(!flags.length){
+    el.innerHTML='<div class="empty">No action items flagged this period.</div>';
+    return;
+  }
+  el.innerHTML = flags.map(function(f){
+    var cls = f.sev==='high'?'flag-high':f.sev==='med'?'flag-med':'flag-low';
+    return '<div class="flag-row '+cls+'"><span class="flag-icon">'+(f.sev==='high'?'🔴':f.sev==='med'?'🟡':'🟢')+'</span><div><div class="flag-title">'+f.title+'</div><div class="flag-detail">'+f.detail+'</div></div></div>';
+  }).join('');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+D = DEFAULT_DATA;
+render();
+loadData();
+</script>
+</body>
+</html>
