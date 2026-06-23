@@ -737,4 +737,12 @@ function showDash(name){
 }
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
-(function init(
+(function init(){
+  var saved = localStorage.getItem(CODE_KEY);
+  if(saved && AGENT_CODES[saved]){
+    showDash(AGENT_CODES[saved]);
+  }
+})();
+</script>
+</body>
+</html>
