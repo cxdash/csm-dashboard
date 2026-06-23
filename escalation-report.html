@@ -522,10 +522,19 @@ function normalizeOfferLabel(action){
 function analyzeSaves(rows, company){
   var saveEscs=[], savesConverted=[], hiddenSaves=[];
   var offerCounts={};
+  var isCI = !rows.length || rows[0]===undefined ? false : !rows[0].reason;
   rows.forEach(function(r){
-    var reason=(r.reason||r.category||''), action=r.action||'';
+    var reason=r.reason||'', action=r.action||'', category=r.category||'';
+    var rowIsCI = !r.reason && !!r.category;
     var isEsc=false, isSave=false;
-    if(SAVE_REASON_RE.test(reason)){
+    if(rowIsCI){
+      // CI rows: identified by category (not reason). Count as save esc if category
+      // suggests retention AND action is a known save offer.
+      if(/retention|manual save|cancell|save/i.test(category)){
+        isEsc=true;
+        if(SAVE_ACTION_RE.test(action)) isSave=true;
+      }
+    } else if(SAVE_REASON_RE.test(reason)){
       isEsc=true;
       if(/refund dg difference/i.test(reason)){
         // Reason = "Refund DG Difference" → action is "Refunded"
@@ -543,6 +552,9 @@ function analyzeSaves(rows, company){
       offerCounts[lbl]=(offerCounts[lbl]||0)+1; } }
   });
   var rate = saveEscs.length ? savesConverted.length/saveEscs.length : 0;
+  // Debug: log all retention esc rows with reason + action to help identify mismatches
+  console.log('[analyzeSaves] '+(company||'PS')+' — received:'+saveEscs.length+' converted:'+savesConverted.length);
+  saveEscs.forEach(function(r){ console.log('  reason:'+JSON.stringify(r.reason||r.category||'')+'  action:'+JSON.stringify(r.action||'')+' → saved:'+(savesConverted.indexOf(r)>=0)); });
   return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts, rate:rate, company:company||'PS'};
 }
 
@@ -935,6 +947,19 @@ function renderAll(data){
   var psRows  = data.psText  ? parsePS(data.psText)   : data.psRows  || [];
   var ciRows  = data.ciText  ? parseCI(data.ciText)   : data.ciRows  || [];
   var volData = data.volText ? parseVolume(data.volText) : data.volData || null;
+  // On-page CI debug panel
+  var dbg = document.getElementById('ci-debug');
+  if(dbg){
+    if(ciRows.length){
+      var html='<b>CI rows ('+ciRows.length+' in period):</b><br>';
+      ciRows.forEach(function(r,i){
+        html+=(i+1)+'. cat=<b>'+r.category+'</b> action=<b>'+(r.action||'(empty)')+'</b> status=<b>'+r.status+'</b><br>';
+      });
+      dbg.innerHTML=html; dbg.style.display='block';
+    } else {
+      dbg.innerHTML='No CI rows parsed for this period.'; dbg.style.display='block';
+    }
+  }
   var computed = compute(psRows, ciRows, volData);
   render(computed);
 }
@@ -984,6 +1009,6 @@ async function load(){
 
 load();
 </script>
+<div id="ci-debug" style="display:none;position:fixed;bottom:10px;right:10px;background:#1a1a2e;color:#a8ff78;border:1px solid #a8ff78;padding:12px;border-radius:8px;font-size:12px;font-family:monospace;max-width:500px;z-index:9999;max-height:300px;overflow-y:auto"></div>
 </body>
 </html>
-                                                                                                                
