@@ -503,7 +503,7 @@ function parseVolume(text){
 
 // ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
 // Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
-var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund difference/i;
+var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund.*difference/i;
 // Save escalation reasons (exact values from sheet):
 //   "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
 var SAVE_REASON_RE = /manual save|refund dg difference/i;
@@ -523,7 +523,7 @@ function analyzeSaves(rows, company){
   var saveEscs=[], savesConverted=[], hiddenSaves=[];
   var offerCounts={};
   rows.forEach(function(r){
-    var reason=r.reason||'', action=r.action||'';
+    var reason=(r.reason||r.category||''), action=r.action||'';
     var isEsc=false, isSave=false;
     if(SAVE_REASON_RE.test(reason)){
       isEsc=true;
@@ -931,9 +931,30 @@ function renderAll(data){
   render(computed);
 }
 
+// ── CACHE ─────────────────────────────────────────────────────────────────────
+var ESC_CACHE_KEY = 'esc_report_cache_v1';
+
+function saveCache(data){
+  try{ localStorage.setItem(ESC_CACHE_KEY, JSON.stringify({ts:Date.now(), psText:data.psText||'', ciText:data.ciText||'', volText:data.volText||''})); }catch(e){}
+}
+function loadCache(){
+  try{ var raw=localStorage.getItem(ESC_CACHE_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; }
+}
+
 // ── LOAD ──────────────────────────────────────────────────────────────────────
 async function load(){
-  document.getElementById('statusChip').textContent = '⏳ Loading…';
+  // Show cached data immediately
+  var cached = loadCache();
+  if(cached && (cached.psText || cached.ciText)){
+    D = {psText:cached.psText, ciText:cached.ciText, volText:cached.volText};
+    renderAll(D);
+    var cacheAge = Math.round((Date.now()-cached.ts)/60000);
+    document.getElementById('statusChip').textContent = '📦 Cached · '+cacheAge+'m ago — refreshing…';
+  } else {
+    document.getElementById('statusChip').textContent = '⏳ Loading…';
+  }
+
+  // Fetch fresh data in background
   try{
     function safeFetch(url){ return url ? fetch(url+'&_cb='+Date.now()).then(function(r){return r.ok?r:null;}).catch(function(){return null;}) : Promise.resolve(null); }
     var resps = await Promise.all([safeFetch(SHEETS_ESC_PS_URL), safeFetch(SHEETS_ESC_CI_URL), safeFetch(SHEETS_CONTACT_URL)]);
@@ -943,13 +964,13 @@ async function load(){
     if(resps[2]&&resps[2].ok) D.volText = await resps[2].text();
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     var anyLive = resps.some(function(r){return r&&r.ok;});
-    document.getElementById('statusChip').textContent = anyLive ? '🔗 Live · '+ts : '⚠ Sheets unreachable';
+    document.getElementById('statusChip').textContent = anyLive ? '🔗 Live · '+ts : '⚠ Sheets unreachable · showing cached';
+    if(anyLive){ saveCache(D); }
     renderAll(D);
   }catch(e){
     console.warn('Load error:',e.message);
-    document.getElementById('statusChip').textContent = '⚠ Error loading';
-    D = {};
-    renderAll(D);
+    if(!cached){ document.getElementById('statusChip').textContent = '⚠ Error loading'; D={}; renderAll(D); }
+    else { document.getElementById('statusChip').textContent = '⚠ Sheets unreachable · showing cached'; }
   }
 }
 
