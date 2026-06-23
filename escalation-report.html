@@ -132,6 +132,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 @media(max-width:768px){
   .kpi-grid{grid-template-columns:repeat(3,1fr)}
   .stat-row,.saves-l1{grid-template-columns:repeat(2,1fr)}
+  #s5b .sec-body{grid-template-columns:1fr!important}
   .highlights-grid{grid-template-columns:1fr}
 }
 </style>
@@ -226,6 +227,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <div class="kpi-card"><div class="kpi-val" id="sv3" style="color:var(--green)">—</div><div class="kpi-lbl">Saves Converted</div></div>
         <div class="kpi-card"><div class="kpi-val" id="sv4" style="color:var(--green)">—</div><div class="kpi-lbl">Conversion Rate</div></div>
       </div>
+      <table class="offer-table" style="margin-bottom:14px">
+        <thead><tr><th>Company</th><th class="r">Received</th><th class="r">Converted</th><th class="r">Rate</th></tr></thead>
+        <tbody id="savesByCompany"></tbody>
+      </table>
       <table class="offer-table" id="offerTable">
         <thead><tr><th>Retention Offer</th><th class="r">Count</th><th class="r">% of Saves</th></tr></thead>
         <tbody id="offerBody"></tbody>
@@ -244,6 +249,28 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <thead><tr><th>Reason / Root Cause</th><th>Category</th><th class="r">Count</th><th class="r">% of Total</th><th>Trend Note</th></tr></thead>
         <tbody id="recBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- 5b — PATTERN DEEP DIVE -->
+  <div class="sec" id="s5b">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#ef4444"></div>
+      <div><div class="sec-title">5b — Pattern Deep Dive</div><div class="sec-sub">Refund policy · CB/disputes · Payment method issues</div></div>
+    </div>
+    <div class="sec-body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🔄 Refund Policy Escalations</div>
+        <div id="refundPatterns" style="display:none"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚡ CB / Dispute Threats</div>
+        <div id="cbPatterns" style="display:none"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💳 Payment Method Issues</div>
+        <div id="paymentPatterns" style="display:none"></div>
+      </div>
     </div>
   </div>
 
@@ -348,7 +375,8 @@ function inPeriod(dateStr, mode){
   if(mode==='monthly'){
     return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
   } else {
-    var mon = getMonday(now);
+    var currMon = getMonday(now);
+    var mon = new Date(currMon); mon.setDate(currMon.getDate()-7);
     var sun = new Date(mon); sun.setDate(mon.getDate()+6);
     return d >= new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()) &&
            d <= new Date(sun.getFullYear(),sun.getMonth(),sun.getDate());
@@ -378,10 +406,12 @@ function periodLabel(){
   if(period==='monthly'){
     return now.toLocaleString('default',{month:'long'})+' '+now.getFullYear()+' — Month to Date';
   } else {
-    var mon = getMonday(now);
+    var currMon = getMonday(now);
+    var mon = new Date(currMon); mon.setDate(currMon.getDate()-7);
     var sun = new Date(mon); sun.setDate(mon.getDate()+6);
     var opts={month:'short',day:'numeric'};
-    return 'Week of '+mon.toLocaleDateString('en-US',opts)+' – '+sun.toLocaleDateString('en-US',opts)+', '+now.getFullYear();
+    var yr = sun.getFullYear();
+    return 'Week of '+mon.toLocaleDateString('en-US',opts)+' – '+sun.toLocaleDateString('en-US',opts)+', '+yr;
   }
 }
 
@@ -472,28 +502,28 @@ function parseVolume(text){
 }
 
 // ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
-function analyzeSaves(psRows){
+// Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
+var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund difference/i;
+// Save escalation triggers: manual save (any plan type) or refund dg difference
+var SAVE_REASON_RE = /manual save|refund dg difference/i;
+
+function analyzeSaves(rows, company){
   var saveEscs=[], savesConverted=[], hiddenSaves=[];
   var offerCounts={};
-  psRows.forEach(function(r){
-    var reason=r.reason, action=r.action;
+  rows.forEach(function(r){
+    var reason=r.reason||'', action=r.action||'';
     var isEsc=false, isSave=false;
-    if(/manual save.*monthly/i.test(reason)||/ms.*monthly/i.test(reason)){
+    if(SAVE_REASON_RE.test(reason)){
       isEsc=true;
-      if(/discount|applied/i.test(action)) isSave=true;
-    } else if(/manual save.*annual/i.test(reason)||/ms.*annual/i.test(reason)){
-      isEsc=true;
-      if(/credit|discount|applied/i.test(action)) isSave=true;
-    } else if(/refund dg difference/i.test(reason)){
-      isEsc=true;
-      if(/refunded/i.test(action)) isSave=true;
+      if(SAVE_ACTION_RE.test(action)) isSave=true;
     }
     if(/refund escalation/i.test(reason)&&/retention/i.test(action)){
       hiddenSaves.push(r);
     }
     if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r); offerCounts[action]=(offerCounts[action]||0)+1; } }
   });
-  return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts};
+  var rate = saveEscs.length ? savesConverted.length/saveEscs.length : 0;
+  return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts, rate:rate, company:company||'PS'};
 }
 
 // ── COMPUTE ───────────────────────────────────────────────────────────────────
@@ -504,8 +534,9 @@ function compute(psRows, ciRows, volData){
   var cb = psRows.filter(function(r){return /dispute|chargeback/i.test(r.reason);}).length;
   var refunds = psRows.filter(function(r){return /refund escalation|post renewal|duplicate|charge inquiry/i.test(r.reason);}).length;
   var cancellations = psRows.filter(function(r){return /retention|cancell/i.test(r.reason)||/retention/i.test(r.category);}).length;
-  var saves = analyzeSaves(psRows);
-  var saveRate = saves.saveEscs.length ? saves.savesConverted.length/saves.saveEscs.length : 0;
+  var saves = analyzeSaves(psRows, 'Path Social');
+  var saveRate = saves.rate;
+  var ciSaves = analyzeSaves(ciRows, 'Crowd Ignite');
 
   // CI
   var totalCI = ciRows.length;
@@ -537,10 +568,41 @@ function compute(psRows, ciRows, volData){
   insightRefunds.forEach(function(r){refundActions[r.action]=(refundActions[r.action]||0)+1;});
   var topRefundAction=Object.keys(refundActions).sort(function(a,b){return refundActions[b]-refundActions[a];})[0]||'—';
 
+  // Refund policy breakdown (accounts outside refund window)
+  var refundPolicyRows = psRows.filter(function(r){return /refund escalation/i.test(r.reason);});
+  var refundRootCauses={};
+  refundPolicyRows.forEach(function(r){
+    var k=(r.rootCause||r.reason||'Other').trim();
+    refundRootCauses[k]=(refundRootCauses[k]||0)+1;
+  });
+  var topRefundReasons = Object.keys(refundRootCauses).sort(function(a,b){return refundRootCauses[b]-refundRootCauses[a];}).slice(0,6).map(function(k){return {reason:k,count:refundRootCauses[k]};});
+
+  // CB / dispute breakdown
+  var cbRows = psRows.filter(function(r){return /dispute|chargeback/i.test(r.reason)||/dispute|chargeback/i.test(r.rootCause||'');});
+  var cbRootCauses={};
+  cbRows.forEach(function(r){ var k=(r.rootCause||r.reason||'Other').trim(); cbRootCauses[k]=(cbRootCauses[k]||0)+1; });
+  var topCBReasons = Object.keys(cbRootCauses).sort(function(a,b){return cbRootCauses[b]-cbRootCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:cbRootCauses[k]};});
+
+  // Payment method breakdown
+  var paymentRows = psRows.filter(function(r){
+    var txt=(r.rootCause||'')+(r.reason||'')+(r.category||'');
+    return /amex|airwallex|non.?us|non us mc/i.test(txt);
+  });
+  var paymentTypes={'Amex':0,'Airwallex':0,'Non-US MC':0};
+  paymentRows.forEach(function(r){
+    var txt=(r.rootCause||'')+(r.reason||'')+(r.category||'');
+    if(/amex/i.test(txt)) paymentTypes['Amex']++;
+    if(/airwallex/i.test(txt)) paymentTypes['Airwallex']++;
+    if(/non.?us|non us mc/i.test(txt)) paymentTypes['Non-US MC']++;
+  });
+  // Remove zero-count types for clean display
+  Object.keys(paymentTypes).forEach(function(k){ if(!paymentTypes[k]) delete paymentTypes[k]; });
+
   return {
-    totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate,
+    totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves,
     totalCI, resolvedCI, openCI, topCatCI,
     topReasons, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
+    refundPolicyRows, topRefundReasons, cbRows, topCBReasons, paymentRows, paymentTypes,
     volData
   };
 }
@@ -585,20 +647,36 @@ function render(d){
   document.getElementById('sv3').textContent = d.saves.savesConverted.length + (d.saves.hiddenSaves.length?' + '+d.saves.hiddenSaves.length+' hidden':'');
   document.getElementById('sv4').textContent = saveRatePct;
 
-  var totalSaves = d.saves.savesConverted.length || 1;
-  // Build offer rows from actual data — sorted by count desc, no hardcoded label list
-  var offerRows = Object.keys(d.saves.offerCounts)
-    .sort(function(a,b){ return d.saves.offerCounts[b]-d.saves.offerCounts[a]; })
+  // Per-company breakdown table
+  var psSaveRatePct = d.saves.rate ? (d.saves.rate*100).toFixed(1)+'%' : '—';
+  var ciSaveRatePct = d.ciSaves.rate ? (d.ciSaves.rate*100).toFixed(1)+'%' : '—';
+  var combinedReceived = d.saves.saveEscs.length + d.ciSaves.saveEscs.length;
+  var combinedConverted = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
+  var combinedRate = combinedReceived ? (combinedConverted/combinedReceived*100).toFixed(1)+'%' : '—';
+  var companyTableRows = '<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:6px"></span>Path Social</td><td class="r">'+d.saves.saveEscs.length+'</td><td class="r">'+d.saves.savesConverted.length+'</td><td class="r" style="font-weight:700;color:'+(d.saves.rate>=0.7?'var(--green)':'var(--amber)')+'">'+psSaveRatePct+'</td></tr>';
+  if(d.ciSaves.saveEscs.length){
+    companyTableRows += '<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6;margin-right:6px"></span>Crowd Ignite</td><td class="r">'+d.ciSaves.saveEscs.length+'</td><td class="r">'+d.ciSaves.savesConverted.length+'</td><td class="r" style="font-weight:700;color:'+(d.ciSaves.rate>=0.7?'var(--green)':'var(--amber)')+'">'+ciSaveRatePct+'</td></tr>';
+  }
+  companyTableRows += '<tr class="total"><td><strong>Combined</strong></td><td class="r"><strong>'+combinedReceived+'</strong></td><td class="r"><strong>'+combinedConverted+'</strong></td><td class="r"><strong>'+combinedRate+'</strong></td></tr>';
+  document.getElementById('savesByCompany').innerHTML = companyTableRows;
+
+  // Offer breakdown table — from actual data, sorted desc
+  var allOfferCounts = Object.assign({}, d.saves.offerCounts);
+  Object.keys(d.ciSaves.offerCounts).forEach(function(k){ allOfferCounts[k]=(allOfferCounts[k]||0)+d.ciSaves.offerCounts[k]; });
+  var totalSaves = combinedConverted || 1;
+  var offerRows = Object.keys(allOfferCounts)
+    .sort(function(a,b){ return allOfferCounts[b]-allOfferCounts[a]; })
     .map(function(lbl){
-      var cnt = d.saves.offerCounts[lbl];
-      return {lbl:lbl||'(no action recorded)', cnt:cnt, pct:((cnt/totalSaves)*100).toFixed(1)+'%'};
+      var cnt = allOfferCounts[lbl];
+      var isHighValue = /annual|free month|free addon/i.test(lbl);
+      return {lbl:lbl||'(no action recorded)', cnt:cnt, pct:((cnt/totalSaves)*100).toFixed(1)+'%', highValue:isHighValue};
     });
   if(d.saves.hiddenSaves.length){
-    offerRows.push({lbl:'Retention (within Refund Escalation) — hidden save',cnt:d.saves.hiddenSaves.length,pct:(d.saves.hiddenSaves.length/totalSaves*100).toFixed(1)+'%'});
+    offerRows.push({lbl:'Retention (within Refund Escalation)',cnt:d.saves.hiddenSaves.length,pct:(d.saves.hiddenSaves.length/totalSaves*100).toFixed(1)+'%',highValue:false});
   }
   var grandTotal = offerRows.reduce(function(s,r){return s+r.cnt;},0);
   document.getElementById('offerBody').innerHTML = (offerRows.length ?
-    offerRows.map(function(r){return '<tr><td>'+r.lbl+'</td><td class="r">'+r.cnt+'</td><td class="r">'+r.pct+'</td></tr>';}).join('') :
+    offerRows.map(function(r){return '<tr><td>'+r.lbl+(r.highValue?' <span style="font-size:10px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px">high value</span>':'')+'</td><td class="r">'+r.cnt+'</td><td class="r">'+r.pct+'</td></tr>';}).join('') :
     '<tr><td colspan="3" style="color:var(--text3);text-align:center;padding:16px">No save escalations this period</td></tr>'
   ) + (offerRows.length ? '<tr class="total"><td><strong>TOTAL</strong></td><td class="r"><strong>'+grandTotal+'</strong></td><td class="r">100%</td></tr>' : '');
 
@@ -608,6 +686,62 @@ function render(d){
     var trend = r.count>=20?'⚠ High volume':r.count>=10?'Watch':'Normal';
     return '<tr><td>'+r.reason+'</td><td>'+r.category+'</td><td class="r">'+r.count+'</td><td class="r">'+pctStr+'</td><td style="color:'+(r.count>=20?'var(--amber)':'var(--text3)')+'">'+trend+'</td></tr>';
   }).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:16px">No data</td></tr>';
+
+  // ── Pattern Deep Dive: Refund Policy ──
+  var refEl = document.getElementById('refundPatterns');
+  if(d.refundPolicyRows.length){
+    var refHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.refundPolicyRows.length+' refund escalation'+(d.refundPolicyRows.length>1?'s':'')+' — accounts outside standard refund policy</div>';
+    if(d.topRefundReasons.length){
+      refHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause / Reason</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      refHtml += d.topRefundReasons.map(function(r){
+        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+r.count+'</td></tr>';
+      }).join('');
+      refHtml += '</tbody></table>';
+    }
+    refEl.innerHTML = refHtml;
+    refEl.style.display = '';
+  } else {
+    refEl.innerHTML = '<div style="color:var(--text3);font-size:12px">No refund policy escalations this period.</div>';
+    refEl.style.display = '';
+  }
+
+  // ── Pattern Deep Dive: CB / Disputes ──
+  var cbEl = document.getElementById('cbPatterns');
+  if(d.cbRows.length){
+    var cbHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+' — verify payment gateway and refund eligibility</div>';
+    if(d.topCBReasons.length){
+      cbHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      cbHtml += d.topCBReasons.map(function(r){
+        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+r.count+'</td></tr>';
+      }).join('');
+      cbHtml += '</tbody></table>';
+    }
+    cbEl.innerHTML = cbHtml;
+    cbEl.style.display = '';
+  } else {
+    cbEl.innerHTML = '<div style="color:var(--text3);font-size:12px">No CB/dispute threats this period. ✅</div>';
+    cbEl.style.display = '';
+  }
+
+  // ── Pattern Deep Dive: Payment Method ──
+  var pmEl = document.getElementById('paymentPatterns');
+  if(d.paymentRows.length){
+    var pmHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.paymentRows.length+' payment method escalation'+(d.paymentRows.length>1?'s':'')+' — Amex · Airwallex · Non-US MC</div>';
+    var pmTypes = d.paymentTypes;
+    var pmKeys = Object.keys(pmTypes).sort(function(a,b){return pmTypes[b]-pmTypes[a];});
+    if(pmKeys.length){
+      pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Payment Type</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      pmHtml += pmKeys.map(function(k){
+        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+k+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+pmTypes[k]+'</td></tr>';
+      }).join('');
+      pmHtml += '</tbody></table>';
+    }
+    pmEl.innerHTML = pmHtml;
+    pmEl.style.display = '';
+  } else {
+    pmEl.innerHTML = '<div style="color:var(--text3);font-size:12px">No payment method escalations detected this period.</div>';
+    pmEl.style.display = '';
+  }
 
   // ── Section 6: Crowd Ignite ──
   document.getElementById('ciTotal').textContent = d.totalCI;
@@ -788,3 +922,4 @@ load();
 </script>
 </body>
 </html>
+                                                                                                                
