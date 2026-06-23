@@ -223,16 +223,16 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
     <div class="sec-body">
       <div class="saves-l1" id="savesL1">
         <div class="kpi-card"><div class="kpi-val" id="sv1">—</div><div class="kpi-lbl">Total Escalations</div></div>
-        <div class="kpi-card"><div class="kpi-val" id="sv2">—</div><div class="kpi-lbl">Save Escs Received</div></div>
-        <div class="kpi-card"><div class="kpi-val" id="sv3" style="color:var(--green)">—</div><div class="kpi-lbl">Saves Converted</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="sv2">—</div><div class="kpi-lbl">Retention Escs Received</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="sv3" style="color:var(--green)">—</div><div class="kpi-lbl">Successful Saves</div></div>
         <div class="kpi-card"><div class="kpi-val" id="sv4" style="color:var(--green)">—</div><div class="kpi-lbl">Conversion Rate</div></div>
       </div>
       <table class="offer-table" style="margin-bottom:14px">
-        <thead><tr><th>Company</th><th class="r">Total Escs</th><th class="r">Save Escs</th><th class="r">Saves</th><th class="r">Save Rate</th></tr></thead>
+        <thead><tr><th>Company</th><th class="r">Total Escs</th><th class="r">Retention Escs</th><th class="r">Successful Saves</th><th class="r">Save Rate (vs Total)</th></tr></thead>
         <tbody id="savesByCompany"></tbody>
       </table>
       <table class="offer-table" id="offerTable">
-        <thead><tr><th>Retention Offer</th><th class="r">Count</th><th class="r">% of Saves</th></tr></thead>
+        <thead><tr><th>Save Type</th><th class="r">Count</th><th class="r">% of Saves</th></tr></thead>
         <tbody id="offerBody"></tbody>
       </table>
     </div>
@@ -508,6 +508,17 @@ var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refu
 //   "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
 var SAVE_REASON_RE = /manual save|refund dg difference/i;
 
+// Normalize raw action field → clean display label for offer breakdown table
+function normalizeOfferLabel(action){
+  var a = (action||'').toLowerCase().trim();
+  if(/refund.*(difference|dg)/i.test(action)) return 'Refund Difference (downgrade to monthly or lower annual)';
+  if(/applied credit/i.test(action))          return 'Applied Credit (Annual Plans)';
+  if(/applied discount/i.test(action))        return 'Applied Discount (Monthly Plans)';
+  if(/free month.*growth|growth.*free/i.test(action)) return 'Applied Free Month Growth';
+  if(/free month.*addon|addon.*free|free addon/i.test(action)) return 'Applied Free Month Addon';
+  return action||'(no action recorded)';
+}
+
 function analyzeSaves(rows, company){
   var saveEscs=[], savesConverted=[], hiddenSaves=[];
   var offerCounts={};
@@ -521,7 +532,7 @@ function analyzeSaves(rows, company){
     if(/refund escalation/i.test(reason)&&/retention/i.test(action)){
       hiddenSaves.push(r);
     }
-    if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r); offerCounts[action]=(offerCounts[action]||0)+1; } }
+    if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r); var lbl=normalizeOfferLabel(action); offerCounts[lbl]=(offerCounts[lbl]||0)+1; } }
   });
   var rate = saveEscs.length ? savesConverted.length/saveEscs.length : 0;
   return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts, rate:rate, company:company||'PS'};
