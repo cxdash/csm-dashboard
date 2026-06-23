@@ -566,11 +566,11 @@ function compute(psRows, ciRows, volData){
   var cancellations = psRows.filter(function(r){return /retention|cancell/i.test(r.reason)||/retention/i.test(r.category);}).length;
   var saves = analyzeSaves(psRows, 'Path Social');
   var ciSaves = analyzeSaves(ciRows, 'Crowd Ignite');
+  var totalCI = ciRows.length;
   // Save rate = combined saves / combined total escalations
   var saveRate = (totalPS + totalCI) ? (saves.savesConverted.length + ciSaves.savesConverted.length) / (totalPS + totalCI) : 0;
 
   // CI
-  var totalCI = ciRows.length;
   var resolvedCI = ciRows.filter(function(r){return /resolv|fixed/i.test(r.status||r.action);}).length;
   var openCI = ciRows.filter(function(r){return !/resolv|fixed/i.test(r.status||r.action);}).length;
   var ciCats = {};
