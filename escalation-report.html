@@ -565,8 +565,8 @@ function compute(psRows, ciRows, volData){
   var refunds = psRows.filter(function(r){return /refund escalation|post renewal|duplicate|charge inquiry/i.test(r.reason);}).length;
   var cancellations = psRows.filter(function(r){return /retention|cancell/i.test(r.reason)||/retention/i.test(r.category);}).length;
   var saves = analyzeSaves(psRows, 'Path Social');
-  // Save rate = saves converted / total escalations (Option B: saves as % of all escs)
-  var saveRate    = totalPS  ? saves.savesConverted.length / totalPS  : 0;
+  // Save rate = combined saves / combined total escalations
+  var saveRate    = (totalPS + totalCI) ? (saves.savesConverted.length + ciSaves.savesConverted.length) / (totalPS + totalCI) : 0;
   var ciSaves = analyzeSaves(ciRows, 'Crowd Ignite');
 
   // CI
@@ -945,19 +945,7 @@ function renderAll(data){
   var psRows  = data.psText  ? parsePS(data.psText)   : data.psRows  || [];
   var ciRows  = data.ciText  ? parseCI(data.ciText)   : data.ciRows  || [];
   var volData = data.volText ? parseVolume(data.volText) : data.volData || null;
-  // On-page CI debug panel
-  var dbg = document.getElementById('ci-debug');
-  if(dbg){
-    if(ciRows.length){
-      var html='<b>CI rows ('+ciRows.length+' in period):</b><br>';
-      ciRows.forEach(function(r,i){
-        html+=(i+1)+'. cat=<b>'+r.category+'</b> action=<b>'+(r.action||'(empty)')+'</b> status=<b>'+r.status+'</b><br>';
-      });
-      dbg.innerHTML=html; dbg.style.display='block';
-    } else {
-      dbg.innerHTML='No CI rows parsed for this period.'; dbg.style.display='block';
-    }
-  }
+
   var computed = compute(psRows, ciRows, volData);
   render(computed);
 }
@@ -1007,6 +995,6 @@ async function load(){
 
 load();
 </script>
-<div id="ci-debug" style="display:none;position:fixed;bottom:10px;right:10px;background:#1a1a2e;color:#a8ff78;border:1px solid #a8ff78;padding:12px;border-radius:8px;font-size:12px;font-family:monospace;max-width:500px;z-index:9999;max-height:300px;overflow-y:auto"></div>
+
 </body>
 </html>
