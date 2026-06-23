@@ -507,17 +507,22 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
       if(!byMon[mon]) byMon[mon]=[0,0,false];
       byMon[mon][0]+=score; byMon[mon][1]++;
       if(hasZTP) byMon[mon][2]=true;
-      // Store display date: for PX/HS/CL use raw timestamp date portion; else use mon
-      var dispDate=mon; // fallback: month key like "06-2026"
-      if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test((f[1]||'').trim())){
-        // Extract date portion from f[1] "6/18/2026 10:30:00" → "Jun 18, 2026"
-        var _ts=(f[1]||'').trim().split(' ')[0]; // "6/18/2026"
-        var _tp=_ts.split('/');
-        if(_tp.length===3){
-          var _mns=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          dispDate=_mns[parseInt(_tp[0])-1]+' '+parseInt(_tp[1])+', '+_tp[2];
+      // Store display date: prefer a full date string over just month key
+      var dispDate=mon; // fallback: "06-2026"
+      function extractDisplayDate(src){
+        // Matches "M/D/YYYY" or "M/D/YYYY H:MM" or "M/D/YYYY H:MM:SS"
+        var _m=(src||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}:\d{2}))?/);
+        if(_m){
+          var d=_m[1]+'/'+_m[2]+'/'+_m[3];
+          return _m[4] ? d+' '+_m[4] : d; // "6/20/2026 14:30" or "6/20/2026"
         }
+        return null;
       }
+      // Try f[1] (PX/HS/CL timestamp or main sheet date), rawMon, then scan f[2]–f[5]
+      var _extracted = extractDisplayDate(f[1]) || extractDisplayDate(rawMon)
+        || extractDisplayDate(f[2]) || extractDisplayDate(f[3])
+        || extractDisplayDate(f[4]) || extractDisplayDate(f[5]);
+      if(_extracted) dispDate=_extracted;
       allRows.push({mon:mon,score:score,hasZTP:hasZTP,link:link,date:dispDate});
     }
   }
