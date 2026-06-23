@@ -527,12 +527,20 @@ function analyzeSaves(rows, company){
     var isEsc=false, isSave=false;
     if(SAVE_REASON_RE.test(reason)){
       isEsc=true;
-      if(SAVE_ACTION_RE.test(action)) isSave=true;
+      if(/refund dg difference/i.test(reason)){
+        // Reason = "Refund DG Difference" → action is "Refunded"
+        if(/refunded|refund.*difference/i.test(action)) isSave=true;
+      } else {
+        // Reason = "Manual Save – Monthly/Annual" → applied discount/credit/free month/etc.
+        if(SAVE_ACTION_RE.test(action)) isSave=true;
+      }
     }
     if(/refund escalation/i.test(reason)&&/retention/i.test(action)){
       hiddenSaves.push(r);
     }
-    if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r); var lbl=normalizeOfferLabel(action); offerCounts[lbl]=(offerCounts[lbl]||0)+1; } }
+    if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r);
+      var lbl = /refund dg difference/i.test(reason) ? 'Refund Difference (downgrade to monthly or lower annual)' : normalizeOfferLabel(action);
+      offerCounts[lbl]=(offerCounts[lbl]||0)+1; } }
   });
   var rate = saveEscs.length ? savesConverted.length/saveEscs.length : 0;
   return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts, rate:rate, company:company||'PS'};
