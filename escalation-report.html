@@ -186,8 +186,8 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
       <div class="kpi-grid" id="kpiGrid">
         <div class="kpi-card"><div class="kpi-val" id="kTotal">—</div><div class="kpi-lbl">Total Escs</div></div>
         <div class="kpi-card"><div class="kpi-val" id="kResolved" style="color:var(--green)">—</div><div class="kpi-lbl">Resolution Rate</div></div>
-        <div class="kpi-card"><div class="kpi-val" id="kSaveReceived">—</div><div class="kpi-lbl">Save Escs Received</div></div>
-        <div class="kpi-card"><div class="kpi-val" id="kSaveConverted" style="color:var(--green)">—</div><div class="kpi-lbl">Save Conv. Rate</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kSaveReceived">—</div><div class="kpi-lbl">Saves Converted</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kSaveConverted" style="color:var(--green)">—</div><div class="kpi-lbl">Save Rate (vs Total)</div></div>
         <div class="kpi-card"><div class="kpi-val" id="kCB" style="color:var(--red)">—</div><div class="kpi-lbl">CB / Disputes</div></div>
       </div>
     </div>
@@ -228,7 +228,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <div class="kpi-card"><div class="kpi-val" id="sv4" style="color:var(--green)">—</div><div class="kpi-lbl">Conversion Rate</div></div>
       </div>
       <table class="offer-table" style="margin-bottom:14px">
-        <thead><tr><th>Company</th><th class="r">Received</th><th class="r">Converted</th><th class="r">Rate</th></tr></thead>
+        <thead><tr><th>Company</th><th class="r">Total Escs</th><th class="r">Save Escs</th><th class="r">Saves</th><th class="r">Save Rate</th></tr></thead>
         <tbody id="savesByCompany"></tbody>
       </table>
       <table class="offer-table" id="offerTable">
@@ -504,7 +504,8 @@ function parseVolume(text){
 // ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
 // Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
 var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund difference/i;
-// Save escalation triggers: manual save (any plan type) or refund dg difference
+// Save escalation reasons (exact values from sheet):
+//   "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
 var SAVE_REASON_RE = /manual save|refund dg difference/i;
 
 function analyzeSaves(rows, company){
@@ -535,7 +536,8 @@ function compute(psRows, ciRows, volData){
   var refunds = psRows.filter(function(r){return /refund escalation|post renewal|duplicate|charge inquiry/i.test(r.reason);}).length;
   var cancellations = psRows.filter(function(r){return /retention|cancell/i.test(r.reason)||/retention/i.test(r.category);}).length;
   var saves = analyzeSaves(psRows, 'Path Social');
-  var saveRate = saves.rate;
+  // Save rate = saves converted / total escalations (Option B: saves as % of all escs)
+  var saveRate    = totalPS  ? saves.savesConverted.length / totalPS  : 0;
   var ciSaves = analyzeSaves(ciRows, 'Crowd Ignite');
 
   // CI
@@ -598,8 +600,9 @@ function compute(psRows, ciRows, volData){
   // Remove zero-count types for clean display
   Object.keys(paymentTypes).forEach(function(k){ if(!paymentTypes[k]) delete paymentTypes[k]; });
 
+  var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
   return {
-    totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves,
+    totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
     totalCI, resolvedCI, openCI, topCatCI,
     topReasons, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
     refundPolicyRows, topRefundReasons, cbRows, topCBReasons, paymentRows, paymentTypes,
@@ -619,7 +622,8 @@ function render(d){
   // ── Section 2: At a Glance ──
   document.getElementById('kTotal').textContent = d.totalPS + (d.totalCI ? ' + '+d.totalCI+' CI' : '');
   document.getElementById('kResolved').textContent = resRatePct;
-  document.getElementById('kSaveReceived').textContent = d.saves.saveEscs.length;
+  // At a Glance: saves converted count + save rate vs total escs
+  document.getElementById('kSaveReceived').textContent = d.saves.savesConverted.length + (d.ciSaves.savesConverted.length?' + '+d.ciSaves.savesConverted.length+' CI':'');
   document.getElementById('kSaveConverted').textContent = saveRatePct;
   document.getElementById('kCB').textContent = d.cb;
 
@@ -647,17 +651,36 @@ function render(d){
   document.getElementById('sv3').textContent = d.saves.savesConverted.length + (d.saves.hiddenSaves.length?' + '+d.saves.hiddenSaves.length+' hidden':'');
   document.getElementById('sv4').textContent = saveRatePct;
 
-  // Per-company breakdown table
-  var psSaveRatePct = d.saves.rate ? (d.saves.rate*100).toFixed(1)+'%' : '—';
-  var ciSaveRatePct = d.ciSaves.rate ? (d.ciSaves.rate*100).toFixed(1)+'%' : '—';
-  var combinedReceived = d.saves.saveEscs.length + d.ciSaves.saveEscs.length;
+  // Per-company breakdown table: saves converted / total escs (Option B)
+  var psSaveRatePct  = d.totalPS  ? (d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%'  : '—';
+  var ciSaveRatePct  = d.totalCI  ? (d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%' : '—';
+  var combinedTotal     = d.totalPS + d.totalCI;
   var combinedConverted = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
-  var combinedRate = combinedReceived ? (combinedConverted/combinedReceived*100).toFixed(1)+'%' : '—';
-  var companyTableRows = '<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:6px"></span>Path Social</td><td class="r">'+d.saves.saveEscs.length+'</td><td class="r">'+d.saves.savesConverted.length+'</td><td class="r" style="font-weight:700;color:'+(d.saves.rate>=0.7?'var(--green)':'var(--amber)')+'">'+psSaveRatePct+'</td></tr>';
-  if(d.ciSaves.saveEscs.length){
-    companyTableRows += '<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6;margin-right:6px"></span>Crowd Ignite</td><td class="r">'+d.ciSaves.saveEscs.length+'</td><td class="r">'+d.ciSaves.savesConverted.length+'</td><td class="r" style="font-weight:700;color:'+(d.ciSaves.rate>=0.7?'var(--green)':'var(--amber)')+'">'+ciSaveRatePct+'</td></tr>';
+  var combinedRate      = combinedTotal ? (combinedConverted/combinedTotal*100).toFixed(1)+'%' : '—';
+  var psSaveOk  = d.totalPS  && (d.saves.savesConverted.length/d.totalPS)>=0.15;
+  var ciSaveOk  = d.totalCI  && (d.ciSaves.savesConverted.length/d.totalCI)>=0.15;
+  var companyTableRows = '<tr>'
+    +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:6px"></span>Path Social</td>'
+    +'<td class="r">'+d.totalPS+'</td>'
+    +'<td class="r">'+d.saves.saveEscs.length+'</td>'
+    +'<td class="r">'+d.saves.savesConverted.length+'</td>'
+    +'<td class="r" style="font-weight:700;color:'+(psSaveOk?'var(--green)':'var(--amber)')+'">'+psSaveRatePct+'</td>'
+    +'</tr>';
+  if(d.totalCI){
+    companyTableRows += '<tr>'
+      +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6;margin-right:6px"></span>Crowd Ignite</td>'
+      +'<td class="r">'+d.totalCI+'</td>'
+      +'<td class="r">'+d.ciSaves.saveEscs.length+'</td>'
+      +'<td class="r">'+d.ciSaves.savesConverted.length+'</td>'
+      +'<td class="r" style="font-weight:700;color:'+(ciSaveOk?'var(--green)':'var(--amber)')+'">'+ciSaveRatePct+'</td>'
+      +'</tr>';
   }
-  companyTableRows += '<tr class="total"><td><strong>Combined</strong></td><td class="r"><strong>'+combinedReceived+'</strong></td><td class="r"><strong>'+combinedConverted+'</strong></td><td class="r"><strong>'+combinedRate+'</strong></td></tr>';
+  companyTableRows += '<tr class="total"><td><strong>Combined</strong></td>'
+    +'<td class="r"><strong>'+combinedTotal+'</strong></td>'
+    +'<td class="r"><strong>'+(d.saves.saveEscs.length+d.ciSaves.saveEscs.length)+'</strong></td>'
+    +'<td class="r"><strong>'+combinedConverted+'</strong></td>'
+    +'<td class="r"><strong>'+combinedRate+'</strong></td>'
+    +'</tr>';
   document.getElementById('savesByCompany').innerHTML = companyTableRows;
 
   // Offer breakdown table — from actual data, sorted desc
@@ -845,9 +868,10 @@ function renderHighlights(d){
     if(d.resolvedPS/d.totalPS>=0.90) wins.push('✅ Resolution rate at '+resRatePct+' — strong execution by escalation team');
     else flags.push('⚠ Resolution rate at '+resRatePct+' — review open escalations for blockers');
   }
-  if(d.saves.saveEscs.length>0){
-    if(d.saveRate>=0.80) wins.push('✅ Save conversion '+saveRatePct+' ('+d.saves.savesConverted.length+'/'+d.saves.saveEscs.length+' save escalations)');
-    else flags.push('⚠ Save conversion at '+saveRatePct+' — review offer strategy with escalation team');
+  if(d.saves.savesConverted.length>0 || d.ciSaves.savesConverted.length>0){
+    var totalSaved = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
+    var totalEscs  = d.totalPS + d.totalCI;
+    wins.push('✅ '+totalSaved+' saves converted — '+(d.totalPS?'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+saveRatePct+')':'')+(d.totalCI?' · CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+(d.ciSaveRate*100).toFixed(1)+'%)':''));
   }
   if(d.cb>=20) flags.push('⚠ '+d.cb+' CB/dispute escalations — elevated; verify root cause and payment gateway');
   else if(d.cb>0&&d.cb<15) wins.push('✅ CB/disputes managed at '+d.cb+' cases');

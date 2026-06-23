@@ -1991,11 +1991,17 @@ function renderEscalations(){
   var open     = escs.filter(function(e){return /(open|review|monitoring)/i.test(e.status||'');}).length;
   var resRate  = total ? (resolved/total*100).toFixed(1)+'%' : '—';
 
-  // Saves: action = applied credit / applied discount / refund difference
-  var savedEscs  = psEscs.filter(function(e){ return /applied credit|applied discount|refund difference/i.test(e.action||''); });
+  // Saves — reasons: "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
+  // Actions: applied discount | applied credit | free month | free addon | refund difference
+  // Rate = saves converted / total escalations (per company)
+  var savedEscs  = psEscs.filter(function(e){ return /applied credit|applied discount|free month|free addon|refund difference/i.test(e.action||''); });
   var savedCount = savedEscs.length;
-  var saveEscs   = psEscs.filter(function(e){ return /manual save|refund dg difference/i.test(e.reason||''); });
-  var savePct    = saveEscs.length ? (savedCount/saveEscs.length*100).toFixed(1)+'%' : (total ? (savedCount/total*100).toFixed(1)+'%' : '—');
+  var ciSavedCount = ciEscs.filter(function(e){ return /applied credit|applied discount|free month|free addon|refund difference/i.test(e.action||''); }).length;
+  // Save rate = saves converted / total escalations per company
+  var psSavePct  = psEscs.length ? (savedCount/psEscs.length*100).toFixed(1)+'%' : '—';
+  var ciSavePct  = ciEscs.length ? (ciSavedCount/ciEscs.length*100).toFixed(1)+'%' : '—';
+  var combinedSaved = savedCount + ciSavedCount;
+  var savePct    = total ? (combinedSaved/total*100).toFixed(1)+'%' : '—';
 
   document.getElementById('escStats').innerHTML =
     // Row 1: Total MTD (full width)
@@ -2003,8 +2009,8 @@ function renderEscalations(){
     // Row 2: Saves (successful retention)
     +'<div class="esc-stat" style="border-color:var(--green)">'
     +'<div class="esc-stat-val" style="color:var(--green)">'+savePct+'</div>'
-    +'<div class="esc-stat-lbl">Saves (Retention)</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+savedCount+' converted</div>'
+    +'<div class="esc-stat-lbl">Saves (vs Total Escs)</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">PS: '+savedCount+'/'+psEscs.length+' · CI: '+ciSavedCount+'/'+ciEscs.length+'</div>'
     +'</div>'
     // Row 3: Path + CI breakdown
     +'<div class="esc-stats-row">'
@@ -2170,4 +2176,4 @@ loadData();
 if(isAdmin){ var b=document.getElementById('adminBtn'); if(b){b.textContent='🔓';b.title='Admin — click to lock';} }
 </script>
 </body>
-</html>
+</html>                                                                                                                                                                                                                                                                                                                                                                                                                                     
