@@ -200,6 +200,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <div class="hdr-right">
     <span class="period-pill" id="periodPill">No data loaded</span>
     <span class="chip wait" id="sheetStatusChip" style="margin-top:0;font-size:10px">⏳ Loading…</span>
+    <button id="adminBtn" onclick="toggleAdmin()" title="Admin access" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:13px;color:var(--text3)">🔒</button>
     <a class="agent-link" href="agent.html">👤 Agent View →</a>
   </div>
 </div>
@@ -327,7 +328,6 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#ef4444"></div>
     <div class="sec-label">5 — Escalations &amp; Resolution</div>
-    <a href="escalation-report.html" target="_blank" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;white-space:nowrap">View Full Report →</a>
   </div>
   <div class="esc-layout">
     <div class="esc-stats" id="escStats">
@@ -586,6 +586,8 @@ var D = null; // parsed data
 var agLOB = 'Path Social', agSort = {col:3, dir:-1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
+var ADMIN_CODE = 'Lisa2026cx';
+var isAdmin = (localStorage.getItem('csm_admin')==='1');
 
 function setAgLOB(lob){ agLOB = lob; renderAgents(); }
 function setAgPeriod(p){
@@ -2056,7 +2058,7 @@ function renderEscalations(){
   if(!escTableEl) return;
 
   if(!total){
-    escTableEl.outerHTML = '<div id="escTable" style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No escalations this period — <a href="escalation-report.html" target="_blank" style="color:var(--accent)">View Full Report →</a></div>';
+    escTableEl.outerHTML = '<div id="escTable" style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No escalations this period'+(isAdmin?' — <a href="escalation-report.html" target="_blank" style="color:var(--accent)">View Full Report →</a>':'')+'</div>';
     return;
   }
 
@@ -2098,7 +2100,7 @@ function renderEscalations(){
     +'<span style="font-size:11px;font-weight:700;color:var(--amber)">TOP DRIVER</span>'
     +'<span style="font-size:13px;font-weight:600;color:var(--text1)">'+topReason+'</span>'
     +'<span style="font-size:11px;color:var(--text3)">'+topCount+' of '+total+' escalations ('+(total?(topCount/total*100).toFixed(0):0)+'%)</span>'
-    +'<a href="escalation-report.html" target="_blank" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
+    +(isAdmin?'<a href="escalation-report.html" target="_blank" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>':'')
     +'</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:20px">'
     +psBlock
@@ -2148,10 +2150,34 @@ function renderFlags(){
   }).join('');
 }
 
+// ── ADMIN ────────────────────────────────────────────────────────────────────
+function toggleAdmin(){
+  if(isAdmin){
+    isAdmin = false;
+    localStorage.removeItem('csm_admin');
+    document.getElementById('adminBtn').textContent = '🔒';
+    document.getElementById('adminBtn').title = 'Admin access';
+    renderEscalations();
+    return;
+  }
+  var code = prompt('Enter admin code:');
+  if(!code) return;
+  if(code.trim() === ADMIN_CODE){
+    isAdmin = true;
+    localStorage.setItem('csm_admin','1');
+    document.getElementById('adminBtn').textContent = '🔓';
+    document.getElementById('adminBtn').title = 'Admin — click to lock';
+    renderEscalations();
+  } else {
+    alert('Incorrect code.');
+  }
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────────────
 D = DEFAULT_DATA;
 render();
 loadData();
+if(isAdmin){ var b=document.getElementById('adminBtn'); if(b){b.textContent='🔓';b.title='Admin — click to lock';} }
 </script>
 </body>
 </html>
