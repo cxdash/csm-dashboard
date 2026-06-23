@@ -1992,11 +1992,21 @@ function renderEscalations(){
   var resRate  = total ? (resolved/total*100).toFixed(1)+'%' : '—';
 
   // Saves — reasons: "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
-  // Actions: applied discount | applied credit | free month | free addon | refund difference
+  // Actions: applied discount | applied credit | free month | free addon | refund difference | Refunded (DG/Annual saves)
   // Rate = saves converted / total escalations (per company)
-  var savedEscs  = psEscs.filter(function(e){ return /applied credit|applied discount|free month|free addon|refund difference/i.test(e.action||''); });
-  var savedCount = savedEscs.length;
-  var ciSavedCount = ciEscs.filter(function(e){ return /applied credit|applied discount|free month|free addon|refund difference/i.test(e.action||''); }).length;
+  var SAVE_ACT = /applied credit|applied discount|free month|free addon|refund.*difference/i;
+  var SAVE_RSN = /manual save|refund dg difference/i;
+  function isSaveRow(e){
+    var action=(e.action||'').trim(), reason=(e.reason||'').trim(), cat=(e.category||'').trim();
+    var isCI = !reason && !!cat;
+    if(isCI){ return SAVE_ACT.test(action) || /^refunded$/i.test(action); }
+    if(!SAVE_RSN.test(reason)) return false;
+    if(/refund dg difference/i.test(reason)) return /refunded|refund.*difference/i.test(action);
+    return SAVE_ACT.test(action) || /^refunded$/i.test(action);
+  }
+  var savedEscs    = psEscs.filter(isSaveRow);
+  var savedCount   = savedEscs.length;
+  var ciSavedCount = ciEscs.filter(isSaveRow).length;
   // Save rate = saves converted / total escalations per company
   var psSavePct  = psEscs.length ? (savedCount/psEscs.length*100).toFixed(1)+'%' : '—';
   var ciSavePct  = ciEscs.length ? (ciSavedCount/ciEscs.length*100).toFixed(1)+'%' : '—';
