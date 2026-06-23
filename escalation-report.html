@@ -565,9 +565,9 @@ function compute(psRows, ciRows, volData){
   var refunds = psRows.filter(function(r){return /refund escalation|post renewal|duplicate|charge inquiry/i.test(r.reason);}).length;
   var cancellations = psRows.filter(function(r){return /retention|cancell/i.test(r.reason)||/retention/i.test(r.category);}).length;
   var saves = analyzeSaves(psRows, 'Path Social');
-  // Save rate = combined saves / combined total escalations
-  var saveRate    = (totalPS + totalCI) ? (saves.savesConverted.length + ciSaves.savesConverted.length) / (totalPS + totalCI) : 0;
   var ciSaves = analyzeSaves(ciRows, 'Crowd Ignite');
+  // Save rate = combined saves / combined total escalations
+  var saveRate = (totalPS + totalCI) ? (saves.savesConverted.length + ciSaves.savesConverted.length) / (totalPS + totalCI) : 0;
 
   // CI
   var totalCI = ciRows.length;
