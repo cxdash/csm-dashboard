@@ -341,15 +341,6 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     </div>
   </div>
 
-  <!-- ══ 6 — STAFFING ══ -->
-  <div class="sec-hdr" style="margin-top:20px">
-    <div class="sec-bar" style="background:#f59e0b"></div>
-    <div class="sec-label">6 — Staffing &amp; Attendance</div>
-  </div>
-  <div class="staff-grid" id="staffGrid">
-    <div class="card" style="grid-column:1/-1"><div class="empty"><strong>Upload xlsx to see staffing data</strong></div></div>
-  </div>
-
   <!-- ══ 7 — ACTION ITEMS ══ -->
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#64748b"></div>
@@ -1674,7 +1665,6 @@ function render(){
   renderCharts();
   renderAgents();
   renderEscalations();
-  renderStaffing();
   renderFlags();
   document.getElementById('periodPill').textContent = D.period;
   document.getElementById('periodTag').textContent = D.period;
