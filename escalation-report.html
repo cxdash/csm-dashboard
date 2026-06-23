@@ -528,20 +528,18 @@ function analyzeSaves(rows, company){
     var rowIsCI = !r.reason && !!r.category;
     var isEsc=false, isSave=false;
     if(rowIsCI){
-      // CI rows: identified by category (not reason). Count as save esc if category
-      // suggests retention AND action is a known save offer.
-      if(/retention|manual save|cancell|save/i.test(category)){
-        isEsc=true;
-        if(SAVE_ACTION_RE.test(action)) isSave=true;
-      }
+      // CI sheet = all rows are escalations by definition.
+      // Save = action matches a known save offer (or Refunded).
+      isEsc=true;
+      if(SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim())) isSave=true;
     } else if(SAVE_REASON_RE.test(reason)){
       isEsc=true;
       if(/refund dg difference/i.test(reason)){
         // Reason = "Refund DG Difference" → action is "Refunded"
         if(/refunded|refund.*difference/i.test(action)) isSave=true;
       } else {
-        // Reason = "Manual Save – Monthly/Annual" → applied discount/credit/free month/etc.
-        if(SAVE_ACTION_RE.test(action)) isSave=true;
+        // Reason = "Manual Save – Monthly/Annual" → applied discount/credit/free month/etc. OR Refunded (downgrade save)
+        if(SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim())) isSave=true;
       }
     }
     if(/refund escalation/i.test(reason)&&/retention/i.test(action)){
