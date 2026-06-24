@@ -196,7 +196,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   <div class="sec" id="s3">
     <div class="sec-hdr">
       <div class="sec-dot" style="background:#3b82f6"></div>
-      <div><div class="sec-title">3 — Path Social Escalations</div><div class="sec-sub">Filter: Company = "Path"</div></div>
+      <div><div class="sec-title">3 — Escalations</div><div class="sec-sub">Path Social &amp; Crowd Ignite</div></div>
     </div>
     <div class="sec-body">
       <div class="lob-badge" style="background:#eff6ff;color:#1d4ed8">
@@ -210,6 +210,18 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <div class="stat-card"><div class="stat-val" id="psCancellations">—</div><div class="stat-lbl">Cancellations</div></div>
       </div>
       <table class="insight-table" id="psInsights"></table>
+
+      <div class="lob-badge" style="background:#f5f3ff;color:#6d28d9;margin-top:18px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6"></span>
+        Crowd Ignite
+      </div>
+      <div class="stat-row" id="ciStatRow">
+        <div class="stat-card"><div class="stat-val" id="ciTotal">—</div><div class="stat-lbl">Total Escalations</div></div>
+        <div class="stat-card"><div class="stat-val" id="ciRefunds" style="color:var(--amber)">—</div><div class="stat-lbl">Refunds</div></div>
+        <div class="stat-card"><div class="stat-val" id="ciCB" style="color:var(--red)">—</div><div class="stat-lbl">CB / Disputes</div></div>
+        <div class="stat-card"><div class="stat-val" id="ciCancellations">—</div><div class="stat-lbl">Cancellations</div></div>
+      </div>
+      <table class="insight-table" id="ciInsights"></table>
     </div>
   </div>
 
@@ -245,7 +257,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
     </div>
     <div class="sec-body">
       <table class="rec-table" id="recTable">
-        <thead><tr><th>Reason / Root Cause</th><th>Category</th><th class="r">Count</th><th class="r">% of Total</th><th>Trend Note</th></tr></thead>
+        <thead><tr><th>Reason / Root Cause</th><th>Category</th><th class="r">Count</th><th class="r">% Share</th><th>Trend Note</th></tr></thead>
         <tbody id="recBody"></tbody>
       </table>
     </div>
@@ -567,7 +579,7 @@ function compute(psRows, ciRows, volData){
   ciRows.forEach(function(r){ ciCats[r.category]=(ciCats[r.category]||0)+1; });
   var topCatCI = Object.keys(ciCats).sort(function(a,b){return ciCats[b]-ciCats[a];})[0]||'—';
 
-  // Reasons for recurring issues
+  // Reasons for recurring issues — PS
   var reasonCounts = {};
   psRows.forEach(function(r){
     var key=(r.reason||'Other')+' | '+(r.category||'—');
@@ -575,8 +587,19 @@ function compute(psRows, ciRows, volData){
   });
   var topReasons = Object.keys(reasonCounts).sort(function(a,b){return reasonCounts[b]-reasonCounts[a];}).slice(0,8).map(function(k){
     var parts=k.split(' | ');
-    return {reason:parts[0], category:parts[1]||'—', count:reasonCounts[k]};
+    return {reason:parts[0], category:parts[1]||'—', count:reasonCounts[k], lob:'PS'};
   });
+  // CI — top categories as recurring issues
+  var ciReasonCounts = {};
+  ciRows.forEach(function(r){
+    var key=(r.category||'Other');
+    ciReasonCounts[key]=(ciReasonCounts[key]||0)+1;
+  });
+  var topCIReasonsAll = Object.keys(ciReasonCounts).sort(function(a,b){return ciReasonCounts[b]-ciReasonCounts[a];}).slice(0,5).map(function(k){
+    return {reason:k, category:'—', count:ciReasonCounts[k], lob:'CI'};
+  });
+  // Combined list sorted by count
+  var topReasonsAll = topReasons.concat(topCIReasonsAll).sort(function(a,b){return b.count-a.count;}).slice(0,12);
 
   // Insight rows for PS
   var insightRefunds = psRows.filter(function(r){return /refund/i.test(r.category)||/refund/i.test(r.reason);});
@@ -668,15 +691,25 @@ function compute(psRows, ciRows, volData){
   ciCBRows.forEach(function(r){ var k=(r.rootCause||r.category||'Other').trim()||'Other'; ciCBCauses[k]=(ciCBCauses[k]||0)+1; });
   var topCICBReasons=Object.keys(ciCBCauses).sort(function(a,b){return ciCBCauses[b]-ciCBCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciCBCauses[k]};});
 
+  // CI insight counts for Section 3
+  var ciRefunds      = ciRows.filter(function(r){ return /refund/i.test(r.category||''); }).length;
+  var ciCB           = ciRows.filter(function(r){ return /dispute|chargeback/i.test(r.category||''); }).length;
+  var ciCancellations= ciRows.filter(function(r){ return /retention|cancel/i.test(r.category||''); }).length;
+  // Top CI categories for insight table
+  var ciCatCounts={};
+  ciRows.forEach(function(r){ var k=(r.category||'Other').trim()||'Other'; ciCatCounts[k]=(ciCatCounts[k]||0)+1; });
+  var topCICategories=Object.keys(ciCatCounts).sort(function(a,b){return ciCatCounts[b]-ciCatCounts[a];}).slice(0,5).map(function(k){return {cat:k,count:ciCatCounts[k]};});
+
   var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
   return {
     totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
     totalCI, resolvedCI, openCI, topCatCI,
-    topReasons, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
+    topReasons, topReasonsAll, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
     refundPolicyRows, topRefundReasons, cbRows, topCBReasons, paymentRows, paymentTypes,
     billingRows, topBillingReasons, billingL2, billingSysIssue, billingFailedPay, billingRepeat,
     ciBillingRows, topCIBillingReasons, ciBillingL2,
     ciRefundRows, topCIRefundReasons, ciCBRows, topCICBReasons,
+    ciRefunds, ciCB, ciCancellations, topCICategories,
     volData
   };
 }
@@ -715,6 +748,25 @@ function render(d){
   document.getElementById('psInsights').innerHTML = psInsights.map(function(row){
     return '<tr><td>'+row[0]+'</td><td>'+row[1]+'</td></tr>';
   }).join('');
+
+  // ── Section 3: Crowd Ignite ──
+  if(d.totalCI){
+    document.getElementById('ciTotal').textContent = d.totalCI;
+    document.getElementById('ciRefunds').textContent = d.ciRefunds;
+    document.getElementById('ciCB').textContent = d.ciCB;
+    document.getElementById('ciCancellations').textContent = d.ciCancellations;
+    var ciInsightRows = d.topCICategories.map(function(c){
+      var pct = d.totalCI ? (c.count/d.totalCI*100).toFixed(0)+'%' : '—';
+      var flag = c.count >= 10 ? ' — <span style="color:var(--amber)">Elevated</span>' : c.count >= 5 ? ' — Watch' : '';
+      return '<tr><td>'+c.cat+'</td><td>'+c.count+' cases ('+pct+')'+flag+'</td></tr>';
+    });
+    document.getElementById('ciInsights').innerHTML = ciInsightRows.join('') ||
+      '<tr><td colspan="2" style="color:var(--text3)">No CI escalations this period.</td></tr>';
+    document.getElementById('ciStatRow').style.display = '';
+  } else {
+    document.getElementById('ciStatRow').style.display = 'none';
+    document.getElementById('ciInsights').innerHTML = '<tr><td colspan="2" style="color:var(--text3)">No CI escalations this period.</td></tr>';
+  }
 
   // ── Section 4: Saves ──
   document.getElementById('sv1').textContent = d.totalPS;
@@ -775,16 +827,20 @@ function render(d){
   ) + (offerRows.length ? '<tr class="total"><td><strong>TOTAL</strong></td><td class="r"><strong>'+grandTotal+'</strong></td><td class="r">100%</td></tr>' : '');
 
   // ── Section 5: Recurring Issues ──
-  document.getElementById('recBody').innerHTML = d.topReasons.map(function(r){
-    var pctStr = d.totalPS ? (r.count/d.totalPS*100).toFixed(1)+'%' : '—';
+  var combinedTotal5 = d.totalPS + d.totalCI;
+  document.getElementById('recBody').innerHTML = d.topReasonsAll.map(function(r){
+    var pctStr = combinedTotal5 ? (r.count/combinedTotal5*100).toFixed(1)+'%' : '—';
     var trend = r.count>=20?'⚠ High volume':r.count>=10?'Watch':'Normal';
-    return '<tr><td>'+r.reason+'</td><td>'+r.category+'</td><td class="r">'+r.count+'</td><td class="r">'+pctStr+'</td><td style="color:'+(r.count>=20?'var(--amber)':'var(--text3)')+'">'+trend+'</td></tr>';
+    var lobBadge = r.lob==='CI'
+      ? '<span style="font-size:10px;background:#f5f3ff;color:#6d28d9;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">CI</span>'
+      : '<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">PS</span>';
+    return '<tr><td>'+r.reason+lobBadge+'</td><td>'+r.category+'</td><td class="r">'+r.count+'</td><td class="r">'+pctStr+'</td><td style="color:'+(r.count>=20?'var(--amber)':'var(--text3)')+'">'+trend+'</td></tr>';
   }).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:16px">No data</td></tr>';
 
   // ── Pattern Deep Dive: Refund Policy ──
   var refEl = document.getElementById('refundPatterns');
   if(d.refundPolicyRows.length){
-    var refHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.refundPolicyRows.length+' refund escalation'+(d.refundPolicyRows.length>1?'s':'')+' — accounts outside standard refund policy</div>';
+    var refHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;min-height:40px">'+d.refundPolicyRows.length+' refund escalation'+(d.refundPolicyRows.length>1?'s':'')+' — accounts outside standard refund policy</div>';
     if(d.topRefundReasons.length){
       refHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px">Path Social</div>';
       refHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause / Reason</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
@@ -811,7 +867,7 @@ function render(d){
   // ── Pattern Deep Dive: CB / Disputes ──
   var cbEl = document.getElementById('cbPatterns');
   if(d.cbRows.length){
-    var cbHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+' — verify payment gateway and refund eligibility</div>';
+    var cbHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;min-height:40px">'+d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+' — verify payment gateway and refund eligibility</div>';
     if(d.topCBReasons.length){
       cbHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px">Path Social</div>';
       cbHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
@@ -839,7 +895,7 @@ function render(d){
   var pmEl = document.getElementById('paymentPatterns');
   var pmHtml = '';
   if(d.billingRows.length){
-    pmHtml += '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.billingRows.length+' billing escalation'+(d.billingRows.length>1?'s':'')+'</div>';
+    pmHtml += '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;min-height:40px">'+d.billingRows.length+' billing escalation'+(d.billingRows.length>1?'s':'')+'</div>';
     // PS root cause table
     pmHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px">Path Social</div>';
     pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px"><thead><tr>'
