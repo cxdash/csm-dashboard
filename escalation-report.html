@@ -649,6 +649,19 @@ function compute(psRows, ciRows, volData){
   billingRows.forEach(function(r){ if(r.email) billingEmails[r.email]=(billingEmails[r.email]||0)+1; });
   var billingRepeat=Object.keys(billingEmails).filter(function(e){return billingEmails[e]>1;}).length;
 
+  // CI Billing Issues breakdown
+  var ciBillingRows = ciRows.filter(function(r){
+    return /billing|failed payment|payment/i.test(r.category||'') ||
+           /failed payment|reactivation|update payment|payment method/i.test(r.rootCause||'');
+  });
+  var ciBillingRootCauses={};
+  ciBillingRows.forEach(function(r){
+    var k=(r.rootCause||r.category||'Other').trim()||'Other';
+    ciBillingRootCauses[k]=(ciBillingRootCauses[k]||0)+1;
+  });
+  var topCIBillingReasons=Object.keys(ciBillingRootCauses).sort(function(a,b){return ciBillingRootCauses[b]-ciBillingRootCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciBillingRootCauses[k]};});
+  var ciBillingL2=ciBillingRows.filter(function(r){return /l2|escalation/i.test(r.action||'');}).length;
+
   var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
   return {
     totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
@@ -656,6 +669,7 @@ function compute(psRows, ciRows, volData){
     topReasons, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
     refundPolicyRows, topRefundReasons, cbRows, topCBReasons, paymentRows, paymentTypes,
     billingRows, topBillingReasons, billingL2, billingSysIssue, billingFailedPay, billingRepeat,
+    ciBillingRows, topCIBillingReasons, ciBillingL2,
     volData
   };
 }
@@ -800,14 +814,10 @@ function render(d){
   var pmEl = document.getElementById('paymentPatterns');
   var pmHtml = '';
   if(d.billingRows.length){
-    pmHtml += '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
-      +'<span>'+d.billingRows.length+' billing escalation'+(d.billingRows.length>1?'s':'')+'</span>'
-      +'<span style="font-size:11px;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:1px 7px;white-space:nowrap">Failed Pay: '+d.billingFailedPay+'</span>'
-      +'<span style="font-size:11px;background:#fffbeb;color:#b45309;border-radius:10px;padding:1px 7px;white-space:nowrap">Sys Issue: '+d.billingSysIssue+'</span>'
-      +'<span style="font-size:11px;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:1px 7px;white-space:nowrap">L2: '+d.billingL2+'</span>'
-      +(d.billingRepeat?'<span style="font-size:11px;background:#f5f3ff;color:#6d28d9;border-radius:10px;padding:1px 7px;white-space:nowrap">Repeat Cx: '+d.billingRepeat+'</span>':'')+'</div>';
-    // Root cause table
-    pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr>'
+    pmHtml += '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.billingRows.length+' billing escalation'+(d.billingRows.length>1?'s':'')+'</div>';
+    // PS root cause table
+    pmHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px">Path Social</div>';
+    pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px"><thead><tr>'
       +'<th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th>'
       +'<th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th>'
       +'</tr></thead><tbody>';
@@ -816,6 +826,19 @@ function render(d){
         +'<td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border);font-weight:700">'+r.count+'</td></tr>';
     }).join('');
     pmHtml += '</tbody></table>';
+    // CI breakdown
+    if(d.ciBillingRows.length){
+      pmHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px;border-top:1px solid var(--border);margin-top:4px">Crowd Ignite</div>';
+      pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr>'
+        +'<th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th>'
+        +'<th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th>'
+        +'</tr></thead><tbody>';
+      pmHtml += d.topCIBillingReasons.map(function(r){
+        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td>'
+          +'<td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border);font-weight:700">'+r.count+'</td></tr>';
+      }).join('');
+      pmHtml += '</tbody></table>';
+    }
     // Amex/Airwallex note if any
     if(d.paymentRows.length){
       var pmKeys=Object.keys(d.paymentTypes).join(', ');
@@ -1152,15 +1175,16 @@ function renderHighlights(d){
     +'<div style="background:#fef9c3;padding:7px 10px;font-size:11px;font-weight:700;color:#854d0e;letter-spacing:.05em;text-transform:uppercase">💳 Billing Issues</div>'
     +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.billingRows.length?d.billingRows.length+' escalation'+(d.billingRows.length>1?'s':''):'None this period')+'</div>';
   if(d.billingRows.length){
-    pmHtmlE+='<div style="padding:0 10px 6px;display:flex;gap:6px;flex-wrap:wrap">';
-    pmHtmlE+='<span style="font-size:10px;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:2px 7px">Failed Pay: '+d.billingFailedPay+'</span>';
-    pmHtmlE+='<span style="font-size:10px;background:#fffbeb;color:#b45309;border-radius:10px;padding:2px 7px">Sys Issue: '+d.billingSysIssue+'</span>';
-    if(d.billingL2) pmHtmlE+='<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:2px 7px">L2: '+d.billingL2+'</span>';
-    if(d.billingRepeat) pmHtmlE+='<span style="font-size:10px;background:#f5f3ff;color:#6d28d9;border-radius:10px;padding:2px 7px">Repeat Cx: '+d.billingRepeat+'</span>';
-    pmHtmlE+='</div>';
+    pmHtmlE+='<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Path Social</div>';
     pmHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
     d.topBillingReasons.forEach(function(r){pmHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
     pmHtmlE+='</table>';
+    if(d.ciBillingRows&&d.ciBillingRows.length){
+      pmHtmlE+='<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-top:1px solid #e2e8f0;margin-top:4px">Crowd Ignite</div>';
+      pmHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+      d.topCIBillingReasons.forEach(function(r){pmHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
+      pmHtmlE+='</table>';
+    }
     if(d.paymentRows.length) pmHtmlE+='<div style="padding:6px 10px;font-size:11px;color:#64748b">Card flags: '+Object.keys(d.paymentTypes).join(', ')+'</div>';
   }
   pmHtmlE+='</td>';
