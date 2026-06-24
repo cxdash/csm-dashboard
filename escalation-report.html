@@ -502,7 +502,7 @@ function parseVolume(text){
 
 // ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
 // Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
-var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund.*difference/i;
+var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund.*difference|refunded credit/i;
 // Save escalation reasons (exact values from sheet):
 //   "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
 var SAVE_REASON_RE = /manual save|refund dg difference/i;
@@ -511,6 +511,7 @@ var SAVE_REASON_RE = /manual save|refund dg difference/i;
 function normalizeOfferLabel(action){
   var a = (action||'').toLowerCase().trim();
   if(/refund.*(difference|dg)/i.test(action)) return 'Refund Difference (downgrade to monthly or lower annual)';
+  if(/refunded credit.*annual|annual.*refunded credit/i.test(action)) return 'Refunded Credit (Annual)';
   if(/applied credit/i.test(action))          return 'Applied Credit (Annual Plans)';
   if(/applied discount/i.test(action))        return 'Applied Discount (Monthly Plans)';
   if(/free month.*growth|growth.*free/i.test(action)) return 'Applied Free Month Growth';
@@ -912,73 +913,192 @@ function renderHighlights(d){
   var saveRatePctFull = d.saveRate ? (d.saveRate*100).toFixed(1)+'%' : '—';
   var combinedSaved   = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
   var combinedTotal   = d.totalPS + d.totalCI;
+  var SEP  = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+  var SEP2 = '--------------------------------------------\n';
 
   var body = 'Hi [Director],\n\n';
   body += 'Please find the CX escalation summary for '+periodLabel()+'.\n\n';
+  body += SEP;
 
-  // Key Highlights
-  body += '— KEY HIGHLIGHTS —\n';
-  wins.concat(flags).forEach(function(b){ body += b+'\n'; });
+  // ── WINS ──
+  body += '✅  WINS\n'+SEP2;
+  // Build rich win descriptions
+  if(d.totalPS>0 && d.resolvedPS/d.totalPS>=0.90){
+    body += '☑ '+resRatePct+' resolution rate — best execution this period\n';
+    body += '  '+d.resolvedPS+' of '+d.totalPS+' Path escalations resolved.'+(d.openPS?' '+d.openPS+' still monitoring.':'')+
+      (d.totalCI?' Crowd Ignite '+d.resolvedCI+'/'+d.totalCI+' resolved. '+(d.totalPS+d.totalCI - d.openPS - d.openCI)+' of '+(d.totalPS+d.totalCI)+' total resolved across both LOBs.':'')+'\n\n';
+  }
+  if(combinedSaved>0){
+    var psSaveRatePct2 = d.totalPS?(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%':'—';
+    var ciSaveRatePct2 = d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—';
+    body += '☑ Save conversion '+saveRatePctFull+' — '+combinedSaved+' of '+combinedTotal+' saves converted\n';
+    var saveDesc = '  ';
+    if(d.saves.offerCounts){
+      var offerKeys=Object.keys(d.saves.offerCounts).sort(function(a,b){return d.saves.offerCounts[b]-d.saves.offerCounts[a];});
+      if(offerKeys.length) saveDesc += 'Top offer: '+offerKeys[0]+' ('+d.saves.offerCounts[offerKeys[0]]+'). ';
+    }
+    saveDesc += 'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+psSaveRatePct2+').';
+    if(d.totalCI) saveDesc += ' CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+ciSaveRatePct2+').';
+    if(d.saves.hiddenSaves.length) saveDesc += ' +'+d.saves.hiddenSaves.length+' hidden retention saves.';
+    body += saveDesc+'\n\n';
+  }
+  if(d.cb>0 && d.cb<15){
+    body += '☑ CB/disputes managed at '+d.cb+' cases\n';
+    if(d.topCBReasons.length) body += '  Top root cause: '+d.topCBReasons[0].reason+' ('+d.topCBReasons[0].count+' cases). No critical spike.\n\n';
+    else body += '\n';
+  }
+  if(d.totalCI===0){
+    body += '☑ No Crowd Ignite escalations this period\n\n';
+  }
 
-  // Escalation Summary
-  body += '\n— ESCALATION SUMMARY —\n';
+  // ── NEEDS ATTENTION ──
+  body += SEP;
+  body += '⚠  NEEDS ATTENTION\n'+SEP2;
+  var hasFlag=false;
+  if(d.totalPS>0 && d.resolvedPS/d.totalPS<0.90){
+    hasFlag=true;
+    body += '△ Resolution rate at '+resRatePct+' — below 90% target\n';
+    body += '  '+d.openPS+' Path escalations still open. Review for blockers or pending specialist action.\n\n';
+  }
+  if(d.cb>=15){
+    hasFlag=true;
+    body += '△ '+d.cb+' CB/dispute threats — elevated volume\n';
+    if(d.topCBReasons.length){
+      body += '  Top causes: ';
+      body += d.topCBReasons.slice(0,3).map(function(r){return r.reason+' ('+r.count+')';}).join(' · ')+'\n';
+      body += '  Verify payment gateway and refund eligibility. Consider proactive outreach for Fulfillment-related disputes.\n\n';
+    } else body += '\n';
+  }
+  if(d.openCI>0){
+    hasFlag=true;
+    body += '△ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open\n';
+    if(d.topCatCI&&d.topCatCI!=='—') body += '  Top category: '+d.topCatCI+'. Follow up with CI specialist.\n\n';
+    else body += '\n';
+  }
+  var topIssue=d.topReasons[0];
+  if(topIssue&&topIssue.count>=20){
+    hasFlag=true;
+    var secondIssue=d.topReasons[1];
+    body += '△ "'+topIssue.reason+'" leading at '+topIssue.count+' cases\n';
+    body += '  '+(secondIssue?'"'+secondIssue.reason+'" also at '+secondIssue.count+'. ':'')+
+      'Multiple root causes spiking — possible platform/product event. Escalate to product/ops.\n\n';
+  }
+  if(!hasFlag) body += 'No critical flags — all metrics within acceptable range.\n\n';
+
+  // ── ESCALATION SUMMARY ──
+  body += SEP;
+  body += '📋  ESCALATION SUMMARY\n'+SEP2;
   if(d.totalPS){
-    body += 'Path Social: '+d.totalPS+' total escalations\n';
-    body += '  Resolved: '+d.resolvedPS+' ('+resRatePct+') | Open: '+d.openPS+'\n';
-    body += '  Refunds/CB: '+d.refunds+' refunds · '+d.cb+' CB/disputes\n';
-    body += '  Cancellations/Retention: '+d.cancellations+'\n';
-    if(d.insightService.length) body += '  Service & Tech Issues: '+d.insightService.length+'\n';
-    if(d.insightFulfill.length) body += '  Fulfillment: '+d.insightFulfill.length+'\n';
-    if(d.insightBilling.length) body += '  Billing: '+d.insightBilling.length+'\n';
+    body += 'Path Social             '+d.totalPS+' total\n';
+    body += '  Resolved              '+d.resolvedPS+' ('+resRatePct+')\n';
+    body += '  Open / Monitoring     '+d.openPS+'\n';
+    body += '  Refund Escalations    '+d.refunds+'\n';
+    body += '  CB / Disputes         '+d.cb+'\n';
+    body += '  Cancellations         '+d.cancellations+'\n';
+    if(d.insightService.length)  body += '  Service & Tech        '+d.insightService.length+'\n';
+    if(d.insightFulfill.length)  body += '  Fulfillment           '+d.insightFulfill.length+'\n';
+    if(d.insightBilling.length)  body += '  Billing               '+d.insightBilling.length+'\n';
   }
   if(d.totalCI){
-    body += 'Crowd Ignite: '+d.totalCI+' total · '+d.resolvedCI+' resolved · '+d.openCI+' open\n';
-    if(d.topCatCI&&d.topCatCI!=='—') body += '  Top Category: '+d.topCatCI+'\n';
+    body += 'Crowd Ignite            '+d.totalCI+' total\n';
+    body += '  Resolved              '+d.resolvedCI+'\n';
+    body += '  Open                  '+d.openCI+'\n';
+    if(d.topCatCI&&d.topCatCI!=='—') body += '  Top Category          '+d.topCatCI+'\n';
   }
-
-  // Save Conversion
-  body += '\n— SAVE CONVERSION —\n';
-  body += 'PS: '+d.saves.savesConverted.length+' saves / '+d.totalPS+' escs';
-  if(d.totalPS) body += ' ('+(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%)';
   body += '\n';
-  if(d.totalCI){
-    body += 'CI: '+d.ciSaves.savesConverted.length+' saves / '+d.totalCI+' escs';
-    body += ' ('+(d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—')+')\n';
-  }
-  body += 'Combined: '+combinedSaved+' saves / '+combinedTotal+' escs ('+saveRatePctFull+')\n';
-  if(d.saves.hiddenSaves.length) body += '  (+'+d.saves.hiddenSaves.length+' retention saves within refund escalations)\n';
 
-  // Top Recurring Issues
+  // ── SAVE CONVERSION ──
+  body += SEP;
+  body += '💰  SAVE CONVERSION\n'+SEP2;
+  body += 'Path Social   '+d.saves.savesConverted.length+' / '+d.totalPS+' escs'+(d.totalPS?' ('+(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%)':'')+'\n';
+  if(d.totalCI) body += 'Crowd Ignite  '+d.ciSaves.savesConverted.length+' / '+d.totalCI+' escs ('+(d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—')+')\n';
+  body += 'Combined      '+combinedSaved+' / '+combinedTotal+' ('+saveRatePctFull+')\n';
+  if(d.saves.hiddenSaves.length) body += '(+'+d.saves.hiddenSaves.length+' hidden retention saves within refund escalations)\n';
+  // Offer breakdown
+  if(d.saves.offerCounts){
+    var allOffers=Object.assign({},d.saves.offerCounts);
+    Object.keys(d.ciSaves.offerCounts||{}).forEach(function(k){allOffers[k]=(allOffers[k]||0)+d.ciSaves.offerCounts[k];});
+    var offerKeys2=Object.keys(allOffers).sort(function(a,b){return allOffers[b]-allOffers[a];});
+    if(offerKeys2.length){
+      body += '\n  Offer Breakdown:\n';
+      offerKeys2.forEach(function(k){ body += '  • '+k+': '+allOffers[k]+'\n'; });
+    }
+  }
+  body += '\n';
+
+  // ── TOP RECURRING ISSUES ──
   if(d.topReasons.length){
-    body += '\n— TOP RECURRING ISSUES (Path Social) —\n';
+    body += SEP;
+    body += '🔁  TOP RECURRING ISSUES — Path Social\n'+SEP2;
     d.topReasons.slice(0,5).forEach(function(r,i){
-      body += (i+1)+'. '+r.reason+(r.category&&r.category!=='—'?' ['+r.category+']':'')+' — '+r.count+' cases'+(d.totalPS?' ('+(r.count/d.totalPS*100).toFixed(1)+'%)':'')+'\n';
+      body += (i+1)+'. '+r.reason+(r.category&&r.category!=='—'?' ['+r.category+']':'');
+      body += '   '+r.count+' cases'+(d.totalPS?' ('+(r.count/d.totalPS*100).toFixed(1)+'%)':'')+'\n';
     });
+    body += '\n';
   }
 
-  // CB / Dispute detail
+  // ── PATTERN DEEP DIVE ──
+  body += SEP;
+  body += '🔍  PATTERN DEEP DIVE\n'+SEP2;
+
+  // Refund Policy
+  body += 'REFUND POLICY ESCALATIONS\n';
+  if(d.refundPolicyRows.length){
+    body += d.refundPolicyRows.length+' refund escalation'+(d.refundPolicyRows.length>1?'s':'')+' — accounts outside standard refund policy\n';
+    if(d.topRefundReasons.length){
+      d.topRefundReasons.forEach(function(r){ body += '  • '+r.reason+': '+r.count+'\n'; });
+    }
+  } else {
+    body += 'No refund policy escalations this period.\n';
+  }
+  body += '\n';
+
+  // CB / Disputes
+  body += 'CB / DISPUTE THREATS\n';
   if(d.cbRows.length){
-    body += '\n— CB / DISPUTES —\n';
-    body += d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+'\n';
-    d.topCBReasons.slice(0,3).forEach(function(r){ body += '  • '+r.reason+': '+r.count+'\n'; });
+    body += d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+' — verify payment gateway and refund eligibility\n';
+    if(d.topCBReasons.length){
+      d.topCBReasons.forEach(function(r){ body += '  • '+r.reason+': '+r.count+'\n'; });
+    }
+  } else {
+    body += 'No CB/dispute threats this period. ✅\n';
   }
+  body += '\n';
 
-  // Volume & SLA
+  // Payment Method Issues
+  body += 'PAYMENT METHOD ISSUES\n';
+  if(d.paymentRows.length){
+    body += d.paymentRows.length+' payment method escalation'+(d.paymentRows.length>1?'s':'')+' (Amex · Airwallex · Non-US MC)\n';
+    var pmKeys2=Object.keys(d.paymentTypes).sort(function(a,b){return d.paymentTypes[b]-d.paymentTypes[a];});
+    pmKeys2.forEach(function(k){ body += '  • '+k+': '+d.paymentTypes[k]+'\n'; });
+  } else {
+    body += 'No payment method escalations detected this period.\n';
+  }
+  body += '\n';
+
+  // ── VOLUME & SLA ──
   if(d.volData && d.volData.byLOB){
-    body += '\n— VOLUME & SLA —\n';
-    var lobOrder = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+    body += SEP;
+    body += '📊  VOLUME & SLA\n'+SEP2;
+    var lobOrderE = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
     var ovVol=0, ovWithin=0;
-    lobOrder.forEach(function(lob){
+    lobOrderE.forEach(function(lob){
       var ld = d.volData.byLOB[lob]||{vol:0,within:0};
       if(!ld.vol) return;
-      var sla = ld.vol ? (ld.within/ld.vol*100).toFixed(1)+'%' : '—';
-      body += lob+': '+ld.vol+' contacts · SLA '+sla+'\n';
+      var sla = (ld.within/ld.vol*100).toFixed(1);
+      var ok  = parseFloat(sla)>=SLA_TARGET;
+      body += (ok?'✅':'⚠ ')+' '+lob+': '+ld.vol+' contacts · SLA '+sla+'% '+(ok?'(on target)':'(below '+SLA_TARGET+'% target)')+'\n';
       ovVol+=ld.vol; ovWithin+=ld.within;
     });
-    if(ovVol) body += 'Overall SLA: '+(ovWithin/ovVol*100).toFixed(1)+'% vs '+SLA_TARGET+'% target\n';
+    if(ovVol){
+      var ovSLAe=(ovWithin/ovVol*100).toFixed(1);
+      body += '\nOverall SLA: '+ovSLAe+'% vs '+SLA_TARGET+'% target'+(parseFloat(ovSLAe)>=SLA_TARGET?' ✅':' ⚠')+'\n';
+    }
+    body += '\n';
   }
 
-  body += '\nFull report attached.\n\nBest,\nLisa';
+  body += SEP;
+  body += 'Full report attached.\n\nBest,\nLisa';
 
   window._emailDraftText = body;
   window._emailDraftSubject = 'CX Weekly Update — '+periodLabel();
