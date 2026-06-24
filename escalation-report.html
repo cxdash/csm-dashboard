@@ -277,20 +277,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   <div class="sec" id="s6">
     <div class="sec-hdr">
       <div class="sec-dot" style="background:#8b5cf6"></div>
-      <div><div class="sec-title">6 — Crowd Ignite Escalations</div><div class="sec-sub">Separate CI tracker</div></div>
+      <div><div class="sec-title">6 — LOB Summary</div><div class="sec-sub">Path Social &amp; Crowd Ignite — top drivers, open items, flags</div></div>
     </div>
     <div class="sec-body">
-      <div class="lob-badge" style="background:#f5f3ff;color:#6d28d9">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6"></span>
-        Crowd Ignite
-      </div>
-      <div class="stat-row" id="ciStatRow">
-        <div class="stat-card"><div class="stat-val" id="ciTotal">—</div><div class="stat-lbl">Total Escalations</div></div>
-        <div class="stat-card"><div class="stat-val" id="ciResolved" style="color:var(--green)">—</div><div class="stat-lbl">Resolved</div></div>
-        <div class="stat-card"><div class="stat-val" id="ciOpen" style="color:var(--amber)">—</div><div class="stat-lbl">Open</div></div>
-        <div class="stat-card"><div class="stat-val" id="ciTopCat">—</div><div class="stat-lbl">Top Category</div></div>
-      </div>
-      <div id="ciInsight"></div>
+      <div id="lobSummary"><div style="color:var(--text3);font-size:13px">Loading…</div></div>
     </div>
   </div>
 
@@ -662,6 +652,22 @@ function compute(psRows, ciRows, volData){
   var topCIBillingReasons=Object.keys(ciBillingRootCauses).sort(function(a,b){return ciBillingRootCauses[b]-ciBillingRootCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciBillingRootCauses[k]};});
   var ciBillingL2=ciBillingRows.filter(function(r){return /l2|escalation/i.test(r.action||'');}).length;
 
+  // CI Refund breakdown
+  var ciRefundRows = ciRows.filter(function(r){
+    return /refund/i.test(r.category||'') || /refund/i.test(r.rootCause||'');
+  });
+  var ciRefundCauses={};
+  ciRefundRows.forEach(function(r){ var k=(r.rootCause||r.category||'Other').trim()||'Other'; ciRefundCauses[k]=(ciRefundCauses[k]||0)+1; });
+  var topCIRefundReasons=Object.keys(ciRefundCauses).sort(function(a,b){return ciRefundCauses[b]-ciRefundCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciRefundCauses[k]};});
+
+  // CI CB/Dispute breakdown
+  var ciCBRows = ciRows.filter(function(r){
+    return /dispute|chargeback/i.test(r.category||'') || /dispute|chargeback/i.test(r.rootCause||'');
+  });
+  var ciCBCauses={};
+  ciCBRows.forEach(function(r){ var k=(r.rootCause||r.category||'Other').trim()||'Other'; ciCBCauses[k]=(ciCBCauses[k]||0)+1; });
+  var topCICBReasons=Object.keys(ciCBCauses).sort(function(a,b){return ciCBCauses[b]-ciCBCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciCBCauses[k]};});
+
   var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
   return {
     totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
@@ -670,6 +676,7 @@ function compute(psRows, ciRows, volData){
     refundPolicyRows, topRefundReasons, cbRows, topCBReasons, paymentRows, paymentTypes,
     billingRows, topBillingReasons, billingL2, billingSysIssue, billingFailedPay, billingRepeat,
     ciBillingRows, topCIBillingReasons, ciBillingL2,
+    ciRefundRows, topCIRefundReasons, ciCBRows, topCICBReasons,
     volData
   };
 }
@@ -779,8 +786,17 @@ function render(d){
   if(d.refundPolicyRows.length){
     var refHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.refundPolicyRows.length+' refund escalation'+(d.refundPolicyRows.length>1?'s':'')+' — accounts outside standard refund policy</div>';
     if(d.topRefundReasons.length){
-      refHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause / Reason</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      refHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px">Path Social</div>';
+      refHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause / Reason</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
       refHtml += d.topRefundReasons.map(function(r){
+        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+r.count+'</td></tr>';
+      }).join('');
+      refHtml += '</tbody></table>';
+    }
+    if(d.ciRefundRows.length){
+      refHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px;border-top:1px solid var(--border);margin-top:4px">Crowd Ignite</div>';
+      refHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      refHtml += d.topCIRefundReasons.map(function(r){
         return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+r.count+'</td></tr>';
       }).join('');
       refHtml += '</tbody></table>';
@@ -797,8 +813,17 @@ function render(d){
   if(d.cbRows.length){
     var cbHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+' — verify payment gateway and refund eligibility</div>';
     if(d.topCBReasons.length){
-      cbHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      cbHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px">Path Social</div>';
+      cbHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
       cbHtml += d.topCBReasons.map(function(r){
+        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+r.count+'</td></tr>';
+      }).join('');
+      cbHtml += '</tbody></table>';
+    }
+    if(d.ciCBRows.length){
+      cbHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:4px 0 2px;border-top:1px solid var(--border);margin-top:4px">Crowd Ignite</div>';
+      cbHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
+      cbHtml += d.topCICBReasons.map(function(r){
         return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+r.count+'</td></tr>';
       }).join('');
       cbHtml += '</tbody></table>';
@@ -850,19 +875,64 @@ function render(d){
   pmEl.innerHTML = pmHtml;
   pmEl.style.display = '';
 
-  // ── Section 6: Crowd Ignite ──
-  document.getElementById('ciTotal').textContent = d.totalCI;
-  document.getElementById('ciResolved').textContent = d.resolvedCI;
-  document.getElementById('ciOpen').textContent = d.openCI;
-  var topCatEl = document.getElementById('ciTopCat');
-  topCatEl.textContent = d.topCatCI;
-  topCatEl.style.fontSize = d.topCatCI.length>8?'13px':'20px';
+  // ── Section 6: Combined LOB Summary ──
+  (function(){
+    var psTopReason = d.topReasons.length ? d.topReasons[0].reason : '—';
+    var psTopCat    = d.topReasons.length ? d.topReasons[0].category : '—';
+    var psOpenPct   = d.totalPS ? (d.openPS/d.totalPS*100).toFixed(0)+'%' : '—';
+    var ciTopReason = d.topCatCI || '—';
 
-  var ciAlert = d.totalCI===0 ?
-    '<div class="alert blue"><strong>ℹ No CI escalations</strong> — No Crowd Ignite escalations logged for this period.</div>' :
-    (d.openCI>0 ? '<div class="alert amber"><strong>⚠ '+d.openCI+' open</strong> — '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open/in progress.</div>' :
-    '<div class="alert green"><strong>✅ All resolved</strong> — All '+d.totalCI+' Crowd Ignite escalations resolved this period.</div>');
-  document.getElementById('ciInsight').innerHTML = ciAlert;
+    // Flags
+    var flags = [];
+    if(d.openPS>5)        flags.push('⚠ '+d.openPS+' PS escalations still open');
+    if(d.openCI>3)        flags.push('⚠ '+d.openCI+' CI escalations still open');
+    if(d.cb>10)           flags.push('⚠ CB/Dispute volume elevated ('+d.cb+')');
+    if(d.billingRows.length>50) flags.push('⚠ Billing escalations high ('+d.billingRows.length+')');
+    if(d.refundPolicyRows.length>20) flags.push('⚠ Refund escalations elevated ('+d.refundPolicyRows.length+')');
+    if(d.ciRefundRows.length>0) flags.push('ℹ CI refund-related cases: '+d.ciRefundRows.length);
+    if(d.ciCBRows.length>0)     flags.push('ℹ CI CB/dispute cases: '+d.ciCBRows.length);
+
+    var THLOB='style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text3);text-align:left;border-bottom:2px solid var(--border)"';
+    var THLBR='style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text3);text-align:right;border-bottom:2px solid var(--border)"';
+    var TD1='style="padding:7px 10px;font-size:12px;border-top:1px solid var(--border)"';
+    var TD2='style="padding:7px 10px;font-size:12px;text-align:right;border-top:1px solid var(--border)"';
+
+    var html = '<table style="width:100%;border-collapse:collapse;margin-bottom:12px">'
+      +'<thead><tr>'
+      +'<th '+THLOB+'>LOB</th>'
+      +'<th '+THLBR+'>Total</th>'
+      +'<th '+THLBR+'>Open</th>'
+      +'<th '+THLOB+'>Top Driver</th>'
+      +'<th '+THLOB+'>Category</th>'
+      +'</tr></thead><tbody>'
+      +'<tr>'
+      +'<td '+TD1+'><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:5px"></span>Path Social</td>'
+      +'<td '+TD2+'>'+d.totalPS+'</td>'
+      +'<td '+TD2+' style="padding:7px 10px;font-size:12px;text-align:right;border-top:1px solid var(--border);color:'+(d.openPS>5?'var(--amber)':'inherit')+'">'+d.openPS+'</td>'
+      +'<td '+TD1+'>'+psTopReason+'</td>'
+      +'<td '+TD1+'>'+psTopCat+'</td>'
+      +'</tr>'
+      +'<tr>'
+      +'<td '+TD1+'><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b5cf6;margin-right:5px"></span>Crowd Ignite</td>'
+      +'<td '+TD2+'>'+d.totalCI+'</td>'
+      +'<td '+TD2+' style="padding:7px 10px;font-size:12px;text-align:right;border-top:1px solid var(--border);color:'+(d.openCI>3?'var(--amber)':'inherit')+'">'+d.openCI+'</td>'
+      +'<td '+TD1+'>'+ciTopReason+'</td>'
+      +'<td '+TD1+'>—</td>'
+      +'</tr>'
+      +'</tbody></table>';
+
+    if(flags.length){
+      html += '<div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Flags &amp; Insights</div>';
+      html += flags.map(function(f){
+        var isWarn=f.startsWith('⚠');
+        return '<div style="font-size:12px;padding:4px 8px;margin-bottom:4px;border-left:3px solid '+(isWarn?'var(--amber)':'var(--blue)')+';background:'+(isWarn?'#fffbeb':'#eff6ff')+'">'+f+'</div>';
+      }).join('');
+    } else {
+      html += '<div class="alert green"><strong>✅ No flags</strong> — Both LOBs within normal ranges this period.</div>';
+    }
+
+    document.getElementById('lobSummary').innerHTML = html;
+  })();
 
   // ── Section 7: Volume & SLA ──
   renderVolume(d.volData);
@@ -1304,3 +1374,4 @@ function renderAll(data){
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
