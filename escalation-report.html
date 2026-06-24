@@ -909,206 +909,285 @@ function renderHighlights(d){
   document.getElementById('hlWins').innerHTML = wins.map(function(w){return '<div class="hl-item">'+w+'</div>';}).join('');
   document.getElementById('hlFlags').innerHTML = flags.map(function(f){return '<div class="hl-item">'+f+'</div>';}).join('');
 
-  // Build full email draft
+  // ── BUILD HTML EMAIL ──────────────────────────────────────────────────────
   var saveRatePctFull = d.saveRate ? (d.saveRate*100).toFixed(1)+'%' : '—';
   var combinedSaved   = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
   var combinedTotal   = d.totalPS + d.totalCI;
-  var SEP  = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-  var SEP2 = '--------------------------------------------\n';
 
-  var body = 'Hi [Director],\n\n';
-  body += 'Please find the CX escalation summary for '+periodLabel()+'.\n\n';
-  body += SEP;
+  // Shared inline style fragments
+  var TH  = 'style="padding:7px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;white-space:nowrap"';
+  var THR = 'style="padding:7px 10px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;white-space:nowrap"';
+  var TD  = 'style="padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0"';
+  var TDR = 'style="padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0;text-align:right"';
+  var TDBOLD = 'style="padding:7px 10px;font-size:12px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0"';
+  var TDRB= 'style="padding:7px 10px;font-size:12px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0;text-align:right"';
+
+  function secHdr(bg, title){
+    return '<tr><td colspan="99" style="background:'+bg+';padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fff">'+title+'</td></tr>';
+  }
+  function tbl(rows){ return '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'+rows+'</table>'; }
+  function thead(bg, cols){
+    return '<tr style="background:'+bg+'">'+cols.map(function(c,i){return '<th '+(i>0?THR:TH)+'>'+c+'</th>';}).join('')+'</tr>';
+  }
+
+  var html = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:680px;font-size:13px;color:#0f172a">';
+
+  // ── Header ──
+  html += '<div style="background:#1A1A2E;padding:16px 20px;border-radius:6px 6px 0 0;margin-bottom:4px">'
+    +'<div style="font-size:15px;font-weight:700;color:#fff">CX Weekly Update</div>'
+    +'<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px">'+periodLabel()+'</div>'
+    +'</div>';
+
+  // ── Greeting ──
+  html += '<p style="margin:12px 0 16px;font-size:13px">Hi [Director],<br><br>Please find the CX escalation summary for <strong>'+periodLabel()+'</strong>.</p>';
 
   // ── WINS ──
-  body += '✅  WINS\n'+SEP2;
-  // Build rich win descriptions
+  var winRows = '';
   if(d.totalPS>0 && d.resolvedPS/d.totalPS>=0.90){
-    body += '☑ '+resRatePct+' resolution rate — best execution this period\n';
-    body += '  '+d.resolvedPS+' of '+d.totalPS+' Path escalations resolved.'+(d.openPS?' '+d.openPS+' still monitoring.':'')+
-      (d.totalCI?' Crowd Ignite '+d.resolvedCI+'/'+d.totalCI+' resolved. '+(d.totalPS+d.totalCI - d.openPS - d.openCI)+' of '+(d.totalPS+d.totalCI)+' total resolved across both LOBs.':'')+'\n\n';
+    var psSaveRatePct2 = d.totalPS?(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%':'—';
+    winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
+      +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">'+resRatePct+' resolution rate — strong execution this period</div>'
+      +'<div style="font-size:12px;color:#166534;margin-top:3px">'+d.resolvedPS+' of '+d.totalPS+' Path escalations resolved.'+(d.openPS?' '+d.openPS+' still monitoring.':'')+
+        (d.totalCI?' Crowd Ignite '+d.resolvedCI+'/'+d.totalCI+' resolved. '+(d.totalPS+d.totalCI-d.openPS-d.openCI)+' of '+(d.totalPS+d.totalCI)+' total resolved.':'')+
+      '</div></td></tr>';
   }
   if(combinedSaved>0){
-    var psSaveRatePct2 = d.totalPS?(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%':'—';
-    var ciSaveRatePct2 = d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—';
-    body += '☑ Save conversion '+saveRatePctFull+' — '+combinedSaved+' of '+combinedTotal+' saves converted\n';
-    var saveDesc = '  ';
+    var psSR2 = d.totalPS?(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%':'—';
+    var ciSR2 = d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—';
+    var topOffer='';
     if(d.saves.offerCounts){
-      var offerKeys=Object.keys(d.saves.offerCounts).sort(function(a,b){return d.saves.offerCounts[b]-d.saves.offerCounts[a];});
-      if(offerKeys.length) saveDesc += 'Top offer: '+offerKeys[0]+' ('+d.saves.offerCounts[offerKeys[0]]+'). ';
+      var oKeys=Object.keys(d.saves.offerCounts).sort(function(a,b){return d.saves.offerCounts[b]-d.saves.offerCounts[a];});
+      if(oKeys.length) topOffer=' Top offer: '+oKeys[0]+' ('+d.saves.offerCounts[oKeys[0]]+').';
     }
-    saveDesc += 'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+psSaveRatePct2+').';
-    if(d.totalCI) saveDesc += ' CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+ciSaveRatePct2+').';
-    if(d.saves.hiddenSaves.length) saveDesc += ' +'+d.saves.hiddenSaves.length+' hidden retention saves.';
-    body += saveDesc+'\n\n';
+    winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
+      +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">Save conversion '+saveRatePctFull+' — '+combinedSaved+' of '+combinedTotal+' saves converted</div>'
+      +'<div style="font-size:12px;color:#166534;margin-top:3px">'+topOffer+' PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+psSR2+').'+(d.totalCI?' CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+ciSR2+').':'')+(d.saves.hiddenSaves.length?' +'+d.saves.hiddenSaves.length+' hidden retention saves.':'')+'</div>'
+      +'</td></tr>';
   }
-  if(d.cb>0 && d.cb<15){
-    body += '☑ CB/disputes managed at '+d.cb+' cases\n';
-    if(d.topCBReasons.length) body += '  Top root cause: '+d.topCBReasons[0].reason+' ('+d.topCBReasons[0].count+' cases). No critical spike.\n\n';
-    else body += '\n';
+  if(d.cb>0&&d.cb<15){
+    winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+      +'<td style="padding:10px 12px">'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">CB/disputes managed at '+d.cb+' cases</div>'
+      +(d.topCBReasons.length?'<div style="font-size:12px;color:#166534;margin-top:3px">Top root cause: '+d.topCBReasons[0].reason+' ('+d.topCBReasons[0].count+'). No critical spike.</div>':'')
+      +'</td></tr>';
   }
   if(d.totalCI===0){
-    body += '☑ No Crowd Ignite escalations this period\n\n';
+    winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+      +'<td style="padding:10px 12px"><div style="font-weight:700;font-size:13px;color:#15803d">No Crowd Ignite escalations this period</div></td></tr>';
   }
+  if(!winRows) winRows = '<tr><td colspan="2" style="padding:10px 12px;color:#64748b;font-size:12px">No notable wins to report this period.</td></tr>';
+
+  html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+    +'<tr><td colspan="2" style="background:#166534;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">✅ WINS</td></tr>'
+    +'<tr><td colspan="2" style="background:#f0fdf4;padding:0"><table style="width:100%;border-collapse:collapse">'+winRows+'</table></td></tr>'
+    +'</table>';
 
   // ── NEEDS ATTENTION ──
-  body += SEP;
-  body += '⚠  NEEDS ATTENTION\n'+SEP2;
-  var hasFlag=false;
+  var flagRows=''; var hasFlag2=false;
   if(d.totalPS>0 && d.resolvedPS/d.totalPS<0.90){
-    hasFlag=true;
-    body += '△ Resolution rate at '+resRatePct+' — below 90% target\n';
-    body += '  '+d.openPS+' Path escalations still open. Review for blockers or pending specialist action.\n\n';
+    hasFlag2=true;
+    flagRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #fde68a;vertical-align:top;width:20px;font-size:13px">△</td>'
+      +'<td style="padding:10px 12px;border-bottom:1px solid #fde68a">'
+      +'<div style="font-weight:700;font-size:13px;color:#b45309">Resolution rate at '+resRatePct+' — below 90% target</div>'
+      +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+d.openPS+' Path escalations still open. Review for blockers or pending specialist action.</div>'
+      +'</td></tr>';
   }
   if(d.cb>=15){
-    hasFlag=true;
-    body += '△ '+d.cb+' CB/dispute threats — elevated volume\n';
-    if(d.topCBReasons.length){
-      body += '  Top causes: ';
-      body += d.topCBReasons.slice(0,3).map(function(r){return r.reason+' ('+r.count+')';}).join(' · ')+'\n';
-      body += '  Verify payment gateway and refund eligibility. Consider proactive outreach for Fulfillment-related disputes.\n\n';
-    } else body += '\n';
+    hasFlag2=true;
+    var cbDesc=d.topCBReasons.slice(0,3).map(function(r){return r.reason+' ('+r.count+')';}).join(' · ');
+    flagRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #fde68a;vertical-align:top;width:20px;font-size:13px">△</td>'
+      +'<td style="padding:10px 12px;border-bottom:1px solid #fde68a">'
+      +'<div style="font-weight:700;font-size:13px;color:#b45309">'+d.cb+' CB/dispute threats — elevated volume</div>'
+      +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+cbDesc+'. Verify payment gateway and refund eligibility.</div>'
+      +'</td></tr>';
   }
   if(d.openCI>0){
-    hasFlag=true;
-    body += '△ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open\n';
-    if(d.topCatCI&&d.topCatCI!=='—') body += '  Top category: '+d.topCatCI+'. Follow up with CI specialist.\n\n';
-    else body += '\n';
+    hasFlag2=true;
+    flagRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #fde68a;vertical-align:top;width:20px;font-size:13px">△</td>'
+      +'<td style="padding:10px 12px;border-bottom:1px solid #fde68a">'
+      +'<div style="font-weight:700;font-size:13px;color:#b45309">'+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open</div>'
+      +(d.topCatCI&&d.topCatCI!=='—'?'<div style="font-size:12px;color:#92400e;margin-top:3px">Top category: '+d.topCatCI+'. Follow up with CI specialist.</div>':'')
+      +'</td></tr>';
   }
-  var topIssue=d.topReasons[0];
-  if(topIssue&&topIssue.count>=20){
-    hasFlag=true;
-    var secondIssue=d.topReasons[1];
-    body += '△ "'+topIssue.reason+'" leading at '+topIssue.count+' cases\n';
-    body += '  '+(secondIssue?'"'+secondIssue.reason+'" also at '+secondIssue.count+'. ':'')+
-      'Multiple root causes spiking — possible platform/product event. Escalate to product/ops.\n\n';
+  var topIssue2=d.topReasons[0],secIssue=d.topReasons[1];
+  if(topIssue2&&topIssue2.count>=20){
+    hasFlag2=true;
+    flagRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:13px">△</td>'
+      +'<td style="padding:10px 12px">'
+      +'<div style="font-weight:700;font-size:13px;color:#b45309">&ldquo;'+topIssue2.reason+'&rdquo; leading at '+topIssue2.count+' cases</div>'
+      +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+(secIssue?'&ldquo;'+secIssue.reason+'&rdquo; also at '+secIssue.count+'. ':'')+'Multiple root causes spiking — possible platform/product event. Escalate to product/ops.</div>'
+      +'</td></tr>';
   }
-  if(!hasFlag) body += 'No critical flags — all metrics within acceptable range.\n\n';
+  if(!hasFlag2) flagRows='<tr><td colspan="2" style="padding:10px 12px;color:#64748b;font-size:12px">No critical flags — all metrics within acceptable range.</td></tr>';
+
+  html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+    +'<tr><td colspan="2" style="background:#92400e;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">⚠ NEEDS ATTENTION</td></tr>'
+    +'<tr><td colspan="2" style="background:#fffbeb;padding:0"><table style="width:100%;border-collapse:collapse">'+flagRows+'</table></td></tr>'
+    +'</table>';
 
   // ── ESCALATION SUMMARY ──
-  body += SEP;
-  body += '📋  ESCALATION SUMMARY\n'+SEP2;
+  var TH='style="padding:7px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:#2d4a6e"';
+  var THR='style="padding:7px 10px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:#2d4a6e"';
+  var TD='style="padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0"';
+  var TDR='style="padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0;text-align:right"';
+  var TDBOLD='style="padding:7px 10px;font-size:12px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0"';
+  var TDRB='style="padding:7px 10px;font-size:12px;font-weight:700;color:#0f172a;border-bottom:1px solid #e2e8f0;text-align:right"';
+
+  var escRows='';
   if(d.totalPS){
-    body += 'Path Social             '+d.totalPS+' total\n';
-    body += '  Resolved              '+d.resolvedPS+' ('+resRatePct+')\n';
-    body += '  Open / Monitoring     '+d.openPS+'\n';
-    body += '  Refund Escalations    '+d.refunds+'\n';
-    body += '  CB / Disputes         '+d.cb+'\n';
-    body += '  Cancellations         '+d.cancellations+'\n';
-    if(d.insightService.length)  body += '  Service & Tech        '+d.insightService.length+'\n';
-    if(d.insightFulfill.length)  body += '  Fulfillment           '+d.insightFulfill.length+'\n';
-    if(d.insightBilling.length)  body += '  Billing               '+d.insightBilling.length+'\n';
+    escRows += '<tr><td '+TD+'>Path Social</td><td '+TDR+'>'+d.totalPS+'</td><td '+TDR+'>'+d.resolvedPS+' <span style="color:#64748b;font-size:11px">('+resRatePct+')</span></td><td '+TDR+'>'+d.openPS+'</td><td '+TDR+'>'+d.refunds+'</td><td '+TDR+'>'+d.cb+'</td><td '+TDR+'>'+d.cancellations+'</td></tr>';
   }
   if(d.totalCI){
-    body += 'Crowd Ignite            '+d.totalCI+' total\n';
-    body += '  Resolved              '+d.resolvedCI+'\n';
-    body += '  Open                  '+d.openCI+'\n';
-    if(d.topCatCI&&d.topCatCI!=='—') body += '  Top Category          '+d.topCatCI+'\n';
+    var ciResP=d.totalCI?(d.resolvedCI/d.totalCI*100).toFixed(1)+'%':'—';
+    escRows += '<tr><td '+TD+'>Crowd Ignite</td><td '+TDR+'>'+d.totalCI+'</td><td '+TDR+'>'+d.resolvedCI+' <span style="color:#64748b;font-size:11px">('+ciResP+')</span></td><td '+TDR+'>'+d.openCI+'</td><td '+TDR+'>—</td><td '+TDR+'>—</td><td '+TDR+'>—</td></tr>';
   }
-  body += '\n';
+  escRows += '<tr style="background:#f8fafc"><td '+TDBOLD+'>COMBINED</td><td '+TDRB+'>'+combinedTotal+'</td><td '+TDRB+'>'+(d.resolvedPS+(d.resolvedCI||0))+'</td><td '+TDRB+'>'+(d.openPS+d.openCI)+'</td><td colspan="3" '+TD+'></td></tr>';
+
+  html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+    +'<tr><td colspan="7" style="background:#1e3a5f;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">📋 ESCALATION SUMMARY</td></tr>'
+    +'<tr><th '+TH+'>LOB</th><th '+THR+'>Total</th><th '+THR+'>Resolved</th><th '+THR+'>Open</th><th '+THR+'>Refunds</th><th '+THR+'>CB/Disp</th><th '+THR+'>Cancel</th></tr>'
+    +escRows+'</table>';
 
   // ── SAVE CONVERSION ──
-  body += SEP;
-  body += '💰  SAVE CONVERSION\n'+SEP2;
-  body += 'Path Social   '+d.saves.savesConverted.length+' / '+d.totalPS+' escs'+(d.totalPS?' ('+(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%)':'')+'\n';
-  if(d.totalCI) body += 'Crowd Ignite  '+d.ciSaves.savesConverted.length+' / '+d.totalCI+' escs ('+(d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—')+')\n';
-  body += 'Combined      '+combinedSaved+' / '+combinedTotal+' ('+saveRatePctFull+')\n';
-  if(d.saves.hiddenSaves.length) body += '(+'+d.saves.hiddenSaves.length+' hidden retention saves within refund escalations)\n';
-  // Offer breakdown
-  if(d.saves.offerCounts){
-    var allOffers=Object.assign({},d.saves.offerCounts);
-    Object.keys(d.ciSaves.offerCounts||{}).forEach(function(k){allOffers[k]=(allOffers[k]||0)+d.ciSaves.offerCounts[k];});
-    var offerKeys2=Object.keys(allOffers).sort(function(a,b){return allOffers[b]-allOffers[a];});
-    if(offerKeys2.length){
-      body += '\n  Offer Breakdown:\n';
-      offerKeys2.forEach(function(k){ body += '  • '+k+': '+allOffers[k]+'\n'; });
-    }
+  var svRows='';
+  if(d.totalPS){
+    var psSR=d.totalPS?(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%':'—';
+    svRows += '<tr><td '+TD+'>Path Social</td><td '+TDR+'>'+d.saves.savesConverted.length+'</td><td '+TDR+'>'+d.saves.saveEscs.length+'</td><td '+TDR+'>'+d.totalPS+'</td><td '+TDR+' style="font-weight:700;color:#15803d;padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right">'+psSR+'</td></tr>';
   }
-  body += '\n';
+  if(d.totalCI){
+    var ciSR=d.totalCI?(d.ciSaves.savesConverted.length/d.totalCI*100).toFixed(1)+'%':'—';
+    svRows += '<tr><td '+TD+'>Crowd Ignite</td><td '+TDR+'>'+d.ciSaves.savesConverted.length+'</td><td '+TDR+'>'+d.ciSaves.saveEscs.length+'</td><td '+TDR+'>'+d.totalCI+'</td><td '+TDR+' style="font-weight:700;color:#15803d;padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right">'+ciSR+'</td></tr>';
+  }
+  svRows += '<tr style="background:#f8fafc"><td '+TDBOLD+'>COMBINED</td><td '+TDRB+'>'+combinedSaved+'</td><td '+TDRB+'>'+(d.saves.saveEscs.length+d.ciSaves.saveEscs.length)+'</td><td '+TDRB+'>'+combinedTotal+'</td><td style="padding:7px 10px;font-size:13px;font-weight:700;color:#15803d;border-bottom:1px solid #e2e8f0;text-align:right">'+saveRatePctFull+'</td></tr>';
+
+  var allOffersE=Object.assign({},d.saves.offerCounts);
+  Object.keys(d.ciSaves.offerCounts||{}).forEach(function(k){allOffersE[k]=(allOffersE[k]||0)+d.ciSaves.offerCounts[k];});
+  if(d.saves.hiddenSaves.length) allOffersE['Retention (within Refund Escalation)']=d.saves.hiddenSaves.length;
+  var oKeysE=Object.keys(allOffersE).sort(function(a,b){return allOffersE[b]-allOffersE[a];});
+  if(oKeysE.length){
+    svRows += '<tr><td colspan="5" style="padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.05em;color:#64748b;text-transform:uppercase;border-bottom:1px solid #e2e8f0">Offer Breakdown</td></tr>';
+    oKeysE.forEach(function(k){
+      if(!allOffersE[k]) return;
+      var isHV=/annual|free month|free addon/i.test(k);
+      svRows += '<tr><td '+TD+' style="padding-left:18px;padding:7px 10px 7px 18px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0">'+k+(isHV?' <span style="font-size:10px;background:#dcfce7;color:#15803d;border-radius:3px;padding:1px 5px">high value</span>':'')+'</td><td '+TDR+'>'+allOffersE[k]+'</td><td colspan="3" '+TD+'></td></tr>';
+    });
+  }
+
+  html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+    +'<tr><td colspan="5" style="background:#065f46;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">💰 SAVE CONVERSION</td></tr>'
+    +'<tr><th '+TH+'>LOB</th><th '+THR+'>Converted</th><th '+THR+'>Save Escs</th><th '+THR+'>Total Escs</th><th '+THR+'>Save Rate</th></tr>'
+    +svRows+'</table>';
 
   // ── TOP RECURRING ISSUES ──
   if(d.topReasons.length){
-    body += SEP;
-    body += '🔁  TOP RECURRING ISSUES — Path Social\n'+SEP2;
+    var recRows='';
     d.topReasons.slice(0,5).forEach(function(r,i){
-      body += (i+1)+'. '+r.reason+(r.category&&r.category!=='—'?' ['+r.category+']':'');
-      body += '   '+r.count+' cases'+(d.totalPS?' ('+(r.count/d.totalPS*100).toFixed(1)+'%)':'')+'\n';
+      var pctStr=d.totalPS?(r.count/d.totalPS*100).toFixed(1)+'%':'—';
+      var trend=r.count>=20?'⚠ High':r.count>=10?'Watch':'Normal';
+      var tColor=r.count>=20?'#b45309':'#64748b';
+      recRows += '<tr><td '+TD+' style="font-weight:600;padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0">'+(i+1)+'. '+r.reason+'</td><td '+TD+'>'+r.category+'</td><td '+TDR+'>'+r.count+'</td><td '+TDR+'>'+pctStr+'</td><td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;color:'+tColor+'">'+trend+'</td></tr>';
     });
-    body += '\n';
+    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+      +'<tr><td colspan="5" style="background:#1e3a5f;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">🔁 TOP RECURRING ISSUES — Path Social</td></tr>'
+      +'<tr><th '+TH+'>Reason</th><th '+TH+'>Category</th><th '+THR+'>Cases</th><th '+THR+'>% Total</th><th '+THR+'>Trend</th></tr>'
+      +recRows+'</table>';
   }
 
   // ── PATTERN DEEP DIVE ──
-  body += SEP;
-  body += '🔍  PATTERN DEEP DIVE\n'+SEP2;
-
-  // Refund Policy
-  body += 'REFUND POLICY ESCALATIONS\n';
-  if(d.refundPolicyRows.length){
-    body += d.refundPolicyRows.length+' refund escalation'+(d.refundPolicyRows.length>1?'s':'')+' — accounts outside standard refund policy\n';
-    if(d.topRefundReasons.length){
-      d.topRefundReasons.forEach(function(r){ body += '  • '+r.reason+': '+r.count+'\n'; });
-    }
-  } else {
-    body += 'No refund policy escalations this period.\n';
+  var refHtmlE='<td style="width:33%;vertical-align:top;padding:0;border-right:1px solid #e2e8f0">'
+    +'<div style="background:#f5f3ff;padding:7px 10px;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em;text-transform:uppercase">Refund Policy</div>'
+    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.refundPolicyRows.length?d.refundPolicyRows.length+' escalation'+(d.refundPolicyRows.length>1?'s':''):'None this period')+'</div>';
+  if(d.refundPolicyRows.length&&d.topRefundReasons.length){
+    refHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+    d.topRefundReasons.forEach(function(r){refHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
+    refHtmlE+='</table>';
   }
-  body += '\n';
+  refHtmlE+='</td>';
 
-  // CB / Disputes
-  body += 'CB / DISPUTE THREATS\n';
-  if(d.cbRows.length){
-    body += d.cbRows.length+' dispute/chargeback threat'+(d.cbRows.length>1?'s':'')+' — verify payment gateway and refund eligibility\n';
-    if(d.topCBReasons.length){
-      d.topCBReasons.forEach(function(r){ body += '  • '+r.reason+': '+r.count+'\n'; });
-    }
-  } else {
-    body += 'No CB/dispute threats this period. ✅\n';
+  var cbHtmlE='<td style="width:33%;vertical-align:top;padding:0;border-right:1px solid #e2e8f0">'
+    +'<div style="background:#fef2f2;padding:7px 10px;font-size:11px;font-weight:700;color:#b91c1c;letter-spacing:.05em;text-transform:uppercase">⚡ CB / Disputes</div>'
+    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.cbRows.length?d.cbRows.length+' threat'+(d.cbRows.length>1?'s':''):'None this period ✅')+'</div>';
+  if(d.cbRows.length&&d.topCBReasons.length){
+    cbHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+    d.topCBReasons.forEach(function(r){cbHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
+    cbHtmlE+='</table>';
   }
-  body += '\n';
+  cbHtmlE+='</td>';
 
-  // Payment Method Issues
-  body += 'PAYMENT METHOD ISSUES\n';
+  var pmHtmlE='<td style="width:34%;vertical-align:top;padding:0">'
+    +'<div style="background:#f0f9ff;padding:7px 10px;font-size:11px;font-weight:700;color:#0369a1;letter-spacing:.05em;text-transform:uppercase">💳 Payment Methods</div>'
+    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.paymentRows.length?d.paymentRows.length+' escalation'+(d.paymentRows.length>1?'s':''):'None this period')+'</div>';
   if(d.paymentRows.length){
-    body += d.paymentRows.length+' payment method escalation'+(d.paymentRows.length>1?'s':'')+' (Amex · Airwallex · Non-US MC)\n';
-    var pmKeys2=Object.keys(d.paymentTypes).sort(function(a,b){return d.paymentTypes[b]-d.paymentTypes[a];});
-    pmKeys2.forEach(function(k){ body += '  • '+k+': '+d.paymentTypes[k]+'\n'; });
-  } else {
-    body += 'No payment method escalations detected this period.\n';
+    var pmK=Object.keys(d.paymentTypes).sort(function(a,b){return d.paymentTypes[b]-d.paymentTypes[a];});
+    pmHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Type</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+    pmK.forEach(function(k){pmHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+k+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+d.paymentTypes[k]+'</td></tr>';});
+    pmHtmlE+='</table>';
   }
-  body += '\n';
+  pmHtmlE+='</td>';
+
+  html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+    +'<tr><td colspan="3" style="background:#4c1d95;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">🔍 PATTERN DEEP DIVE</td></tr>'
+    +'<tr>'+refHtmlE+cbHtmlE+pmHtmlE+'</tr></table>';
 
   // ── VOLUME & SLA ──
-  if(d.volData && d.volData.byLOB){
-    body += SEP;
-    body += '📊  VOLUME & SLA\n'+SEP2;
-    var lobOrderE = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
-    var ovVol=0, ovWithin=0;
+  if(d.volData&&d.volData.byLOB){
+    var volRows='',lobOrderE=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'],ovVolE=0,ovWithinE=0;
     lobOrderE.forEach(function(lob){
-      var ld = d.volData.byLOB[lob]||{vol:0,within:0};
+      var ld=d.volData.byLOB[lob]||{vol:0,within:0,frtSum:0,frtCount:0};
       if(!ld.vol) return;
-      var sla = (ld.within/ld.vol*100).toFixed(1);
-      var ok  = parseFloat(sla)>=SLA_TARGET;
-      body += (ok?'✅':'⚠ ')+' '+lob+': '+ld.vol+' contacts · SLA '+sla+'% '+(ok?'(on target)':'(below '+SLA_TARGET+'% target)')+'\n';
-      ovVol+=ld.vol; ovWithin+=ld.within;
+      var sla=(ld.within/ld.vol*100).toFixed(1);
+      var ok=parseFloat(sla)>=SLA_TARGET;
+      var frt=ld.frtCount?(ld.frtSum/ld.frtCount/60).toFixed(1)+'m':'—';
+      var delta=(parseFloat(sla)-SLA_TARGET).toFixed(1);
+      var dColor=parseFloat(delta)>=0?'#15803d':'#dc2626';
+      ovVolE+=ld.vol; ovWithinE+=ld.within;
+      volRows+='<tr><td '+TD+'>'+lob+'</td><td '+TDR+'>'+ld.vol.toLocaleString()+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:'+(ok?'#15803d':'#dc2626')+'">'+sla+'%</td>'
+        +'<td '+TDR+'>'+frt+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;color:'+dColor+'">'+(parseFloat(delta)>=0?'+':'')+delta+'pp</td>'
+        +'</tr>';
     });
-    if(ovVol){
-      var ovSLAe=(ovWithin/ovVol*100).toFixed(1);
-      body += '\nOverall SLA: '+ovSLAe+'% vs '+SLA_TARGET+'% target'+(parseFloat(ovSLAe)>=SLA_TARGET?' ✅':' ⚠')+'\n';
+    if(ovVolE){
+      var ovSLAe=(ovWithinE/ovVolE*100).toFixed(1);
+      var ovOk=parseFloat(ovSLAe)>=SLA_TARGET;
+      var ovD=(parseFloat(ovSLAe)-SLA_TARGET).toFixed(1);
+      volRows+='<tr style="background:#f8fafc"><td '+TDBOLD+'>Overall</td><td '+TDRB+'>'+ovVolE.toLocaleString()+'</td>'
+        +'<td style="padding:7px 10px;font-size:13px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(ovOk?'#15803d':'#dc2626')+'">'+ovSLAe+'%</td>'
+        +'<td '+TDR+'></td>'
+        +'<td style="padding:7px 10px;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(ovOk?'#15803d':'#dc2626')+'">'+(parseFloat(ovD)>=0?'+':'')+ovD+'pp vs '+SLA_TARGET+'%</td>'
+        +'</tr>';
     }
-    body += '\n';
+    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
+      +'<tr><td colspan="5" style="background:#1e3a5f;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">📊 VOLUME & SLA</td></tr>'
+      +'<tr><th '+TH+'>LOB</th><th '+THR+'>Contacts</th><th '+THR+'>SLA %</th><th '+THR+'>FRT</th><th '+THR+'>vs Target</th></tr>'
+      +volRows+'</table>';
   }
 
-  body += SEP;
-  body += 'Full report attached.\n\nBest,\nLisa';
+  html += '<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px;font-size:13px;color:#334155">Full report attached.</div>';
+  html += '<p style="font-size:13px;color:#334155;margin-top:8px">Best,<br>Lisa</p></div>';
 
-  window._emailDraftText = body;
+  window._emailDraftHTML    = html;
   window._emailDraftSubject = 'CX Weekly Update — '+periodLabel();
 }
 
 function openGmailDraft(){
-  var body = window._emailDraftText || 'Escalation report — please load data first.';
-  var subject = window._emailDraftSubject || 'Escalation Report';
-  var url = 'https://mail.google.com/mail/?view=cm&fs=1&to=&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  window.open(url, '_blank');
+  if(!window._emailDraftHTML){ alert('Please load data first.'); return; }
+  var subject = window._emailDraftSubject||'CX Weekly Update';
+  var blob = new Blob([window._emailDraftHTML],{type:'text/html'});
+  var item = new ClipboardItem({'text/html':blob});
+  navigator.clipboard.write([item]).then(function(){
+    window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(subject),'_blank');
+    var t=document.createElement('div');
+    t.textContent='📋 Formatted email copied — paste into the Gmail body (Ctrl+V / Cmd+V)';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:nowrap';
+    document.body.appendChild(t);
+    setTimeout(function(){t.remove();},6000);
+  }).catch(function(){
+    var plain=window._emailDraftHTML.replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').trim();
+    window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(plain.slice(0,4000)),'_blank');
+  });
 }
 
 // ── PERIOD TOGGLE ─────────────────────────────────────────────────────────────
@@ -1127,52 +1206,6 @@ function renderAll(data){
   var computed = compute(psRows, ciRows, volData);
   render(computed);
 }
-
-// ── CACHE ─────────────────────────────────────────────────────────────────────
-var ESC_CACHE_KEY = 'esc_report_cache_v1';
-
-function saveCache(data){
-  try{ localStorage.setItem(ESC_CACHE_KEY, JSON.stringify({ts:Date.now(), psText:data.psText||'', ciText:data.ciText||'', volText:data.volText||''})); }catch(e){}
-}
-function loadCache(){
-  try{ var raw=localStorage.getItem(ESC_CACHE_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; }
-}
-
-// ── LOAD ──────────────────────────────────────────────────────────────────────
-async function load(){
-  // Show cached data immediately
-  var cached = loadCache();
-  if(cached && (cached.psText || cached.ciText)){
-    D = {psText:cached.psText, ciText:cached.ciText, volText:cached.volText};
-    renderAll(D);
-    var cacheAge = Math.round((Date.now()-cached.ts)/60000);
-    document.getElementById('statusChip').textContent = '📦 Cached · '+cacheAge+'m ago — refreshing…';
-  } else {
-    document.getElementById('statusChip').textContent = '⏳ Loading…';
-  }
-
-  // Fetch fresh data in background
-  try{
-    function safeFetch(url){ return url ? fetch(url+'&_cb='+Date.now()).then(function(r){return r.ok?r:null;}).catch(function(){return null;}) : Promise.resolve(null); }
-    var resps = await Promise.all([safeFetch(SHEETS_ESC_PS_URL), safeFetch(SHEETS_ESC_CI_URL), safeFetch(SHEETS_CONTACT_URL)]);
-    D = {};
-    if(resps[0]&&resps[0].ok) D.psText  = await resps[0].text();
-    if(resps[1]&&resps[1].ok) D.ciText  = await resps[1].text();
-    if(resps[2]&&resps[2].ok) D.volText = await resps[2].text();
-    var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    var anyLive = resps.some(function(r){return r&&r.ok;});
-    document.getElementById('statusChip').textContent = anyLive ? '🔗 Live · '+ts : '⚠ Sheets unreachable · showing cached';
-    if(anyLive){ saveCache(D); }
-    renderAll(D);
-  }catch(e){
-    console.warn('Load error:',e.message);
-    if(!cached){ document.getElementById('statusChip').textContent = '⚠ Error loading'; D={}; renderAll(D); }
-    else { document.getElementById('statusChip').textContent = '⚠ Sheets unreachable · showing cached'; }
-  }
-}
-
-load();
 </script>
-
 </body>
 </html>
