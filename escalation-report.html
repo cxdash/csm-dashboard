@@ -305,12 +305,12 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
       <div style="overflow-x:auto">
         <table class="vol-table" id="volTable">
           <thead><tr>
-            <th>LOB / Inbox</th>
+            <th>LOB</th>
             <th class="r">Volume</th>
             <th class="r">SLA %</th>
-            <th class="r">vs Target</th>
-            <th class="r">FRT (min)</th>
-            <th class="r">vs Target</th>
+            <th class="r">FRT avg</th>
+            <th class="r">vs Benchmark</th>
+            <th class="r">Note</th>
           </tr></thead>
           <tbody id="volBody"></tbody>
         </table>
@@ -828,41 +828,44 @@ function renderVolume(volData){
     var sla=ld.vol?ld.within/ld.vol*100:null;
     var frt=ld.frtCount?ld.frtSum/ld.frtCount/60:null;
     var slaOk=sla!==null&&sla>=SLA_TARGET;
-    var frtOk=frt!==null&&frt<=FRT_TARGET;
     var isFollows=lob==='Follows';
     overallVol+=ld.vol; overallWithin+=ld.within; overallFrtSum+=ld.frtSum; overallFrtCount+=ld.frtCount;
     if(!isFollows){ socialsVol+=ld.vol; socialsWithin+=ld.within; socialsTotal++; }
     var slaDelta=sla!==null?(sla-SLA_TARGET).toFixed(1):null;
-    var frtDelta=frt!==null?(frt-FRT_TARGET).toFixed(1):null;
-    rows+='<tr>'
-      +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+LOB_COLORS[lob]+';margin-right:6px"></span>'+lob+(isFollows?' <span style="font-size:10px;color:var(--amber)">(excl.)</span>':'')+'</td>'
+    var lobShort={'Path Social':'Path','Crowd Ignite':'Crowd','High Social':'High','Plixi':'Plixi','Goread':'Goread','Follows':'Follows'};
+    var note=isFollows?'Excl. from Socials avg':'';
+    var rowBg=sla!==null&&!slaOk&&!isFollows?'background:rgba(255,80,80,0.06)':'';
+    var lobColor=sla!==null&&!slaOk&&!isFollows?'var(--red)':isFollows?'var(--green)':'';
+    rows+='<tr style="'+rowBg+'">'
+      +'<td style="color:'+lobColor+'"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+LOB_COLORS[lob]+';margin-right:6px"></span>'+(lobShort[lob]||lob)+'</td>'
       +'<td class="r">'+fmtNum(ld.vol)+'</td>'
-      +'<td class="r" style="color:'+(sla===null?'var(--text3)':slaOk?'var(--green)':'var(--red)');+'">'+(sla!==null?sla.toFixed(1)+'%':'—')+'</td>'
+      +'<td class="r" style="color:'+(sla===null?'var(--text3)':slaOk?'var(--green)':'var(--red)')+'">'+( sla!==null?sla.toFixed(1)+'%':'—')+'</td>'
+      +'<td class="r" style="color:'+(frt===null?'var(--text3)':frt<=FRT_TARGET?'var(--green)':'var(--red)')+'">'+
+        (frt!==null?frt.toFixed(1)+'m':'—')+'</td>'
       +'<td class="r" style="color:'+(slaDelta===null?'var(--text3)':parseFloat(slaDelta)>=0?'var(--green)':'var(--red)')+'">'+
-        (slaDelta!==null?(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pp':'—')+'</td>'
-      +'<td class="r" style="color:'+(frt===null?'var(--text3)':frtOk?'var(--green)':'var(--red)')+'">'+
-        (frt!==null?frt.toFixed(1):'—')+'</td>'
-      +'<td class="r" style="color:'+(frtDelta===null?'var(--text3)':parseFloat(frtDelta)<=0?'var(--green)':'var(--red)')+'">'+
-        (frtDelta!==null?(parseFloat(frtDelta)<=0?'':'+')+(frtDelta)+'m':'—')+'</td>'
+        (slaDelta!==null?(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pts':'—')+'</td>'
+      +'<td class="r" style="color:var(--text3);font-size:11px">'+note+'</td>'
       +'</tr>';
-
   });
 
   // Socials avg
   var socSLA=socialsVol?socialsWithin/socialsVol*100:null;
-  rows+='<tr class="socials-avg"><td>Socials Avg (excl. Follows)</td><td class="r">'+fmtNum(socialsVol)+'</td>'
+  var socDelta=socSLA!==null?(socSLA-SLA_TARGET).toFixed(1):null;
+  rows+='<tr class="socials-avg"><td>Socials Avg</td><td class="r">'+fmtNum(socialsVol)+'</td>'
     +'<td class="r">'+(socSLA!==null?socSLA.toFixed(1)+'%':'—')+'</td>'
-    +'<td class="r">'+(socSLA!==null?((socSLA-SLA_TARGET)>=0?'+':'')+(socSLA-SLA_TARGET).toFixed(1)+'pp':'—')+'</td>'
-    +'<td class="r" colspan="2">—</td></tr>';
+    +'<td class="r">—</td>'
+    +'<td class="r">'+(socDelta!==null?(parseFloat(socDelta)>=0?'+':'')+socDelta+'pts':'—')+'</td>'
+    +'<td class="r" style="color:var(--text3);font-size:11px">Benchmark: '+SLA_TARGET+'%</td></tr>';
 
   // Overall avg
   var ovSLA=overallVol?overallWithin/overallVol*100:null;
   var ovFRT=overallFrtCount?overallFrtSum/overallFrtCount/60:null;
-  rows+='<tr class="overall-avg"><td>Overall Avg (incl. Follows)</td><td class="r">'+fmtNum(overallVol)+'</td>'
+  var ovDelta=ovSLA!==null?(ovSLA-SLA_TARGET).toFixed(1):null;
+  rows+='<tr class="overall-avg"><td>Overall</td><td class="r">'+fmtNum(overallVol)+'</td>'
     +'<td class="r">'+(ovSLA!==null?ovSLA.toFixed(1)+'%':'—')+'</td>'
-    +'<td class="r">'+(ovSLA!==null?((ovSLA-SLA_TARGET)>=0?'+':'')+(ovSLA-SLA_TARGET).toFixed(1)+'pp':'—')+'</td>'
-    +'<td class="r">'+(ovFRT!==null?ovFRT.toFixed(1):'—')+'</td>'
-    +'<td class="r">'+(ovFRT!==null?((ovFRT-FRT_TARGET)<=0?'':'+')+(ovFRT-FRT_TARGET).toFixed(1)+'m':'—')+'</td></tr>';
+    +'<td class="r">'+(ovFRT!==null?ovFRT.toFixed(1)+'m':'—')+'</td>'
+    +'<td class="r">'+(ovDelta!==null?(parseFloat(ovDelta)>=0?'+':'')+ovDelta+'pts':'—')+'</td>'
+    +'<td class="r" style="color:var(--text3);font-size:11px">Inbound · Email + Chat</td></tr>';
 
   document.getElementById('volBody').innerHTML = rows||'<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">No volume data this period</td></tr>';
 
