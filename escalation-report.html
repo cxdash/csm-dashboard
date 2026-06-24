@@ -1190,6 +1190,30 @@ function openGmailDraft(){
   });
 }
 
+
+// ── DATA LOAD ─────────────────────────────────────────────────────────────────
+async function loadSheets(){
+  var chip=document.getElementById('statusChip');
+  var cb='&_cb='+Date.now();
+  function safeFetch(url){
+    if(!url) return Promise.resolve(null);
+    return fetch(url+cb,{credentials:'omit',redirect:'follow',cache:'no-store'})
+      .then(function(r){ return r.ok?r:null; }).catch(function(){ return null; });
+  }
+  try{
+    var resps=await Promise.all([safeFetch(SHEETS_ESC_PS_URL),safeFetch(SHEETS_ESC_CI_URL),safeFetch(SHEETS_CONTACT_URL)]);
+    var psText=resps[0]?await resps[0].text():null;
+    var ciText=resps[1]?await resps[1].text():null;
+    var volText=resps[2]?await resps[2].text():null;
+    if(!psText&&!ciText){ chip.textContent='⚠ No data'; chip.style.background='#b45309'; return; }
+    D={psText:psText,ciText:ciText||'',volText:volText||''};
+    renderAll(D);
+    chip.textContent='✅ Live'; chip.style.background='#15803d';
+  }catch(e){ chip.textContent='⚠ Error'; chip.style.background='#dc2626'; console.error(e); }
+}
+
+document.addEventListener('DOMContentLoaded',function(){ loadSheets(); });
+
 // ── PERIOD TOGGLE ─────────────────────────────────────────────────────────────
 function setPeriod(p){
   period=p;
@@ -1199,11 +1223,10 @@ function setPeriod(p){
 }
 
 function renderAll(data){
-  var psRows  = data.psText  ? parsePS(data.psText)   : data.psRows  || [];
-  var ciRows  = data.ciText  ? parseCI(data.ciText)   : data.ciRows  || [];
-  var volData = data.volText ? parseVolume(data.volText) : data.volData || null;
-
-  var computed = compute(psRows, ciRows, volData);
+  var psRows =data.psText ?parsePS(data.psText) :data.psRows ||[];
+  var ciRows =data.ciText ?parseCI(data.ciText) :data.ciRows ||[];
+  var volData=data.volText?parseVolume(data.volText):data.volData||null;
+  var computed=compute(psRows,ciRows,volData);
   render(computed);
 }
 </script>
