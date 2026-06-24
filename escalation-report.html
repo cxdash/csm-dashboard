@@ -1175,19 +1175,29 @@ function renderHighlights(d){
 function openGmailDraft(){
   if(!window._emailDraftHTML){ alert('Please load data first.'); return; }
   var subject = window._emailDraftSubject||'CX Weekly Update';
-  var blob = new Blob([window._emailDraftHTML],{type:'text/html'});
-  var item = new ClipboardItem({'text/html':blob});
-  navigator.clipboard.write([item]).then(function(){
-    window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(subject),'_blank');
-    var t=document.createElement('div');
-    t.textContent='📋 Formatted email copied — paste into the Gmail body (Ctrl+V / Cmd+V)';
-    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A2E;color:#fff;padding:10px 20px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:nowrap';
-    document.body.appendChild(t);
-    setTimeout(function(){t.remove();},6000);
-  }).catch(function(){
-    var plain=window._emailDraftHTML.replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').trim();
-    window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(plain.slice(0,4000)),'_blank');
-  });
+  var fullPage = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<style>body{font-family:Arial,sans-serif;padding:24px;background:#f8fafc}'
+    +'#copy-btn{position:fixed;top:16px;right:16px;background:#4285F4;color:#fff;border:none;'
+    +'padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;z-index:999}'
+    +'#copy-btn.done{background:#15803d}'
+    +'#email-body{background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}'
+    +'</style></head><body>'
+    +'<button id="copy-btn" onclick="doCopy()">📋 Copy &amp; Open Gmail</button>'
+    +'<div id="email-body">'+window._emailDraftHTML+'</div>'
+    +'<script>function doCopy(){'
+    +'  var btn=document.getElementById("copy-btn");'
+    +'  var el=document.getElementById("email-body");'
+    +'  var range=document.createRange(); range.selectNodeContents(el);'
+    +'  var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);'
+    +'  document.execCommand("copy");'
+    +'  sel.removeAllRanges();'
+    +'  btn.textContent="✅ Copied! Now paste in Gmail (Ctrl+V)";'
+    +'  btn.className="done";'
+    +'  window.open("https://mail.google.com/mail/?view=cm&fs=1&su='+encodeURIComponent(subject)+'","_blank");'
+    +'}<\/script></body></html>';
+  var win=window.open('','_blank');
+  win.document.write(fullPage);
+  win.document.close();
 }
 
 
