@@ -267,7 +267,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <div id="cbPatterns" style="display:none"></div>
       </div>
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💳 Payment Method Issues</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💳 Billing Issues</div>
         <div id="paymentPatterns" style="display:none"></div>
       </div>
     </div>
@@ -629,12 +629,33 @@ function compute(psRows, ciRows, volData){
   // Remove zero-count types for clean display
   Object.keys(paymentTypes).forEach(function(k){ if(!paymentTypes[k]) delete paymentTypes[k]; });
 
+  // Billing Issues breakdown (Update Payment Method + billing-tagged rows)
+  var billingRows = psRows.filter(function(r){
+    return /update payment|update.*card|payment method/i.test(r.reason) ||
+           /billing/i.test(r.category) ||
+           /failed payment|reactivation/i.test(r.rootCause);
+  });
+  var billingRootCauses={};
+  billingRows.forEach(function(r){
+    var k=(r.rootCause||'Other').trim()||'Other';
+    billingRootCauses[k]=(billingRootCauses[k]||0)+1;
+  });
+  var topBillingReasons=Object.keys(billingRootCauses).sort(function(a,b){return billingRootCauses[b]-billingRootCauses[a];}).slice(0,6).map(function(k){return {reason:k,count:billingRootCauses[k]};});
+  var billingL2=billingRows.filter(function(r){return /l2|escalation/i.test(r.action||'');}).length;
+  var billingSysIssue=billingRows.filter(function(r){return /system issue/i.test(r.rootCause||'');}).length;
+  var billingFailedPay=billingRows.filter(function(r){return /failed payment/i.test(r.rootCause||'');}).length;
+  // Recurring billing customers (same email >1 time)
+  var billingEmails={};
+  billingRows.forEach(function(r){ if(r.email) billingEmails[r.email]=(billingEmails[r.email]||0)+1; });
+  var billingRepeat=Object.keys(billingEmails).filter(function(e){return billingEmails[e]>1;}).length;
+
   var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
   return {
     totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
     totalCI, resolvedCI, openCI, topCatCI,
     topReasons, insightRefunds, insightService, insightFulfill, insightBilling, topRefundAction,
     refundPolicyRows, topRefundReasons, cbRows, topCBReasons, paymentRows, paymentTypes,
+    billingRows, topBillingReasons, billingL2, billingSysIssue, billingFailedPay, billingRepeat,
     volData
   };
 }
@@ -775,25 +796,38 @@ function render(d){
     cbEl.style.display = '';
   }
 
-  // ── Pattern Deep Dive: Payment Method ──
+  // ── Pattern Deep Dive: Billing Issues ──
   var pmEl = document.getElementById('paymentPatterns');
-  if(d.paymentRows.length){
-    var pmHtml = '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.paymentRows.length+' payment method escalation'+(d.paymentRows.length>1?'s':'')+' — Amex · Airwallex · Non-US MC</div>';
-    var pmTypes = d.paymentTypes;
-    var pmKeys = Object.keys(pmTypes).sort(function(a,b){return pmTypes[b]-pmTypes[a];});
-    if(pmKeys.length){
-      pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Payment Type</th><th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th></tr></thead><tbody>';
-      pmHtml += pmKeys.map(function(k){
-        return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+k+'</td><td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border)">'+pmTypes[k]+'</td></tr>';
-      }).join('');
-      pmHtml += '</tbody></table>';
+  var pmHtml = '';
+  if(d.billingRows.length){
+    pmHtml += '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+d.billingRows.length+' billing escalation'+(d.billingRows.length>1?'s':'')+'</div>';
+    // KPI chips
+    pmHtml += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+    pmHtml += '<span style="font-size:11px;background:#fef2f2;color:#b91c1c;border-radius:12px;padding:2px 8px">Failed Payment: '+d.billingFailedPay+'</span>';
+    pmHtml += '<span style="font-size:11px;background:#fffbeb;color:#b45309;border-radius:12px;padding:2px 8px">System Issue: '+d.billingSysIssue+'</span>';
+    if(d.billingL2) pmHtml += '<span style="font-size:11px;background:#eff6ff;color:#1d4ed8;border-radius:12px;padding:2px 8px">L2 Escalations: '+d.billingL2+'</span>';
+    if(d.billingRepeat) pmHtml += '<span style="font-size:11px;background:#f5f3ff;color:#6d28d9;border-radius:12px;padding:2px 8px">Repeat Customers: '+d.billingRepeat+'</span>';
+    pmHtml += '</div>';
+    // Root cause table
+    pmHtml += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr>'
+      +'<th style="text-align:left;padding:4px 6px;color:var(--text3);font-weight:600">Root Cause</th>'
+      +'<th style="text-align:right;padding:4px 6px;color:var(--text3);font-weight:600">Cases</th>'
+      +'</tr></thead><tbody>';
+    pmHtml += d.topBillingReasons.map(function(r){
+      return '<tr><td style="padding:4px 6px;border-top:1px solid var(--border)">'+r.reason+'</td>'
+        +'<td style="padding:4px 6px;text-align:right;border-top:1px solid var(--border);font-weight:700">'+r.count+'</td></tr>';
+    }).join('');
+    pmHtml += '</tbody></table>';
+    // Amex/Airwallex note if any
+    if(d.paymentRows.length){
+      var pmKeys=Object.keys(d.paymentTypes).join(', ');
+      pmHtml += '<div style="margin-top:8px;font-size:11px;color:var(--text3)">Card type flags: '+pmKeys+'</div>';
     }
-    pmEl.innerHTML = pmHtml;
-    pmEl.style.display = '';
   } else {
-    pmEl.innerHTML = '<div style="color:var(--text3);font-size:12px">No payment method escalations detected this period.</div>';
-    pmEl.style.display = '';
+    pmHtml = '<div style="color:var(--text3);font-size:12px">No billing escalations this period.</div>';
   }
+  pmEl.innerHTML = pmHtml;
+  pmEl.style.display = '';
 
   // ── Section 6: Crowd Ignite ──
   document.getElementById('ciTotal').textContent = d.totalCI;
@@ -1117,13 +1151,19 @@ function renderHighlights(d){
   cbHtmlE+='</td>';
 
   var pmHtmlE='<td style="width:34%;vertical-align:top;padding:0">'
-    +'<div style="background:#f0f9ff;padding:7px 10px;font-size:11px;font-weight:700;color:#0369a1;letter-spacing:.05em;text-transform:uppercase">💳 Payment Methods</div>'
-    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.paymentRows.length?d.paymentRows.length+' escalation'+(d.paymentRows.length>1?'s':''):'None this period')+'</div>';
-  if(d.paymentRows.length){
-    var pmK=Object.keys(d.paymentTypes).sort(function(a,b){return d.paymentTypes[b]-d.paymentTypes[a];});
-    pmHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Type</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
-    pmK.forEach(function(k){pmHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+k+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+d.paymentTypes[k]+'</td></tr>';});
+    +'<div style="background:#fef9c3;padding:7px 10px;font-size:11px;font-weight:700;color:#854d0e;letter-spacing:.05em;text-transform:uppercase">💳 Billing Issues</div>'
+    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.billingRows.length?d.billingRows.length+' escalation'+(d.billingRows.length>1?'s':''):'None this period')+'</div>';
+  if(d.billingRows.length){
+    pmHtmlE+='<div style="padding:0 10px 6px;display:flex;gap:6px;flex-wrap:wrap">';
+    pmHtmlE+='<span style="font-size:10px;background:#fef2f2;color:#b91c1c;border-radius:10px;padding:2px 7px">Failed Pay: '+d.billingFailedPay+'</span>';
+    pmHtmlE+='<span style="font-size:10px;background:#fffbeb;color:#b45309;border-radius:10px;padding:2px 7px">Sys Issue: '+d.billingSysIssue+'</span>';
+    if(d.billingL2) pmHtmlE+='<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:2px 7px">L2: '+d.billingL2+'</span>';
+    if(d.billingRepeat) pmHtmlE+='<span style="font-size:10px;background:#f5f3ff;color:#6d28d9;border-radius:10px;padding:2px 7px">Repeat Cx: '+d.billingRepeat+'</span>';
+    pmHtmlE+='</div>';
+    pmHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+    d.topBillingReasons.forEach(function(r){pmHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
     pmHtmlE+='</table>';
+    if(d.paymentRows.length) pmHtmlE+='<div style="padding:6px 10px;font-size:11px;color:#64748b">Card flags: '+Object.keys(d.paymentTypes).join(', ')+'</div>';
   }
   pmHtmlE+='</td>';
 
