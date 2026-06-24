@@ -595,11 +595,24 @@ function compute(psRows, ciRows, volData){
     var key=(r.category||'Other');
     ciReasonCounts[key]=(ciReasonCounts[key]||0)+1;
   });
-  var topCIReasonsAll = Object.keys(ciReasonCounts).sort(function(a,b){return ciReasonCounts[b]-ciReasonCounts[a];}).slice(0,5).map(function(k){
-    return {reason:k, category:'—', count:ciReasonCounts[k], lob:'CI'};
+  // Merge PS + CI: if CI category matches a PS reason (case-insensitive), combine into one row
+  var topReasonsAll = [];
+  var ciMatched = {};
+  topReasons.forEach(function(r){
+    var ciKey = Object.keys(ciReasonCounts).find(function(k){ return k.toLowerCase()===r.reason.toLowerCase(); });
+    if(ciKey){
+      ciMatched[ciKey]=true;
+      topReasonsAll.push({reason:r.reason, category:r.category, psCount:r.count, ciCount:ciReasonCounts[ciKey], count:r.count+ciReasonCounts[ciKey], lob:'BOTH'});
+    } else {
+      topReasonsAll.push({reason:r.reason, category:r.category, psCount:r.count, ciCount:0, count:r.count, lob:'PS'});
+    }
   });
-  // Combined list sorted by count
-  var topReasonsAll = topReasons.concat(topCIReasonsAll).sort(function(a,b){return b.count-a.count;}).slice(0,12);
+  // Add unmatched CI categories
+  Object.keys(ciReasonCounts).forEach(function(k){
+    if(!ciMatched[k]) topReasonsAll.push({reason:k, category:'—', psCount:0, ciCount:ciReasonCounts[k], count:ciReasonCounts[k], lob:'CI'});
+  });
+  topReasonsAll.sort(function(a,b){return b.count-a.count;});
+  topReasonsAll=topReasonsAll.slice(0,12);
 
   // Insight rows for PS
   var insightRefunds = psRows.filter(function(r){return /refund/i.test(r.category)||/refund/i.test(r.reason);});
@@ -831,10 +844,17 @@ function render(d){
   document.getElementById('recBody').innerHTML = d.topReasonsAll.map(function(r){
     var pctStr = combinedTotal5 ? (r.count/combinedTotal5*100).toFixed(1)+'%' : '—';
     var trend = r.count>=20?'⚠ High volume':r.count>=10?'Watch':'Normal';
-    var lobBadge = r.lob==='CI'
-      ? '<span style="font-size:10px;background:#f5f3ff;color:#6d28d9;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">CI</span>'
-      : '<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">PS</span>';
-    return '<tr><td>'+r.reason+lobBadge+'</td><td>'+r.category+'</td><td class="r">'+r.count+'</td><td class="r">'+pctStr+'</td><td style="color:'+(r.count>=20?'var(--amber)':'var(--text3)')+'">'+trend+'</td></tr>';
+    var breakdown='', lobBadge='';
+    if(r.lob==='BOTH'){
+      breakdown='<span style="font-size:10px;color:var(--text3);margin-left:6px">'
+        +'<span style="color:#1d4ed8">PS&nbsp;'+r.psCount+'</span>'
+        +' &middot; <span style="color:#6d28d9">CI&nbsp;'+r.ciCount+'</span></span>';
+    } else if(r.lob==='CI'){
+      lobBadge='<span style="font-size:10px;background:#f5f3ff;color:#6d28d9;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">CI</span>';
+    } else {
+      lobBadge='<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle">PS</span>';
+    }
+    return '<tr><td>'+r.reason+lobBadge+breakdown+'</td><td>'+r.category+'</td><td class="r">'+r.count+'</td><td class="r">'+pctStr+'</td><td style="color:'+(r.count>=20?'var(--amber)':'var(--text3)')+'">'+trend+'</td></tr>';
   }).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:16px">No data</td></tr>';
 
   // ── Pattern Deep Dive: Refund Policy ──
