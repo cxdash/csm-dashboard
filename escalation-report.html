@@ -845,17 +845,7 @@ function renderVolume(volData){
       +'<td class="r" style="color:'+(frtDelta===null?'var(--text3)':parseFloat(frtDelta)<=0?'var(--green)':'var(--red)')+'">'+
         (frtDelta!==null?(parseFloat(frtDelta)<=0?'':'+')+(frtDelta)+'m':'—')+'</td>'
       +'</tr>';
-    // Path inbox breakdown
-    if(lob==='Path Social' && volData.byInbox){
-      var inboxes=Object.keys(volData.byInbox).sort(function(a,b){return volData.byInbox[b].vol-volData.byInbox[a].vol;});
-      inboxes.forEach(function(ib){
-        var ib_d=volData.byInbox[ib];
-        var ib_sla=ib_d.vol?ib_d.within/ib_d.vol*100:null;
-        rows+='<tr class="inbox-row"><td style="padding-left:24px">↳ '+ib+'</td><td class="r">'+ib_d.vol+'</td>'
-          +'<td class="r" style="color:'+(ib_sla===null?'var(--text3)':ib_sla>=SLA_TARGET?'var(--green)':'var(--red)')+'">'+
-          (ib_sla!==null?ib_sla.toFixed(1)+'%':'—')+'</td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>';
-      });
-    }
+
   });
 
   // Socials avg
