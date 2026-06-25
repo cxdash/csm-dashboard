@@ -2059,6 +2059,65 @@ function renderEscalations(){
   var topReason = Object.keys(reasonMap).sort(function(a,b){return reasonMap[b]-reasonMap[a];})[0]||'—';
   var topCount = reasonMap[topReason]||0;
 
+  // ── WoW: last 4 weeks (Mon–Sun buckets) ──────────────────────────────────
+  var todayWow = new Date(); todayWow.setHours(0,0,0,0);
+  var dowWow = todayWow.getDay();
+  var daysSinceMon = (dowWow === 0) ? 6 : dowWow - 1;
+  var thisMon = new Date(todayWow);
+  thisMon.setDate(todayWow.getDate() - daysSinceMon);
+
+  var wkBuckets = [];
+  for(var wi=3; wi>=0; wi--){
+    var wStart = new Date(thisMon); wStart.setDate(thisMon.getDate() - wi*7);
+    var wEnd   = new Date(wStart);  wEnd.setDate(wStart.getDate() + 6);
+    wkBuckets.push({start:wStart, end:wEnd});
+  }
+
+  function parseEscDate(s){
+    if(!s) return null;
+    var p=s.split('/'); if(p.length!==3) return null;
+    var d=new Date(parseInt(p[2]),parseInt(p[0])-1,parseInt(p[1])); d.setHours(0,0,0,0); return d;
+  }
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function wkLabel(b){ var s=b.start,e=b.end; return MO[s.getMonth()]+' '+s.getDate()+'–'+(e.getMonth()!==s.getMonth()?MO[e.getMonth()]+' ':'')+e.getDate(); }
+
+  var wkStats = wkBuckets.map(function(b){
+    var w=escs.filter(function(e){ var d=parseEscDate(e.date); return d&&d>=b.start&&d<=b.end; });
+    return { label:wkLabel(b), total:w.length,
+      ps:w.filter(function(e){return /path/i.test(e.lob);}).length,
+      ci:w.filter(function(e){return /crowd/i.test(e.lob);}).length };
+  });
+
+  var wowRows = wkStats.map(function(wk,i){
+    var isCurrent = (i===wkStats.length-1);
+    var prev = i>0 ? wkStats[i-1].total : null;
+    var delta = prev!==null ? wk.total-prev : null;
+    var dStr  = delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
+    var dColor= delta===null?'var(--text3)':delta>0?'var(--red)':delta<0?'var(--green)':'var(--text3)';
+    return '<tr style="background:'+(isCurrent?'#eff6ff':i%2===0?'#fff':'#f8fafc')+'">'
+      +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:'+(isCurrent?'700':'400')+'">'+wk.label
+      +(isCurrent?'<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">CURRENT</span>':'')
+      +'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:700">'+wk.total+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:#3b82f6">'+wk.ps+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:#8b5cf6">'+wk.ci+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:600;color:'+dColor+'">'+dStr+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var wowHtml = '<div style="margin-bottom:14px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · Last 4 Weeks</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr>'
+    +'<th style="text-align:left;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Week</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Total</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:#3b82f6">Path Social</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:#8b5cf6">Crowd Ignite</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">WoW Δ</th>'
+    +'</tr></thead>'
+    +'<tbody>'+wowRows+'</tbody>'
+    +'</table></div>';
+
   // Build summary panel (replaces table)
   var escTableEl = document.getElementById('escTable');
   if(!escTableEl) return;
@@ -2108,6 +2167,7 @@ function renderEscalations(){
     +'<span style="font-size:11px;color:var(--text3)">'+topCount+' of '+total+' escalations ('+(total?(topCount/total*100).toFixed(0):0)+'%)</span>'
     +'<a href="escalation-report.html'+(isAdmin?'?owner=true':'')+'" target="_blank" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
     +'</div>'
+    +wowHtml
     +'<div style="display:flex;flex-wrap:wrap;gap:20px">'
     +psBlock
     +'<div style="width:1px;background:var(--border)"></div>'
