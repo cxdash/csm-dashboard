@@ -1645,9 +1645,19 @@ function renderAll(data){
   var psRows =data.psText ?parsePS(data.psText) :data.psRows ||[];
   var ciRows =data.ciText ?parseCI(data.ciText) :data.ciRows ||[];
   var volData=data.volText?parseVolume(data.volText):data.volData||null;
-  var computed=compute(psRows,ciRows,volData);
-  render(computed);
-  renderWoW(data.psText||'', data.ciText||'');
+  try{
+    var computed=compute(psRows,ciRows,volData);
+    render(computed);
+  }catch(e){
+    console.error('[render] error:',e);
+  }
+  try{
+    renderWoW(data.psText||'', data.ciText||'');
+  }catch(e){
+    console.error('[renderWoW] error:',e);
+    var el=document.getElementById('wowSection');
+    if(el) el.innerHTML='<div style="padding:16px;color:var(--red);font-size:13px">⚠ Could not load WoW data — check console for details.</div>';
+  }
 }
 </script>
 </body>
