@@ -525,10 +525,10 @@ function normalizeOfferLabel(action){
 function analyzeSaves(rows, company){
   var saveEscs=[], savesConverted=[], hiddenSaves=[];
   var offerCounts={};
-  var isCI = !rows.length || rows[0]===undefined ? false : !rows[0].reason;
+  var isCI = company === 'Crowd Ignite';
   rows.forEach(function(r){
     var reason=r.reason||'', action=r.action||'', category=r.category||'';
-    var rowIsCI = !r.reason && !!r.category;
+    var rowIsCI = isCI;
     var isEsc=false, isSave=false;
     if(rowIsCI){
       // CI sheet = all rows are escalations by definition.
