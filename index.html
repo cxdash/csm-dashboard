@@ -2064,7 +2064,7 @@ function renderEscalations(){
   if(!escTableEl) return;
 
   if(!total){
-    escTableEl.outerHTML = '<div id="escTable" style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No escalations this period'+(isAdmin?' — <a href="escalation-report.html" target="_blank" style="color:var(--accent)">View Full Report →</a>':'')+'</div>';
+    escTableEl.outerHTML = '<div id="escTable" style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No escalations this period — <a href="escalation-report.html'+(isAdmin?'?owner=true':'')+'" target="_blank" style="color:var(--accent)">View Full Report →</a></div>';
     return;
   }
 
@@ -2106,7 +2106,7 @@ function renderEscalations(){
     +'<span style="font-size:11px;font-weight:700;color:var(--amber)">TOP DRIVER</span>'
     +'<span style="font-size:13px;font-weight:600;color:var(--text1)">'+topReason+'</span>'
     +'<span style="font-size:11px;color:var(--text3)">'+topCount+' of '+total+' escalations ('+(total?(topCount/total*100).toFixed(0):0)+'%)</span>'
-    +(isAdmin?'<a href="escalation-report.html" target="_blank" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>':'')
+    +'<a href="escalation-report.html'+(isAdmin?'?owner=true':'')+'" target="_blank" style="margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
     +'</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:20px">'
     +psBlock

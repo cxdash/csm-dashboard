@@ -162,7 +162,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <div class="sec-dot" style="background:#4F8EF7"></div>
         <div><div class="sec-title">1 — Key Highlights</div><div class="sec-sub" id="s1sub">Period summary</div></div>
       </div>
-      <button class="gmail-btn" onclick="openGmailDraft()" title="Open Gmail compose with pre-filled report summary">
+      <button id="emailDraftBtn" class="gmail-btn" onclick="openGmailDraft()" title="Open Gmail compose with pre-filled report summary" style="display:none">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
         Send Email Draft
       </button>
@@ -1477,7 +1477,13 @@ async function loadSheets(){
   }catch(e){ chip.textContent='⚠ Error'; chip.style.background='#dc2626'; console.error(e); }
 }
 
-document.addEventListener('DOMContentLoaded',function(){ loadSheets(); });
+document.addEventListener('DOMContentLoaded',function(){
+  loadSheets();
+  // Show "Send Email Draft" only for the owner (URL must include ?owner=true)
+  if(new URLSearchParams(window.location.search).get('owner')==='true'){
+    document.getElementById('emailDraftBtn').style.display='flex';
+  }
+});
 
 // ── PERIOD TOGGLE ─────────────────────────────────────────────────────────────
 function setPeriod(p){
