@@ -589,27 +589,35 @@ function compute(psRows, ciRows, volData){
     var parts=k.split(' | ');
     return {reason:parts[0], category:parts[1]||'—', count:reasonCounts[k], lob:'PS'};
   });
-  // CI — top categories as recurring issues
+  // CI — rootCause as reason, category as category (key: rootCause||category + "|" + category)
   var ciReasonCounts = {};
   ciRows.forEach(function(r){
-    var key=(r.category||'Other');
+    var rc=(r.rootCause||r.category||'Other').trim()||'Other';
+    var cat=(r.category||'—').trim();
+    var key=rc+'|||'+cat;
     ciReasonCounts[key]=(ciReasonCounts[key]||0)+1;
   });
-  // Merge PS + CI: if CI category matches a PS reason (case-insensitive), combine into one row
+  // Build CI entries: {rc, cat, count}
+  var ciEntries = Object.keys(ciReasonCounts).map(function(k){
+    var parts=k.split('|||');
+    return {rc:parts[0], cat:parts[1]||'—', count:ciReasonCounts[k]};
+  }).sort(function(a,b){return b.count-a.count;}).slice(0,8);
+
+  // Merge PS + CI: match CI rootCause against PS reason (case-insensitive)
   var topReasonsAll = [];
-  var ciMatched = {};
+  var ciMatchedIdx = {};
   topReasons.forEach(function(r){
-    var ciKey = Object.keys(ciReasonCounts).find(function(k){ return k.toLowerCase()===r.reason.toLowerCase(); });
-    if(ciKey){
-      ciMatched[ciKey]=true;
-      topReasonsAll.push({reason:r.reason, category:r.category, psCount:r.count, ciCount:ciReasonCounts[ciKey], count:r.count+ciReasonCounts[ciKey], lob:'BOTH'});
+    var match = ciEntries.findIndex(function(c){ return c.rc.toLowerCase()===r.reason.toLowerCase(); });
+    if(match>=0){
+      ciMatchedIdx[match]=true;
+      topReasonsAll.push({reason:r.reason, category:r.category, psCount:r.count, ciCount:ciEntries[match].count, count:r.count+ciEntries[match].count, lob:'BOTH'});
     } else {
       topReasonsAll.push({reason:r.reason, category:r.category, psCount:r.count, ciCount:0, count:r.count, lob:'PS'});
     }
   });
-  // Add unmatched CI categories
-  Object.keys(ciReasonCounts).forEach(function(k){
-    if(!ciMatched[k]) topReasonsAll.push({reason:k, category:'—', psCount:0, ciCount:ciReasonCounts[k], count:ciReasonCounts[k], lob:'CI'});
+  // Add unmatched CI entries with their proper rootCause + category
+  ciEntries.forEach(function(c,i){
+    if(!ciMatchedIdx[i]) topReasonsAll.push({reason:c.rc, category:c.cat, psCount:0, ciCount:c.count, count:c.count, lob:'CI'});
   });
   topReasonsAll.sort(function(a,b){return b.count-a.count;});
   topReasonsAll=topReasonsAll.slice(0,12);
