@@ -1291,37 +1291,63 @@ function renderHighlights(d){
     +svRows+'</table>';
 
   // ── TOP RECURRING ISSUES ──
-  if(d.topReasons.length){
+  if(d.topReasonsAll.length){
     var recRows='';
-    d.topReasons.slice(0,5).forEach(function(r,i){
-      var pctStr=d.totalPS?(r.count/d.totalPS*100).toFixed(1)+'%':'—';
+    var combinedTotalE = d.totalPS + d.totalCI;
+    d.topReasonsAll.slice(0,8).forEach(function(r,i){
+      var pctStr=combinedTotalE?(r.count/combinedTotalE*100).toFixed(1)+'%':'—';
       var trend=r.count>=20?'⚠ High':r.count>=10?'Watch':'Normal';
       var tColor=r.count>=20?'#b45309':'#64748b';
-      recRows += '<tr><td '+TD+' style="font-weight:600;padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0">'+(i+1)+'. '+r.reason+'</td><td '+TD+'>'+r.category+'</td><td '+TDR+'>'+r.count+'</td><td '+TDR+'>'+pctStr+'</td><td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;color:'+tColor+'">'+trend+'</td></tr>';
+      var lobCell='';
+      if(r.lob==='BOTH') lobCell='<span style="font-size:10px;color:#1d4ed8">PS '+r.psCount+'</span> · <span style="font-size:10px;color:#6d28d9">CI '+r.ciCount+'</span>';
+      else if(r.lob==='CI') lobCell='<span style="font-size:10px;background:#f5f3ff;color:#6d28d9;border-radius:4px;padding:1px 5px">CI</span>';
+      else lobCell='<span style="font-size:10px;background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:1px 5px">PS</span>';
+      recRows += '<tr>'
+        +'<td '+TD+' style="font-weight:600;padding:7px 10px;font-size:12px;color:#334155;border-bottom:1px solid #e2e8f0">'+(i+1)+'. '+r.reason+'</td>'
+        +'<td '+TD+'>'+r.category+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:center">'+lobCell+'</td>'
+        +'<td '+TDR+'>'+r.count+'</td>'
+        +'<td '+TDR+'>'+pctStr+'</td>'
+        +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;color:'+tColor+'">'+trend+'</td>'
+        +'</tr>';
     });
     html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
-      +'<tr><td colspan="5" style="background:#1e3a5f;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">🔁 TOP RECURRING ISSUES — Path Social</td></tr>'
-      +'<tr><th '+TH+'>Reason</th><th '+TH+'>Category</th><th '+THR+'>Cases</th><th '+THR+'>% Total</th><th '+THR+'>Trend</th></tr>'
+      +'<tr><td colspan="6" style="background:#1e3a5f;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">🔁 TOP RECURRING ISSUES — Path Social &amp; Crowd Ignite</td></tr>'
+      +'<tr><th '+TH+'>Reason</th><th '+TH+'>Category</th><th '+TH+'>LOB</th><th '+THR+'>Cases</th><th '+THR+'>% Share</th><th '+THR+'>Trend</th></tr>'
       +recRows+'</table>';
   }
 
   // ── PATTERN DEEP DIVE ──
   var refHtmlE='<td style="width:33%;vertical-align:top;padding:0;border-right:1px solid #e2e8f0">'
     +'<div style="background:#f5f3ff;padding:7px 10px;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em;text-transform:uppercase">Refund Policy</div>'
-    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.refundPolicyRows.length?d.refundPolicyRows.length+' escalation'+(d.refundPolicyRows.length>1?'s':''):'None this period')+'</div>';
+    +'<div style="padding:6px 10px;font-size:12px;color:#64748b;min-height:40px">'+(d.refundPolicyRows.length?d.refundPolicyRows.length+' escalation'+(d.refundPolicyRows.length>1?'s':''):'None this period')+'</div>';
   if(d.refundPolicyRows.length&&d.topRefundReasons.length){
+    refHtmlE+='<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Path Social</div>';
     refHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
     d.topRefundReasons.forEach(function(r){refHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
+    refHtmlE+='</table>';
+  }
+  if(d.ciRefundRows&&d.ciRefundRows.length&&d.topCIRefundReasons.length){
+    refHtmlE+='<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-top:1px solid #e2e8f0;margin-top:4px">Crowd Ignite</div>';
+    refHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+    d.topCIRefundReasons.forEach(function(r){refHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
     refHtmlE+='</table>';
   }
   refHtmlE+='</td>';
 
   var cbHtmlE='<td style="width:33%;vertical-align:top;padding:0;border-right:1px solid #e2e8f0">'
     +'<div style="background:#fef2f2;padding:7px 10px;font-size:11px;font-weight:700;color:#b91c1c;letter-spacing:.05em;text-transform:uppercase">⚡ CB / Disputes</div>'
-    +'<div style="padding:6px 10px;font-size:12px;color:#64748b">'+(d.cbRows.length?d.cbRows.length+' threat'+(d.cbRows.length>1?'s':''):'None this period ✅')+'</div>';
+    +'<div style="padding:6px 10px;font-size:12px;color:#64748b;min-height:40px">'+(d.cbRows.length?d.cbRows.length+' threat'+(d.cbRows.length>1?'s':''):'None this period ✅')+'</div>';
   if(d.cbRows.length&&d.topCBReasons.length){
+    cbHtmlE+='<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Path Social</div>';
     cbHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
     d.topCBReasons.forEach(function(r){cbHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
+    cbHtmlE+='</table>';
+  }
+  if(d.ciCBRows&&d.ciCBRows.length&&d.topCICBReasons.length){
+    cbHtmlE+='<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-top:1px solid #e2e8f0;margin-top:4px">Crowd Ignite</div>';
+    cbHtmlE+='<table style="width:100%;border-collapse:collapse"><tr><th style="padding:4px 10px;text-align:left;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Root Cause</th><th style="padding:4px 10px;text-align:right;font-size:10px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0">Cases</th></tr>';
+    d.topCICBReasons.forEach(function(r){cbHtmlE+='<tr><td style="padding:5px 10px;font-size:12px;border-top:1px solid #e2e8f0">'+r.reason+'</td><td style="padding:5px 10px;font-size:12px;text-align:right;border-top:1px solid #e2e8f0;font-weight:700">'+r.count+'</td></tr>';});
     cbHtmlE+='</table>';
   }
   cbHtmlE+='</td>';
@@ -1459,4 +1485,4 @@ function renderAll(data){
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
