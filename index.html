@@ -1514,8 +1514,19 @@ async function loadFromSheets(){
     if(resps[0] && resps[0].ok){
       var agResult = parseGladlyCSV(await resps[0].text());
       if(agResult){
-        if(agResult.mtd.length)  D.agents    = agResult.mtd;
-        if(agResult.all.length)  D.agents12m = agResult.all;
+        // Merge: update productivity fields only - keep existing names, LOB, QA, FCR from DEFAULT_DATA
+        var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+        function mergeAgents(liveArr, defArr){
+          if(!liveArr.length || !defArr) return;
+          liveArr.forEach(function(live){
+            var def = defArr.find(function(a){
+              return normName(a.name).toLowerCase()===normName(live.name).toLowerCase();
+            });
+            if(def) PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
+          });
+        }
+        mergeAgents(agResult.mtd, D.agents);
+        mergeAgents(agResult.all, D.agents12m);
       }
     }
 
