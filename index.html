@@ -1507,28 +1507,12 @@ async function loadFromSheets(){
       safeFetch(SHEETS_ESC_CI_URL)
     ]);
 
-    // Agent reporting (MTD + 12M)
+    // Agent reporting — parse now, merge AFTER FCR so _emailCache (email→name) is populated
+    var _pendingAgResult = null;
     if(resps[0] && resps[0].ok){
-      // Always reset agent roster from DEFAULT_DATA before merging live data
-      // This prevents phantom agents (supervisors, admins) from Gladly bleeding into the dashboard
       D.agents    = JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
       D.agents12m = JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
-      var agResult = parseGladlyCSV(await resps[0].text());
-      if(agResult){
-        // Merge: update productivity fields only - keep existing names, LOB, QA, FCR from DEFAULT_DATA
-        var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
-        function mergeAgents(liveArr, defArr){
-          if(!liveArr.length || !defArr) return;
-          liveArr.forEach(function(live){
-            var def = defArr.find(function(a){
-              return normName(a.name).toLowerCase()===normName(live.name).toLowerCase();
-            });
-            if(def) PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
-          });
-        }
-        mergeAgents(agResult.mtd, D.agents);
-        mergeAgents(agResult.all, D.agents12m);
-      }
+      _pendingAgResult = parseGladlyCSV(await resps[0].text());
     }
 
     // Volume (VolDA tab) — updates inbound chart + jun/may ticket counts
@@ -1587,6 +1571,25 @@ async function loadFromSheets(){
         var lobAg=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!==null&&a.fcr!==undefined;});
         if(lobAg.length) ls.fcr=Math.round(lobAg.reduce(function(s,a){return s+a.fcr;},0)/lobAg.length*10000)/10000;
       });
+    }
+
+    // Merge agent productivity — after FCR so _emailCache is ready
+    // Primary key: email (via _emailCache populated by FCR); fallback: name
+    if(_pendingAgResult){
+      var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+      function mergeAgents(liveArr, defArr){
+        if(!liveArr.length || !defArr) return;
+        liveArr.forEach(function(live){
+          var def = defArr.find(function(a){
+            if(live.email && _emailCache[live.email])
+              return normName(a.name) === _emailCache[live.email];
+            return normName(a.name).toLowerCase() === normName(live.name).toLowerCase();
+          });
+          if(def) PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
+        });
+      }
+      mergeAgents(_pendingAgResult.mtd, D.agents);
+      mergeAgents(_pendingAgResult.all, D.agents12m);
     }
 
     // QA sheets (main + Goread)
