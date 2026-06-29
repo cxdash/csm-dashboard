@@ -1411,7 +1411,7 @@ function parseEscalations(psText, ciText){
   function companyToLOB(c){
     c=(c||'').toLowerCase().replace(/\s/g,'');
     if(c==='path'||c==='')  return 'Path Social';
-    if(c==='crowd')         return 'Crowd Ignite';
+    if(c==='crowd'||c==='crowdignite') return 'Crowd Ignite';
     if(c==='recentfollow'||c==='followspy') return 'Follows';
     return 'Path Social';
   }
@@ -1431,8 +1431,9 @@ function parseEscalations(psText, ciText){
       if(dateParts.length!==3) continue;
       var rowYear=parseInt(dateParts[2]);
       if(mon!==curMonName||rowYear!==curYear) continue;
+      var status=(f[12]||'').trim();
+      if(!status) continue; // skip unprocessed rows (no status assigned yet)
       idxPS++;
-      var status=(f[12]||'').trim()||'Open';
       var priority=(f[11]||'').trim()||'Medium';
       var lob=companyToLOB((f[4]||'').trim());
       result.push({
@@ -1463,8 +1464,11 @@ function parseEscalations(psText, ciText){
       var ciParts=ciDate.split('/');
       if(ciParts.length!==3) continue;
       if(parseInt(ciParts[0])!==curMon||parseInt(ciParts[2])!==curYear) continue;
+      var ciStatusRaw=(g[12]||'').trim();
+      var ciResolution=(g[10]||'').trim();
+      if(!ciStatusRaw&&!ciResolution) continue; // skip unprocessed rows (no status, no action)
+      var ciStatus=ciStatusRaw?ciStatusRaw:(ciResolution?'Resolved':'Open');
       idxCI++;
-      var ciStatus=(g[10]||'').trim()?'Resolved':'Open';
       result.push({
         id:'CI-'+String(idxCI).padStart(3,'0'),
         date:ciDate, lob:'Crowd Ignite',
