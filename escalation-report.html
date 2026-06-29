@@ -324,7 +324,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   <div class="sec" id="s8">
     <div class="sec-hdr">
       <div class="sec-dot" style="background:#0ea5e9"></div>
-      <div><div class="sec-title">8 — Week-over-Week Trend</div><div class="sec-sub">Last 4 weeks · Mon–Sun · all escalations</div></div>
+      <div><div class="sec-title">8 — Week-over-Week Trend</div><div class="sec-sub">Month to date · Mon–Sun · all escalations</div></div>
     </div>
     <div class="sec-body" style="padding:0">
       <div id="wowSection">
@@ -432,35 +432,44 @@ function periodLabel(){
 // ── PARSERS ───────────────────────────────────────────────────────────────────
 function parsePS(text){
   // PS sheet: 2 header rows, then data
-  // f[1]=Date, f[4]=Company(filter Path), f[6]=Plan, f[7]=Reason, f[8]=Root Cause
+  // f[1]=Date, f[4]=Company, f[6]=Plan, f[7]=Reason, f[8]=Root Cause
   // f[9]=Action, f[10]=Specialist, f[12]=Status, f[13]=Remarks, f[14]=Category
+  // Returns {psRows, ciFromPS} — rows with company='Crowd' count toward CI
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var rows = [];
+  var ciFromPS = [];
   for(var i=2;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
     if(!f||!f[1]||!f[1].trim()) continue;
-    var company=(f[4]||'').trim();
-    if(company.toLowerCase()!=='path') continue;
     var dateStr=(f[1]||'').trim();
     if(!inPeriod(dateStr, period)) continue;
-    rows.push({
+    var status=(f[12]||'').trim();
+    if(!status) continue; // skip unprocessed rows (no status assigned yet)
+    var company=(f[4]||'').trim().toLowerCase();
+    var row={
       date:dateStr,
       plan:(f[6]||'').trim(),
       reason:(f[7]||'').trim(),
       rootCause:(f[8]||'').trim(),
       action:(f[9]||'').trim(),
       specialist:(f[10]||'').trim(),
-      status:(f[12]||'').trim(),
+      status:status,
       remarks:(f[13]||'').trim(),
       category:(f[14]||'').trim()
-    });
+    };
+    if(company==='crowd'||company==='crowd ignite'||company==='crowdignite'){
+      // CI entries logged in PS tracker — route to CI
+      ciFromPS.push({date:dateStr,category:(f[14]||'').trim(),rootCause:(f[8]||'').trim(),reason:(f[7]||'').trim(),action:(f[9]||'').trim(),status:status});
+    } else {
+      rows.push(row);
+    }
   }
-  return rows;
+  return {psRows:rows, ciFromPS:ciFromPS};
 }
 
 function parseCI(text){
   // CI sheet: 2 header rows
-  // f[0]=Date, f[1]=Category, f[2]=Root Cause, f[10]=Action, f[12]=Status (if present)
+  // f[0]=Date, f[1]=Category, f[2]=Root Cause, f[10]=Resolution/Action, f[12]=Status
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var rows = [];
   for(var i=2;i<lines.length;i++){
@@ -468,13 +477,17 @@ function parseCI(text){
     if(!f||!f[0]||!f[0].trim()) continue;
     var dateStr=(f[0]||'').trim();
     if(!inPeriod(dateStr, period)) continue;
+    var ciStatusRaw=(f[12]||'').trim();
+    var ciResolution=(f[10]||'').trim();
+    if(!ciStatusRaw&&!ciResolution) continue; // skip unprocessed rows
+    var ciStatus=ciStatusRaw?ciStatusRaw:(ciResolution?'Resolved':'Open');
     rows.push({
       date:dateStr,
       category:(f[1]||'').trim(),
       rootCause:(f[2]||'').trim(),
       reason:(f[13]||'').trim(),
-      action:(f[10]||'').trim(),
-      status:(f[12]||'Resolved').trim()||'Resolved'
+      action:ciResolution,
+      status:ciStatus
     });
   }
   return rows;
@@ -1512,11 +1525,19 @@ function parseWoWData(psText, ciText){
   var dow=today.getDay(), daysSinceMon=dow===0?6:dow-1;
   var thisMon=new Date(today); thisMon.setDate(today.getDate()-daysSinceMon);
 
+  // Dynamic month buckets: first Monday on/before month start through current Monday
+  var monthStart=new Date(today.getFullYear(),today.getMonth(),1);
+  var msDay=monthStart.getDay();
+  var daysToMon=msDay===0?6:msDay-1;
+  var firstMon=new Date(monthStart); firstMon.setDate(monthStart.getDate()-daysToMon);
+
   var weeks=[];
-  for(var w=3;w>=0;w--){
-    var wS=new Date(thisMon); wS.setDate(thisMon.getDate()-w*7);
-    var wE=new Date(wS); wE.setDate(wS.getDate()+6);
+  var wCursor=new Date(firstMon);
+  while(wCursor<=thisMon){
+    var wS=new Date(wCursor);
+    var wE=new Date(wCursor); wE.setDate(wCursor.getDate()+6);
     weeks.push({start:wS,end:wE,ps:[],ci:[]});
+    wCursor.setDate(wCursor.getDate()+7);
   }
 
   function parseDateWoW(s){
@@ -1534,9 +1555,15 @@ function parseWoWData(psText, ciText){
     for(var i=2;i<psL.length;i++){
       var f=parseCSVRow(psL[i]);
       if(!f||!f[1]||!f[1].trim()) continue;
-      if((f[4]||'').trim().toLowerCase()!=='path') continue;
+      var psStatus=(f[12]||'').trim();
+      if(!psStatus) continue; // skip unprocessed rows
       var wi=getWkIdx((f[1]||'').trim()); if(wi<0) continue;
-      weeks[wi].ps.push({reason:(f[7]||'').trim(),category:(f[14]||'').trim(),action:(f[9]||'').trim(),status:(f[12]||'').trim()});
+      var psComp=(f[4]||'').trim().toLowerCase();
+      if(psComp==='crowd'||psComp==='crowd ignite'||psComp==='crowdignite'){
+        weeks[wi].ci.push({category:(f[14]||'').trim(),rootCause:(f[8]||'').trim(),action:(f[9]||'').trim()});
+      } else {
+        weeks[wi].ps.push({reason:(f[7]||'').trim(),category:(f[14]||'').trim(),action:(f[9]||'').trim(),status:psStatus});
+      }
     }
   }
   if(ciText){
@@ -1544,8 +1571,11 @@ function parseWoWData(psText, ciText){
     for(var j=2;j<ciL.length;j++){
       var g=parseCSVRow(ciL[j]);
       if(!g||!g[0]||!g[0].trim()) continue;
+      var ciStatusRawW=(g[12]||'').trim();
+      var ciResW=(g[10]||'').trim();
+      if(!ciStatusRawW&&!ciResW) continue; // skip unprocessed rows
       var wi2=getWkIdx((g[0]||'').trim()); if(wi2<0) continue;
-      weeks[wi2].ci.push({category:(g[1]||'').trim(),rootCause:(g[2]||'').trim(),action:(g[10]||'').trim()});
+      weeks[wi2].ci.push({category:(g[1]||'').trim(),rootCause:(g[2]||'').trim(),action:ciResW});
     }
   }
   return weeks;
@@ -1642,9 +1672,11 @@ function renderWoW(psText, ciText){
 }
 
 function renderAll(data){
-  var psRows =data.psText ?parsePS(data.psText) :data.psRows ||[];
-  var ciRows =data.ciText ?parseCI(data.ciText) :data.ciRows ||[];
-  var volData=data.volText?parseVolume(data.volText):data.volData||null;
+  var parsedPS = data.psText ? parsePS(data.psText) : {psRows:data.psRows||[], ciFromPS:[]};
+  var psRows   = parsedPS.psRows;
+  var ciFromPS = parsedPS.ciFromPS||[];
+  var ciRows   = (data.ciText ? parseCI(data.ciText) : data.ciRows||[]).concat(ciFromPS);
+  var volData  = data.volText?parseVolume(data.volText):data.volData||null;
   try{
     var computed=compute(psRows,ciRows,volData);
     render(computed);
