@@ -1509,12 +1509,32 @@ async function loadFromSheets(){
       safeFetch(SHEETS_ESC_CI_URL)
     ]);
 
-    // Agent reporting — parse now, merge AFTER FCR so _emailCache (email→name) is populated
-    var _pendingAgResult = null;
+    // Agent reporting — merge immediately and populate _emailCache so FCR/QA can match by email
     if(resps[0] && resps[0].ok){
       D.agents    = JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
       D.agents12m = JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
-      _pendingAgResult = parseGladlyCSV(await resps[0].text());
+      var _agParsed = parseGladlyCSV(await resps[0].text());
+      if(_agParsed){
+        var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+        function mergeAgents(liveArr, defArr){
+          if(!liveArr.length || !defArr) return;
+          liveArr.forEach(function(live){
+            var liveLower = normName(live.name).toLowerCase();
+            var liveFirst = liveLower.split(' ')[0];
+            var def = defArr.find(function(a){
+              var defLower = normName(a.name).toLowerCase();
+              return defLower === liveLower || defLower.startsWith(liveFirst + ' ');
+            });
+            if(def){
+              // Populate email cache now — FCR & QA will use email as primary key
+              if(live.email) _emailCache[live.email.toLowerCase().trim()] = normName(def.name);
+              PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
+            }
+          });
+        }
+        mergeAgents(_agParsed.mtd, D.agents);
+        mergeAgents(_agParsed.all, D.agents12m);
+      }
     }
 
     // Volume (VolDA tab) — updates inbound chart + jun/may ticket counts
@@ -1553,18 +1573,21 @@ async function loadFromSheets(){
       var fcrResult = parseFCRSheetIdx(await resps[3].text());
       if(fcrResult && fcrResult.avgWait!==null) D.avgWait = fcrResult.avgWait;
       if(fcrResult) fcrResult.agents.forEach(function(lv){
+        var emailKey = (lv.email||'').toLowerCase().trim();
         var resolved = resolveSheetName(lv.name);
         function findAgent(arr){
           return arr && arr.find(function(a){
-            return normName(a.name)===resolved ||
-              (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+            // Email-first (pre-populated by Gladly merge above)
+            if(emailKey && _emailCache[emailKey]) return normName(a.name)===_emailCache[emailKey];
+            // Name fallback
+            return normName(a.name)===resolved;
           });
         }
         var def   = findAgent(D.agents);
         var def12 = findAgent(D.agents12m);
         if(def){
           if(lv.fcrMTD!==null) def.fcr=lv.fcrMTD;
-          if(lv.email) _emailCache[lv.email]=normName(def.name);
+          if(emailKey) _emailCache[emailKey]=normName(def.name);
         }
         if(def12 && lv.fcr12m!==null) def12.fcr=lv.fcr12m;
       });
@@ -1575,31 +1598,6 @@ async function loadFromSheets(){
       });
     }
 
-    // Merge agent productivity — after FCR so _emailCache is ready
-    // Primary key: email (via _emailCache populated by FCR); fallback: name
-    if(_pendingAgResult){
-      var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
-      function mergeAgents(liveArr, defArr){
-        if(!liveArr.length || !defArr) return;
-        liveArr.forEach(function(live){
-          var liveLower = normName(live.name).toLowerCase();
-          var liveFirst = liveLower.split(' ')[0];
-          var def = defArr.find(function(a){
-            var defLower = normName(a.name).toLowerCase();
-            // 1. Email match via _emailCache (most reliable)
-            if(live.email && _emailCache[live.email])
-              return defLower === _emailCache[live.email].toLowerCase();
-            // 2. Exact name match
-            if(defLower === liveLower) return true;
-            // 3. Partial: Gladly uses first name only (e.g. "Zheraine" → "Zheraine Velasquez")
-            return defLower.startsWith(liveFirst + ' ');
-          });
-          if(def) PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
-        });
-      }
-      mergeAgents(_pendingAgResult.mtd, D.agents);
-      mergeAgents(_pendingAgResult.all, D.agents12m);
-    }
 
     // QA sheets (main + Goread)
     if(SHEETS_QA_URL && resps[4] && resps[4].ok){
@@ -1607,11 +1605,14 @@ async function loadFromSheets(){
       var qa3Text = (SHEETS_QA3_URL && resps[6] && resps[6].ok) ? await resps[6].text() : null;
       var qaResult = parseQASheetIdx(await resps[4].text(), qa2Text, qa3Text);
       if(qaResult) qaResult.forEach(function(lv){
+        var emailKey = (lv.email||'').toLowerCase().trim();
         var resolved = resolveSheetName(lv.name);
         function findAgent(arr){
           return arr && arr.find(function(a){
-            return normName(a.name)===resolved ||
-              (lv.email && _emailCache[lv.email] && _emailCache[lv.email]===normName(a.name));
+            // Email-first (pre-populated by Gladly merge above)
+            if(emailKey && _emailCache[emailKey]) return normName(a.name)===_emailCache[emailKey];
+            // Name fallback
+            return normName(a.name)===resolved;
           });
         }
         var def   = findAgent(D.agents);
@@ -1619,7 +1620,7 @@ async function loadFromSheets(){
         if(def){
           if(lv.qaMTD!==null) def.qa=lv.qaMTD;
           def.ztpFlag=lv.ztpFlag;
-          if(lv.email) _emailCache[lv.email]=normName(def.name);
+          if(emailKey) _emailCache[emailKey]=normName(def.name);
         }
         if(def12){
           if(lv.qa12m!==null) def12.qa=lv.qa12m;
