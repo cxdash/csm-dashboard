@@ -2088,18 +2088,27 @@ function renderEscalations(){
   var topReason = Object.keys(reasonMap).sort(function(a,b){return reasonMap[b]-reasonMap[a];})[0]||'—';
   var topCount = reasonMap[topReason]||0;
 
-  // ── WoW: last 4 weeks (Mon–Sun buckets) ──────────────────────────────────
+  // ── WoW: all weeks in current month (Mon–Sun buckets) ──────────────────
   var todayWow = new Date(); todayWow.setHours(0,0,0,0);
   var dowWow = todayWow.getDay();
   var daysSinceMon = (dowWow === 0) ? 6 : dowWow - 1;
   var thisMon = new Date(todayWow);
   thisMon.setDate(todayWow.getDate() - daysSinceMon);
 
+  // Find the Monday on or before the 1st of the current month
+  var monthStart = new Date(todayWow.getFullYear(), todayWow.getMonth(), 1);
+  var msDay = monthStart.getDay();
+  var daysToMon = (msDay === 0) ? 6 : msDay - 1;
+  var firstMon = new Date(monthStart);
+  firstMon.setDate(monthStart.getDate() - daysToMon);
+
   var wkBuckets = [];
-  for(var wi=3; wi>=0; wi--){
-    var wStart = new Date(thisMon); wStart.setDate(thisMon.getDate() - wi*7);
-    var wEnd   = new Date(wStart);  wEnd.setDate(wStart.getDate() + 6);
+  var wCursor = new Date(firstMon);
+  while(wCursor <= thisMon){
+    var wStart = new Date(wCursor);
+    var wEnd   = new Date(wCursor); wEnd.setDate(wCursor.getDate() + 6);
     wkBuckets.push({start:wStart, end:wEnd});
+    wCursor.setDate(wCursor.getDate() + 7);
   }
 
   function parseEscDate(s){
@@ -2134,8 +2143,9 @@ function renderEscalations(){
       +'</tr>';
   }).join('');
 
+  var MONTHS_FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   var wowHtml = '<div style="margin-bottom:14px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · Last 4 Weeks</div>'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · '+MONTHS_FULL[todayWow.getMonth()]+' '+todayWow.getFullYear()+'</div>'
     +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
     +'<thead><tr>'
     +'<th style="text-align:left;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Week</th>'
