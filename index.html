@@ -1580,10 +1580,17 @@ async function loadFromSheets(){
       function mergeAgents(liveArr, defArr){
         if(!liveArr.length || !defArr) return;
         liveArr.forEach(function(live){
+          var liveLower = normName(live.name).toLowerCase();
+          var liveFirst = liveLower.split(' ')[0];
           var def = defArr.find(function(a){
+            var defLower = normName(a.name).toLowerCase();
+            // 1. Email match via _emailCache (most reliable)
             if(live.email && _emailCache[live.email])
-              return normName(a.name) === _emailCache[live.email];
-            return normName(a.name).toLowerCase() === normName(live.name).toLowerCase();
+              return defLower === _emailCache[live.email].toLowerCase();
+            // 2. Exact name match
+            if(defLower === liveLower) return true;
+            // 3. Partial: Gladly uses first name only (e.g. "Zheraine" → "Zheraine Velasquez")
+            return defLower.startsWith(liveFirst + ' ');
           });
           if(def) PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
         });
