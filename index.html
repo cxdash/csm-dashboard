@@ -1509,6 +1509,10 @@ async function loadFromSheets(){
 
     // Agent reporting (MTD + 12M)
     if(resps[0] && resps[0].ok){
+      // Always reset agent roster from DEFAULT_DATA before merging live data
+      // This prevents phantom agents (supervisors, admins) from Gladly bleeding into the dashboard
+      D.agents    = JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
+      D.agents12m = JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
       var agResult = parseGladlyCSV(await resps[0].text());
       if(agResult){
         // Merge: update productivity fields only - keep existing names, LOB, QA, FCR from DEFAULT_DATA
