@@ -2270,16 +2270,16 @@ function renderAgents(){
 
 function renderEscalations(){
   var _allEscs = D.escalations || [];
-  // Filter by selected month if set
-  var escs = _allEscs;
-  if(SEL_ESC_MONTH && SEL_ESC_YEAR){
-    escs = _allEscs.filter(function(e){
-      if(!e.date) return false;
-      var p=e.date.replace(/\s/g,'').split('/');
-      if(p.length<3) return false;
-      return parseInt(p[0])===SEL_ESC_MONTH && parseInt(p[2])===SEL_ESC_YEAR;
-    });
-  }
+  // Filter by selected month; MTD = current month
+  var _escNow = new Date();
+  var _escCurM = SEL_ESC_MONTH || (_escNow.getMonth()+1);
+  var _escCurY = SEL_ESC_YEAR  || _escNow.getFullYear();
+  var escs = _allEscs.filter(function(e){
+    if(!e.date) return false;
+    var p=e.date.replace(/\s/g,'').split('/');
+    if(p.length<3) return false;
+    return parseInt(p[0])===_escCurM && parseInt(p[2])===_escCurY;
+  });
   var total    = escs.length;
   var psEscs   = escs.filter(function(e){return /path/i.test(e.lob);});
   var ciEscs   = escs.filter(function(e){return /crowd/i.test(e.lob);});
