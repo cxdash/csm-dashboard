@@ -226,6 +226,20 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 
 <div class="main">
 
+  <!-- ══ MONTH PICKER (Sections 1, 2, Agent) ══ -->
+  <div id="mainMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
+    <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
+    <select id="monthPickerMain" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
+    <span id="monthNoteMain" style="font-size:11px;color:var(--amber)"></span>
+  </div>
+
+  <!-- ══ MONTH PICKER (Sections 1, 2, Agent) ══ -->
+  <div id="mainMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
+    <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
+    <select id="monthPickerMain" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
+    <span id="monthNoteMain" style="font-size:11px;color:var(--amber)"></span>
+  </div>
+
   <!-- ══ 1 — TEAM OVERVIEW ══ -->
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#0ea5e9"></div>
@@ -271,6 +285,18 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     </div>
   </div>
 
+  <!-- ══ MONTH PICKER (Agent section) ══ -->
+  <div id="agentMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
+    <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
+    <select id="monthPickerAgent" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
+  </div>
+
+  <!-- ══ MONTH PICKER (Agent section) ══ -->
+  <div id="agentMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
+    <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
+    <select id="monthPickerAgent" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
+  </div>
+
   <!-- ══ 4 — AGENT PRODUCTIVITY ══ -->
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#10b981"></div>
@@ -278,7 +304,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   </div>
   <div class="card">
     <div class="card-hdr">
-      <div><div class="card-title">Agent Detail by LOB</div><div class="card-sub">Red = below target · click column headers to sort</div></div>
+      <div><div class="card-title">Agent Detail by LOB</div><div class="card-sub" id="agCardSub">Red = below target · click column headers to sort</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="view-toggle">
           <button class="view-btn on" id="btnMTD" onclick="setAgPeriod('mtd')">MTD</button>
@@ -328,6 +354,11 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#ef4444"></div>
     <div class="sec-label">5 — Escalations &amp; Resolution</div>
+  </div>
+  <div id="escMonthPickerRow" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <span style="font-size:12px;color:var(--text3)">Period:</span>
+    <select id="monthPickerEsc" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onEscMonthChange(this.value)"></select>
+    <button onclick="onEscMonthChange('')" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer">MTD</button>
   </div>
   <div class="esc-layout">
     <div class="esc-stats" id="escStats">
@@ -381,6 +412,7 @@ var AGENT_CODE_MAP = {
   'Roynalyn Malcampo':'Roynalyn6514fo','Geal Ann Lorico':'Geal2674fo',       'Jessica Ibañez':'Jessica2519fo'
 };
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 var STORAGE_KEY = 'csm_kpi_v2';
 var CHARTS = {};
 
@@ -413,28 +445,28 @@ var SHEETS_ESC_CI_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS8wiW
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
-  period: 'June 2026',
-  _filename: 'ContactExport_AgentData_June2026.csv',
-  avgWait: {emailMTD:5475, chatMTD:46, emailPrev:5416, chatPrev:76},
+  period: 'May 2026',
+  _filename: 'ContactExport_AgentData_May2026.csv',
+  avgWait: {emailMTD:5452, chatMTD:46, emailPrev:6715, chatPrev:76},
   inbound: {
     lobs: ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'],
-    months: ['Jan','Feb','Mar','Apr','May','Jun'],
+    months: ['Jan','Feb','Mar','Apr','May'],
     values: [
-      [14542, 10858,  9667,  8867,  8970, 4025],
-      [ 1856,  1391,  1685,  2269,  2543,  761],
-      [ 5797,  4561,  5261,  5266,  5952, 2641],
-      [ 9544,  8435,  8316,  5845,  6260, 2519],
-      [ 4737,  3869,  2949,  3529,  3812, 1566],
-      [ 2450,  2568,  3033,  2262,  1998,  626],
+      [14542, 10858,  9667,  8867,  8970],
+      [ 1856,  1391,  1685,  2269,  2602],
+      [ 5797,  4561,  5261,  5266,  5979],
+      [ 9544,  8435,  8316,  5845,  6527],
+      [ 4737,  3869,  2949,  3529,  3812],
+      [ 2450,  2568,  3033,  2262,  1998],
     ]
   },
   sla: [
-    {lob:'Path Social', sla:0.808,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5809,fcrTgt:0.75,jun:4025, may:8970, avgWait:5452, avgWaitPrev:6715},
-    {lob:'Crowd Ignite',sla:0.921,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5462,fcrTgt:0.75,jun:761,  may:2543, avgWait:4512, avgWaitPrev:4037},
-    {lob:'High Social', sla:0.922,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4655,fcrTgt:0.75,jun:2641, may:5952, avgWait:3033, avgWaitPrev:3210},
-    {lob:'Plixi',       sla:0.998,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5285,fcrTgt:0.75,jun:2519, may:6260, avgWait:1415, avgWaitPrev:1507},
-    {lob:'Goread',      sla:0.954,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.6806,fcrTgt:0.75,jun:1566, may:3812, avgWait:2657, avgWaitPrev:3797},
-    {lob:'Follows',     sla:0.933,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4703,fcrTgt:0.75,jun:626,  may:1998, avgWait:3576, avgWaitPrev:7046},
+    {lob:'Path Social', sla:0.8536,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5809,fcrTgt:0.75,jun:8970, may:8867, avgWait:5452, avgWaitPrev:6715},
+    {lob:'Crowd Ignite',sla:0.9301,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5462,fcrTgt:0.75,jun:2602, may:2373, avgWait:4512, avgWaitPrev:4037},
+    {lob:'High Social', sla:0.9167,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4655,fcrTgt:0.75,jun:5979, may:5280, avgWait:3033, avgWaitPrev:3210},
+    {lob:'Plixi',       sla:0.9884,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.5285,fcrTgt:0.75,jun:6527, may:6079, avgWait:1415, avgWaitPrev:1507},
+    {lob:'Goread',      sla:0.9182,slaTgt:0.85,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.6806,fcrTgt:0.75,jun:3812, may:3529, avgWait:2657, avgWaitPrev:3797},
+    {lob:'Follows',     sla:0.8744,slaTgt:0.80,csat:null,csatTgt:0.85,nps:null,npsTgt:30,fcr:0.4703,fcrTgt:0.75,jun:1998, may:2262, avgWait:3576, avgWaitPrev:7046},
   ],
   agents: [
     {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.9192,qaTgt:0.90,csat:null,fcr:0.5786,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
@@ -578,6 +610,9 @@ var agLOB = 'Path Social', agSort = {col:3, dir:-1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 var ADMIN_CODE = 'Lisa2026cx';
+var SEL_MONTH = null; // null = MTD/current
+var SEL_YEAR  = null;
+var RAW_TEXTS = {}; // raw fetched text keyed by: agent, volume, sla, fcr, qa, qa2, qa3, contact, escPS, escCI
 var isAdmin = (localStorage.getItem('csm_admin')==='1');
 
 function setAgLOB(lob){ agLOB = lob; renderAgents(); }
@@ -585,16 +620,114 @@ function setAgPeriod(p){
   agPeriod = p;
   document.getElementById('btnMTD').className = 'view-btn'+(p==='mtd'?' on':'');
   document.getElementById('btn12M').className = 'view-btn'+(p==='12m'?' on':'');
+  // Update subtitle to reflect the selected period
+  var sub = document.getElementById('agCardSub');
+  if(sub){
+    if(p==='12m'){
+      var _now=new Date();
+      // 12 most recent COMPLETE months: from 12 months ago to last complete month
+      var _end=new Date(_now.getFullYear(),_now.getMonth()-1,1); // last complete month
+      var _start=new Date(_now.getFullYear(),_now.getMonth()-12,1); // 12 months before current
+      sub.textContent=MONTH_NAMES[_start.getMonth()]+' '+_start.getFullYear()+' – '+MONTH_NAMES[_end.getMonth()]+' '+_end.getFullYear()+' · 12-month aggregate';
+    } else {
+      sub.textContent='Red = below target · click column headers to sort';
+    }
+  }
   renderAgents();
 }
 function setAgSort(col){
   if(agSort.col===col) agSort.dir *= -1; else { agSort.col=col; agSort.dir=-1; }
   renderAgents();
 }
+// ── MONTH PICKER HELPERS ─────────────────────────────────────────────────────
+function buildMonthOptions(){
+  var now=new Date(), html='<option value="">MTD (Current)</option>';
+  for(var i=1;i<=6;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    var y=d.getFullYear(),m=d.getMonth()+1;
+    html+='<option value="'+y+'-'+m+'">'+MONTH_NAMES[d.getMonth()]+' '+y+'</option>';
+  }
+  return html;
+}
+
+function onMonthChange(val){
+  if(!val){ SEL_MONTH=null; SEL_YEAR=null; }
+  else{ var p=val.split('-'); SEL_YEAR=parseInt(p[0]); SEL_MONTH=parseInt(p[1]); }
+  ['monthPickerMain','monthPickerAgent','monthPickerEsc'].forEach(function(id){
+    var el=document.getElementById(id); if(el&&el.value!==val) el.value=val||'';
+  });
+  var note=document.getElementById('monthNoteMain'); if(note) note.textContent='';
+  reRenderWithMonth();
+}
+
+function onEscMonthChange(val){
+  var el=document.getElementById('monthPickerEsc'); if(el) el.value=val||'';
+  onMonthChange(val);
+}
+
+function reRenderWithMonth(){
+  var tgt=(SEL_MONTH&&SEL_YEAR)?{year:SEL_YEAR,month:SEL_MONTH}:null;
+  if(!tgt){
+    try{ var _c=localStorage.getItem('csm_kpi_v2'); D=_c?JSON.parse(_c):JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+    catch(e){D=JSON.parse(JSON.stringify(DEFAULT_DATA));}
+    render(); return;
+  }
+  if(RAW_TEXTS.agent){
+    var _agP=parseGladlyCSV(RAW_TEXTS.agent,tgt);
+    if(_agP){
+      D.agents=JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
+      D.agents12m=JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
+      var PF=['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+      function _mergeAg(liveArr,defArr){
+        if(!liveArr||!liveArr.length||!defArr) return;
+        liveArr.forEach(function(live){
+          var ll=normName(live.name).toLowerCase(), lf=ll.split(' ')[0], rl=resolveSheetName(normName(live.name));
+          var def=defArr.find(function(a){var dl=normName(a.name).toLowerCase();return dl===ll||dl.startsWith(lf+' ')||normName(a.name)===rl;});
+          if(def){PF.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});}
+        });
+      }
+      _mergeAg(_agP.mtd,D.agents); _mergeAg(_agP.all,D.agents12m);
+      if(!_agP.mtd.length&&!_agP.all.length){
+        var note=document.getElementById('monthNoteMain');
+        var pm=tgt.month-1<1?12:tgt.month-1, py=tgt.month-1<1?tgt.year-1:tgt.year;
+        var _ag2=parseGladlyCSV(RAW_TEXTS.agent,{year:py,month:pm});
+        if(_ag2){_mergeAg(_ag2.mtd,D.agents);_mergeAg(_ag2.all,D.agents12m);}
+        if(note) note.textContent='No '+MONTH_NAMES[tgt.month-1]+' '+tgt.year+' data — showing '+MONTH_NAMES[pm-1]+' '+py;
+      }
+    }
+  }
+  if(RAW_TEXTS.fcr){var _fr=parseFCRSheetIdx(RAW_TEXTS.fcr,tgt);if(_fr&&_fr.agents){
+    _fr.agents.forEach(function(lv){var r=resolveSheetName(lv.name);
+      var d=D.agents.find(function(a){return normName(a.name)===r;});
+      var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
+      if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;if(d2&&lv.fcr12m!==null)d2.fcr=lv.fcr12m;
+    });
+    D.sla.forEach(function(ls){var la=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!=null;});if(la.length)ls.fcr=Math.round(la.reduce(function(s,a){return s+a.fcr;},0)/la.length*10000)/10000;});
+  }}
+  if(RAW_TEXTS.qa){var _qa=parseQASheetIdx(RAW_TEXTS.qa,RAW_TEXTS.qa2||null,RAW_TEXTS.qa3||null,tgt);if(_qa){
+    _qa.forEach(function(lv){var r=resolveSheetName(lv.name);
+      var d=D.agents.find(function(a){return normName(a.name)===r;});
+      var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
+      if(d&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
+      if(d2&&lv.qa12m!==null){d2.qa=lv.qa12m;d2.ztpFlag=lv.ztpFlag;}
+    });
+  }}
+  if(RAW_TEXTS.contact){var _w=parseContactWait(RAW_TEXTS.contact,tgt);if(_w){
+    D.avgWait=_w;
+    if(_w.byLOB)D.sla.forEach(function(ls){var lb=_w.byLOB[ls.lob];if(lb){if(lb.mtd!==null)ls.avgWait=lb.mtd;if(lb.prev!==null)ls.avgWaitPrev=lb.prev;}});
+  }}
+  render();
+}
+
 // Wire search input after DOM ready
 document.addEventListener('DOMContentLoaded', function(){
   var s = document.getElementById('agSearch');
   if(s) s.addEventListener('input', function(){ agSearch = this.value.toLowerCase().trim(); renderAgents(); });
+  // Initialize month pickers
+  var moHtml = buildMonthOptions();
+  ['monthPickerMain','monthPickerAgent','monthPickerEsc'].forEach(function(id){
+    var el=document.getElementById(id); if(el){ el.innerHTML=moHtml; }
+  });
 });
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -744,7 +877,7 @@ function saveData(){
 // ── GLADLY RAW SHEET PARSER ───────────────────────────────────────────────────
 // Parses the raw Gladly Agent Reporting CSV (same format as the uploaded file).
 // One fetch → computes both MTD (current calendar month) and 12M (all data) in a single pass.
-function parseGladlyCSV(text){
+function parseGladlyCSV(text, tgt){
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
 
   // Minimal CSV row parser (handles quoted fields)
@@ -814,7 +947,7 @@ function parseGladlyCSV(text){
   }
 
   var EXCL = {'matt@pathsocial.com':1};
-  var now=new Date(), curM=now.getMonth(), curY=now.getFullYear();
+  var now=new Date(), curM=tgt?tgt.month-1:now.getMonth(), curY=tgt?tgt.year:now.getFullYear();
 
   // Aggregation buckets keyed by email
   var mtdMap={}, allMap={};
@@ -1216,13 +1349,14 @@ function parseCSVRow(line){
   }
   return res;
 }
-function parseContactWait(text){
+function parseContactWait(text, tgt){
   // Parses raw ContactExport CSV: f[3]=Channel, f[9]=Inbox, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year (MM-YYYY)
   var lines=text.split('\n');
   var now=new Date();
-  var curMon=(now.getMonth()<9?'0':'')+(now.getMonth()+1)+'-'+now.getFullYear();
-  var prev=new Date(now.getFullYear(),now.getMonth()-1,1);
-  var prevMon=(prev.getMonth()<9?'0':'')+(prev.getMonth()+1)+'-'+prev.getFullYear();
+  var _tgtM=tgt?tgt.month-1:now.getMonth(), _tgtY=tgt?tgt.year:now.getFullYear();
+  var curMon=(_tgtM<9?'0':'')+((_tgtM+1))+'-'+_tgtY;
+  var _prevD=new Date(_tgtY,_tgtM-1,1);
+  var prevMon=(_prevD.getMonth()<9?'0':'')+((_prevD.getMonth()+1))+'-'+_prevD.getFullYear();
   function _inboxLOB(name){
     var n=(name||'').toLowerCase().replace(/[\s\-]/g,'');
     if(n.startsWith('path'))         return 'Path Social';
@@ -1267,14 +1401,15 @@ function parseContactWait(text){
     byLOB: byLOB
   };
 }
-function parseFCRSheetIdx(text){
+function parseFCRSheetIdx(text, tgt){
   var lines=text.split('\n');
   var hIdx=-1;
   for(var i=0;i<Math.min(lines.length,5);i++){if(lines[i].indexOf('Assigned Agent Name')>=0){hIdx=i;break;}}
   if(hIdx<0) return null;
   var now=new Date(), months12=[];
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push(d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1));}
-  var latestMon=months12[months12.length-1];
+  var _fcrTgtMon = tgt ? (tgt.year+'-'+(tgt.month<10?'0':'')+tgt.month) : null;
+  var latestMon=_fcrTgtMon&&months12.indexOf(_fcrTgtMon)>=0?_fcrTgtMon:months12[months12.length-1];
   // byAgent: key=email(col I) or name; months nested under .m
   var byAgent={}, waitSum=0, waitCount=0;
   for(var i=hIdx+1;i<lines.length;i++){
@@ -1316,11 +1451,13 @@ function parseFCRSheetIdx(text){
   }
   return {agents:result, avgWait: waitCount>0 ? waitSum/waitCount : null};
 }
-function parseQASheetIdx(text, text2, text3){
+function parseQASheetIdx(text, text2, text3, tgt){
   var hIdx=0;
   var now=new Date(), months12=[];
   for(var m=11;m>=0;m--){var d=new Date(now.getFullYear(),now.getMonth()-m,1);months12.push((d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+d.getFullYear());}
-  var latestMon=months12[months12.length-1], prevMon=months12[months12.length-2];
+  var _qaTgtMon = tgt ? ((tgt.month<10?'0':'')+tgt.month+'-'+tgt.year) : null;
+  var latestMon=_qaTgtMon&&months12.indexOf(_qaTgtMon)>=0?_qaTgtMon:months12[months12.length-1];
+  var prevMon=months12[months12.length-2];
   // byAgent: key=email(col A) or normName; months nested under .m
   var byAgent={};
   // Name aliases for PX/HS/CL sheet (agents use full names; DEFAULT_DATA has shorter names)
@@ -1516,11 +1653,30 @@ async function loadFromSheets(){
       safeFetch(SHEETS_ESC_CI_URL)
     ]);
 
+    // Read all response texts upfront (each Response body can only be read once)
+    var _rawAgentText  = (resps[0]&&resps[0].ok) ? await resps[0].text() : null;
+    var _rawVolText    = (resps[1]&&resps[1].ok) ? await resps[1].text() : null;
+    var _rawSLAText    = (resps[2]&&resps[2].ok) ? await resps[2].text() : null;
+    var _rawFCRText    = (resps[3]&&resps[3].ok) ? await resps[3].text() : null;
+    var _rawQAText     = (resps[4]&&resps[4].ok) ? await resps[4].text() : null;
+    var _rawQA2Text    = (resps[5]&&resps[5].ok) ? await resps[5].text() : null;
+    var _rawQA3Text    = (resps[6]&&resps[6].ok) ? await resps[6].text() : null;
+    var _rawContText   = (resps[7]&&resps[7].ok) ? await resps[7].text() : null;
+    var _rawEscPSText  = (resps[8]&&resps[8].ok) ? await resps[8].text() : null;
+    var _rawEscCIText  = (resps[9]&&resps[9].ok) ? await resps[9].text() : null;
+    // Store raw texts for month-picker re-parsing
+    if(_rawAgentText)  RAW_TEXTS.agent   = _rawAgentText;
+    if(_rawFCRText)    RAW_TEXTS.fcr     = _rawFCRText;
+    if(_rawQAText)     RAW_TEXTS.qa      = _rawQAText;
+    if(_rawQA2Text)    RAW_TEXTS.qa2     = _rawQA2Text;
+    if(_rawQA3Text)    RAW_TEXTS.qa3     = _rawQA3Text;
+    if(_rawContText)   RAW_TEXTS.contact = _rawContText;
+
     // Agent reporting — merge immediately and populate _emailCache so FCR/QA can match by email
-    if(resps[0] && resps[0].ok){
+    if(_rawAgentText){
       D.agents    = JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
       D.agents12m = JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
-      var _agParsed = parseGladlyCSV(await resps[0].text());
+      var _agParsed = parseGladlyCSV(_rawAgentText);
       if(_agParsed){
         var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
         function mergeAgents(liveArr, defArr){
@@ -1546,8 +1702,8 @@ async function loadFromSheets(){
     }
 
     // Volume (VolDA tab) — updates inbound chart + jun/may ticket counts
-    if(SHEETS_VOLUME_URL && resps[1] && resps[1].ok){
-      var volResult = parseVolDaSheet(await resps[1].text());
+    if(_rawVolText){
+      var volResult = _rawVolText ? parseVolDaSheet(_rawVolText) : null;
       if(volResult){
         D.inbound = volResult.inbound;
         volResult.sla.forEach(function(vs){
@@ -1559,8 +1715,8 @@ async function loadFromSheets(){
     }
 
     // SLA % (SLA pivot tab) — volume-weighted per-LOB SLA from Met SLA binary field
-    if(SHEETS_SLA_URL && resps[2] && resps[2].ok){
-      var slaResult = parseSLASummarySheet(await resps[2].text());
+    if(_rawSLAText){
+      var slaResult = _rawSLAText ? parseSLASummarySheet(_rawSLAText) : null;
       if(slaResult){
         slaResult.sla.forEach(function(vs){
           var def = D.sla.find(function(s){ return s.lob===vs.lob; });
@@ -1577,8 +1733,8 @@ async function loadFromSheets(){
     }
 
     // FCR sheet
-    if(SHEETS_FCR_URL && resps[3] && resps[3].ok){
-      var fcrResult = parseFCRSheetIdx(await resps[3].text());
+    if(_rawFCRText){
+      var fcrResult = _rawFCRText ? parseFCRSheetIdx(_rawFCRText) : null;
       if(fcrResult && fcrResult.avgWait!==null) D.avgWait = fcrResult.avgWait;
       if(fcrResult) fcrResult.agents.forEach(function(lv){
         var emailKey = (lv.email||'').toLowerCase().trim();
@@ -1608,10 +1764,8 @@ async function loadFromSheets(){
 
 
     // QA sheets (main + Goread)
-    if(SHEETS_QA_URL && resps[4] && resps[4].ok){
-      var qa2Text = (SHEETS_QA2_URL && resps[5] && resps[5].ok) ? await resps[5].text() : null;
-      var qa3Text = (SHEETS_QA3_URL && resps[6] && resps[6].ok) ? await resps[6].text() : null;
-      var qaResult = parseQASheetIdx(await resps[4].text(), qa2Text, qa3Text);
+    if(_rawQAText){
+      var qaResult = _rawQAText ? parseQASheetIdx(_rawQAText, _rawQA2Text, _rawQA3Text) : null;
       if(qaResult) qaResult.forEach(function(lv){
         var emailKey = (lv.email||'').toLowerCase().trim();
         var resolved = resolveSheetName(lv.name);
@@ -1638,8 +1792,8 @@ async function loadFromSheets(){
     }
 
     // Contact export (wait time) — resps[7]
-    if(SHEETS_CONTACT_URL && resps[7] && resps[7].ok){
-      var waitResult = parseContactWait(await resps[7].text());
+    if(_rawContText){
+      var waitResult = _rawContText ? parseContactWait(_rawContText) : null;
       if(waitResult && (waitResult.emailMTD!==null||waitResult.chatMTD!==null)){
         D.avgWait = waitResult;
         // Push per-LOB wait times into D.sla
@@ -1651,15 +1805,13 @@ async function loadFromSheets(){
     }
 
     // Escalations — resps[8]=Path Social, resps[9]=Crowd Ignite
-    var escPsText  = (SHEETS_ESC_PS_URL && resps[8] && resps[8].ok)  ? await resps[8].text()  : null;
-    var escCiText  = (SHEETS_ESC_CI_URL && resps[9] && resps[9].ok)  ? await resps[9].text()  : null;
-    if(escPsText || escCiText){
-      var escResult = parseEscalations(escPsText, escCiText);
+    if(_rawEscPSText || _rawEscCIText){
+      var escResult = parseEscalations(_rawEscPSText, _rawEscCIText);
       if(escResult && escResult.length) D.escalations = escResult;
     }
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    var anyLive = resps.some(function(r){ return r && r.ok; });
+    var anyLive = [_rawAgentText,_rawVolText,_rawSLAText,_rawFCRText,_rawQAText,_rawContText,_rawEscPSText,_rawEscCIText].some(function(t){return !!t;});
     // Cache live data to localStorage so next load shows last known good data
     if(anyLive){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(D)); localStorage.setItem(STORAGE_KEY+'_ts', new Date().toISOString()); }catch(e){} }
     setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data');
@@ -1699,8 +1851,10 @@ function render(){
   renderAgents();
   renderEscalations();
   renderFlags();
-  document.getElementById('periodPill').textContent = D.period;
-  document.getElementById('periodTag').textContent = D.period;
+  var _now=new Date();
+  var _dynPeriod=MONTH_NAMES[_now.getMonth()]+' '+_now.getFullYear();
+  document.getElementById('periodPill').textContent=_dynPeriod;
+  document.getElementById('periodTag').textContent=_dynPeriod;
   document.getElementById('footerSource').textContent = D._filename || 'Loaded data';
 }
 
@@ -1941,10 +2095,14 @@ function renderAgents(){
     return;
   }
 
-  // Build agent code reverse map
-  var codeMap={};
-  if(typeof AGENT_CODES!=='undefined'){
-    Object.keys(AGENT_CODES).forEach(function(code){ codeMap[AGENT_CODES[code]]=code; });
+  // Build agent code lookup using AGENT_CODE_MAP (name → code)
+  function getAgentCode(name){
+    if(AGENT_CODE_MAP[name]) return AGENT_CODE_MAP[name];
+    var nm=(name||'').trim();
+    if(AGENT_CODE_MAP[nm]) return AGENT_CODE_MAP[nm];
+    var first=nm.split(' ')[0];
+    for(var k in AGENT_CODE_MAP){ if(k.split(' ')[0]===first) return AGENT_CODE_MAP[k]; }
+    return '—';
   }
 
   function nullPct(v,dec,tgt){
@@ -1962,7 +2120,7 @@ function renderAgents(){
   var rows = agents.map(function(a){
     var qaMet=a.qa!==null&&a.qa!==undefined&&a.qa>=(a.qaTgt||0.90);
     var ahtMet=a.aht&&a.ahtTgt?a.aht<=a.ahtTgt:null;
-    var code=codeMap[a.name]||'—';
+    var code=getAgentCode(a.name);
     return '<tr>'
       +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(qaMet?'#16a34a':'#dc2626')+';margin-right:6px;vertical-align:middle"></span>'+a.name+'</td>'
       +'<td class="r"><code style="font-size:10px;color:var(--text3)">'+code+'</code></td>'
@@ -2016,7 +2174,17 @@ function renderAgents(){
 }
 
 function renderEscalations(){
-  var escs = D.escalations || [];
+  var _allEscs = D.escalations || [];
+  // Filter by selected month if set
+  var escs = _allEscs;
+  if(SEL_MONTH && SEL_YEAR){
+    escs = _allEscs.filter(function(e){
+      if(!e.date) return false;
+      var p=e.date.replace(/\s/g,'').split('/');
+      if(p.length<3) return false;
+      return parseInt(p[0])===SEL_MONTH && parseInt(p[2])===SEL_YEAR;
+    });
+  }
   var total    = escs.length;
   var psEscs   = escs.filter(function(e){return /path/i.test(e.lob);});
   var ciEscs   = escs.filter(function(e){return /crowd/i.test(e.lob);});
@@ -2092,28 +2260,24 @@ function renderEscalations(){
   var topReason = Object.keys(reasonMap).sort(function(a,b){return reasonMap[b]-reasonMap[a];})[0]||'—';
   var topCount = reasonMap[topReason]||0;
 
-  // ── WoW: all weeks in current month (Mon–Sun buckets) ──────────────────
+  // ── WoW: 4 complete Mon–Sun weeks + current WTD partial week ──────────────────
   var todayWow = new Date(); todayWow.setHours(0,0,0,0);
   var dowWow = todayWow.getDay();
   var daysSinceMon = (dowWow === 0) ? 6 : dowWow - 1;
-  var thisMon = new Date(todayWow);
+  var thisMon = new Date(todayWow); // Monday of current (partial) week
   thisMon.setDate(todayWow.getDate() - daysSinceMon);
 
-  // Find the Monday on or before the 1st of the current month
-  var monthStart = new Date(todayWow.getFullYear(), todayWow.getMonth(), 1);
-  var msDay = monthStart.getDay();
-  var daysToMon = (msDay === 0) ? 6 : msDay - 1;
-  var firstMon = new Date(monthStart);
-  firstMon.setDate(monthStart.getDate() - daysToMon);
-
+  // Build 4 most recent complete Mon–Sun weeks (going backward from last Sunday)
+  var lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate() - 1);
   var wkBuckets = [];
-  var wCursor = new Date(firstMon);
-  while(wCursor <= thisMon){
-    var wStart = new Date(wCursor);
-    var wEnd   = new Date(wCursor); wEnd.setDate(wCursor.getDate() + 6);
-    wkBuckets.push({start:wStart, end:wEnd});
-    wCursor.setDate(wCursor.getDate() + 7);
+  for(var _wi=3;_wi>=0;_wi--){
+    var _wEnd=new Date(lastSun); _wEnd.setDate(lastSun.getDate()-_wi*7);
+    var _wStart=new Date(_wEnd); _wStart.setDate(_wEnd.getDate()-6);
+    wkBuckets.push({start:_wStart, end:_wEnd, wtd:false});
   }
+  // Add current partial week (WTD: Monday – today)
+  var _wtdStart=new Date(thisMon), _wtdEnd=new Date(todayWow);
+  wkBuckets.push({start:_wtdStart, end:_wtdEnd, wtd:true});
 
   function parseEscDate(s){
     if(!s) return null;
@@ -2121,24 +2285,27 @@ function renderEscalations(){
     var d=new Date(parseInt(p[2]),parseInt(p[0])-1,parseInt(p[1])); d.setHours(0,0,0,0); return d;
   }
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function wkLabel(b){ var s=b.start,e=b.end; return MO[s.getMonth()]+' '+s.getDate()+'–'+(e.getMonth()!==s.getMonth()?MO[e.getMonth()]+' ':'')+e.getDate(); }
+  function wkLabel(b){ 
+    if(b.wtd) return 'WTD';
+    var s=b.start,e=b.end; return MO[s.getMonth()]+' '+s.getDate()+'–'+(e.getMonth()!==s.getMonth()?MO[e.getMonth()]+' ':'')+e.getDate(); 
+  }
 
   var wkStats = wkBuckets.map(function(b){
     var w=escs.filter(function(e){ var d=parseEscDate(e.date); return d&&d>=b.start&&d<=b.end; });
-    return { label:wkLabel(b), total:w.length,
+    return { label:wkLabel(b), total:w.length, wtd:!!b.wtd,
       ps:w.filter(function(e){return /path/i.test(e.lob);}).length,
       ci:w.filter(function(e){return /crowd/i.test(e.lob);}).length };
   });
 
   var wowRows = wkStats.map(function(wk,i){
-    var isCurrent = (i===wkStats.length-1);
+    var isCurrent = wk.wtd || (i===wkStats.length-1);
     var prev = i>0 ? wkStats[i-1].total : null;
     var delta = prev!==null ? wk.total-prev : null;
     var dStr  = delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
     var dColor= delta===null?'var(--text3)':delta>0?'var(--red)':delta<0?'var(--green)':'var(--text3)';
     return '<tr style="background:'+(isCurrent?'#eff6ff':i%2===0?'#fff':'#f8fafc')+'">'
       +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:'+(isCurrent?'700':'400')+'">'+wk.label
-      +(isCurrent?'<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">CURRENT</span>':'')
+      +(isCurrent&&wk.wtd?'<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">WTD</span>':isCurrent?'<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">CURRENT</span>':'')
       +'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:700">'+wk.total+'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:#3b82f6">'+wk.ps+'</td>'
@@ -2147,9 +2314,9 @@ function renderEscalations(){
       +'</tr>';
   }).join('');
 
-  var MONTHS_FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var _escDisplayMon = SEL_MONTH ? MONTH_NAMES[SEL_MONTH-1]+' '+SEL_YEAR : MONTH_NAMES[todayWow.getMonth()]+' '+todayWow.getFullYear();
   var wowHtml = '<div style="margin-bottom:14px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · '+MONTHS_FULL[todayWow.getMonth()]+' '+todayWow.getFullYear()+'</div>'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · '+_escDisplayMon+'</div>'
     +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
     +'<thead><tr>'
     +'<th style="text-align:left;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Week</th>'
@@ -2289,4 +2456,4 @@ loadData();
 if(isAdmin){ var b=document.getElementById('adminBtn'); if(b){b.textContent='🔓';b.title='Admin — click to lock';} }
 </script>
 </body>
-</html>                                                                                                                                                                                                                                                                                                                                                                                                                                     
+</html>
