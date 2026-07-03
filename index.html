@@ -730,17 +730,23 @@ function _reRenderMain(){
     // Update SLA% and volume for selected month
     if(RAW_TEXTS.sla){
       var _slaMon=parseSLASummarySheet(RAW_TEXTS.sla,tgt);
-      if(_slaMon) _slaMon.sla.forEach(function(vs){
-        var def=D.sla.find(function(s){return s.lob===vs.lob;});
-        if(def&&vs.sla!==null) def.sla=vs.sla;
-      });
+      if(_slaMon){
+        _slaMon.sla.forEach(function(vs){
+          var def=D.sla.find(function(s){return s.lob===vs.lob;});
+          if(def&&vs.sla!==null) def.sla=vs.sla;
+        });
+        if(_slaMon.monthMissing&&note&&!note.textContent)
+          note.textContent='SLA data not available for this month';
+      }
     }
     if(RAW_TEXTS.vol){
       var _volMon=parseVolDaSheet(RAW_TEXTS.vol,tgt);
-      if(_volMon) _volMon.sla.forEach(function(vs){
-        var def=D.sla.find(function(s){return s.lob===vs.lob;});
-        if(def){ def.jun=vs.jun; def.may=vs.may; }
-      });
+      if(_volMon){
+        _volMon.sla.forEach(function(vs){
+          var def=D.sla.find(function(s){return s.lob===vs.lob;});
+          if(def&&!_volMon._monthMissing){ def.jun=vs.jun; def.may=vs.may; }
+        });
+      }
     }
   }
   renderKPIs(); renderLOB();
@@ -1214,6 +1220,7 @@ function parseVolDaSheet(text, tgt){
   var _MON_SH=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var _tgtKey = tgt ? (_MON_SH[tgt.month-1]+'-'+tgt.year) : null;
   var _tgtIdx = _tgtKey ? months.indexOf(_tgtKey) : -1;
+  var _monthMissing = _tgtKey && _tgtIdx < 0;
   var _curIdx = _tgtIdx >= 0 ? _tgtIdx : 0;
   var _prevIdx = _curIdx + 1;
   var slaResult = LOB_ORDER.map(function(lob){
@@ -1309,6 +1316,7 @@ function parseVolDaSheet(text, tgt){
   return {
     inbound:{ lobs:LOB_ORDER, months:chartLabels, values:LOB_ORDER.map(function(l){ return chartVals[l]; }) },
     sla: slaResult,
+    _monthMissing: _monthMissing,
     weekly: wowResult
   };
 }
@@ -1375,12 +1383,15 @@ function parseSLASummarySheet(text, tgt){
   if(!monthOrder.length) return null;
   var MON_SH=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var tgtKey = tgt ? (tgt.year+'-'+MON_SH[tgt.month-1]) : null;
-  var latest = (tgtKey && monthData[tgtKey]) ? tgtKey : monthOrder[monthOrder.length-1];
+  // If a specific month was requested but not in the sheet, return null SLA values (no silent fallback)
+  if(tgtKey && !monthData[tgtKey]) return { sla: LOB_ORDER.map(function(l){ return {lob:l, sla:null}; }), monthMissing: true };
+  var latest = tgtKey ? tgtKey : monthOrder[monthOrder.length-1];
   return {
     sla: LOB_ORDER.map(function(lob){
       var d=monthData[latest][lob];
       return { lob:lob, sla: d.total>0 ? d.met/d.total : null };
-    })
+    }),
+    monthMissing: false
   };
 }
 
