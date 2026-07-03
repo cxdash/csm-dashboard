@@ -226,17 +226,10 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 
 <div class="main">
 
-  <!-- ══ MONTH PICKER (Sections 1, 2, Agent) ══ -->
-  <div id="mainMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
+  <!-- ══ MONTH PICKER (Sections 1 & 2) ══ -->
+  <div id="mainMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px;flex-wrap:wrap">
     <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
-    <select id="monthPickerMain" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
-    <span id="monthNoteMain" style="font-size:11px;color:var(--amber)"></span>
-  </div>
-
-  <!-- ══ MONTH PICKER (Sections 1, 2, Agent) ══ -->
-  <div id="mainMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
-    <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
-    <select id="monthPickerMain" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
+    <div id="mthBtns-main" style="display:flex;flex-wrap:wrap;gap:4px"></div>
     <span id="monthNoteMain" style="font-size:11px;color:var(--amber)"></span>
   </div>
 
@@ -286,15 +279,10 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   </div>
 
   <!-- ══ MONTH PICKER (Agent section) ══ -->
-  <div id="agentMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
+  <div id="agentMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px;flex-wrap:wrap">
     <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
-    <select id="monthPickerAgent" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
-  </div>
-
-  <!-- ══ MONTH PICKER (Agent section) ══ -->
-  <div id="agentMonthPickerRow" style="display:flex;align-items:center;gap:8px;padding:4px 0 0;margin-bottom:4px">
-    <span style="font-size:12px;color:var(--text3)">Viewing period:</span>
-    <select id="monthPickerAgent" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onMonthChange(this.value)"></select>
+    <div id="mthBtns-agent" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+    <span id="monthNoteAgent" style="font-size:11px;color:var(--amber)"></span>
   </div>
 
   <!-- ══ 4 — AGENT PRODUCTIVITY ══ -->
@@ -355,10 +343,9 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="sec-bar" style="background:#ef4444"></div>
     <div class="sec-label">5 — Escalations &amp; Resolution</div>
   </div>
-  <div id="escMonthPickerRow" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+  <div id="escMonthPickerRow" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
     <span style="font-size:12px;color:var(--text3)">Period:</span>
-    <select id="monthPickerEsc" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer" onchange="onEscMonthChange(this.value)"></select>
-    <button onclick="onEscMonthChange('')" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text1);cursor:pointer">MTD</button>
+    <div id="mthBtns-esc" style="display:flex;flex-wrap:wrap;gap:4px"></div>
   </div>
   <div class="esc-layout">
     <div class="esc-stats" id="escStats">
@@ -610,8 +597,9 @@ var agLOB = 'Path Social', agSort = {col:3, dir:-1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 var ADMIN_CODE = 'Lisa2026cx';
-var SEL_MONTH = null; // null = MTD/current
-var SEL_YEAR  = null;
+var SEL_MONTH = null; var SEL_YEAR = null; // Sections 1&2 main
+var SEL_AGENT_MONTH = null; var SEL_AGENT_YEAR = null; // Section 4 agent
+var SEL_ESC_MONTH = null; var SEL_ESC_YEAR = null; // Section 5 escalations
 var RAW_TEXTS = {}; // raw fetched text keyed by: agent, volume, sla, fcr, qa, qa2, qa3, contact, escPS, escCI
 var isAdmin = (localStorage.getItem('csm_admin')==='1');
 
@@ -640,94 +628,164 @@ function setAgSort(col){
   renderAgents();
 }
 // ── MONTH PICKER HELPERS ─────────────────────────────────────────────────────
-function buildMonthOptions(){
-  var now=new Date(), html='<option value="">MTD (Current)</option>';
-  for(var i=1;i<=6;i++){
-    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    var y=d.getFullYear(),m=d.getMonth()+1;
-    html+='<option value="'+y+'-'+m+'">'+MONTH_NAMES[d.getMonth()]+' '+y+'</option>';
-  }
-  return html;
+
+// ── MONTH PICKERS (section-isolated) ─────────────────────────────────────────
+
+function _parsedMonth(val){ // "YYYY-M" → {year,month} or null
+  if(!val) return null;
+  var p=val.split('-'); return {year:parseInt(p[0]),month:parseInt(p[1])};
 }
 
-function onMonthChange(val){
-  if(!val){ SEL_MONTH=null; SEL_YEAR=null; }
-  else{ var p=val.split('-'); SEL_YEAR=parseInt(p[0]); SEL_MONTH=parseInt(p[1]); }
-  ['monthPickerMain','monthPickerAgent','monthPickerEsc'].forEach(function(id){
-    var el=document.getElementById(id); if(el&&el.value!==val) el.value=val||'';
-  });
-  var note=document.getElementById('monthNoteMain'); if(note) note.textContent='';
-  reRenderWithMonth();
+function onMainMonthChange(val){
+  var tgt=_parsedMonth(val);
+  SEL_MONTH=tgt?tgt.month:null; SEL_YEAR=tgt?tgt.year:null;
+  _setActiveMthBtn('main', val);
+  _reRenderMain();
+}
+
+function onAgentMonthChange(val){
+  var tgt=_parsedMonth(val);
+  SEL_AGENT_MONTH=tgt?tgt.month:null; SEL_AGENT_YEAR=tgt?tgt.year:null;
+  _setActiveMthBtn('agent', val);
+  _reRenderAgent();
 }
 
 function onEscMonthChange(val){
-  var el=document.getElementById('monthPickerEsc'); if(el) el.value=val||'';
-  onMonthChange(val);
+  var tgt=_parsedMonth(val);
+  SEL_ESC_MONTH=tgt?tgt.month:null; SEL_ESC_YEAR=tgt?tgt.year:null;
+  _setActiveMthBtn('esc', val);
+  renderEscalations();
 }
 
-function reRenderWithMonth(){
-  var tgt=(SEL_MONTH&&SEL_YEAR)?{year:SEL_YEAR,month:SEL_MONTH}:null;
+function _setActiveMthBtn(prefix, val){
+  var container=document.getElementById('mthBtns-'+prefix);
+  if(!container) return;
+  container.querySelectorAll('button[data-mval]').forEach(function(b){
+    var active = b.getAttribute('data-mval')===(val||'');
+    b.style.background = active ? 'var(--accent)' : 'var(--card)';
+    b.style.color = active ? '#fff' : 'var(--text1)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+  });
+}
+
+function _reRenderMain(){
+  var tgt=SEL_MONTH?{year:SEL_YEAR,month:SEL_MONTH}:null;
+  var note=document.getElementById('monthNoteMain'); if(note) note.textContent='';
   if(!tgt){
     try{ var _c=localStorage.getItem('csm_kpi_v2'); D=_c?JSON.parse(_c):JSON.parse(JSON.stringify(DEFAULT_DATA)); }
     catch(e){D=JSON.parse(JSON.stringify(DEFAULT_DATA));}
-    render(); return;
-  }
-  if(RAW_TEXTS.agent){
-    var _agP=parseGladlyCSV(RAW_TEXTS.agent,tgt);
-    if(_agP){
-      D.agents=JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
-      D.agents12m=JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
-      var PF=['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
-      function _mergeAg(liveArr,defArr){
-        if(!liveArr||!liveArr.length||!defArr) return;
-        liveArr.forEach(function(live){
-          var ll=normName(live.name).toLowerCase(), lf=ll.split(' ')[0], rl=resolveSheetName(normName(live.name));
-          var def=defArr.find(function(a){var dl=normName(a.name).toLowerCase();return dl===ll||dl.startsWith(lf+' ')||normName(a.name)===rl;});
-          if(def){PF.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});}
-        });
-      }
-      _mergeAg(_agP.mtd,D.agents); _mergeAg(_agP.all,D.agents12m);
-      if(!_agP.mtd.length&&!_agP.all.length){
-        var note=document.getElementById('monthNoteMain');
-        var pm=tgt.month-1<1?12:tgt.month-1, py=tgt.month-1<1?tgt.year-1:tgt.year;
-        var _ag2=parseGladlyCSV(RAW_TEXTS.agent,{year:py,month:pm});
-        if(_ag2){_mergeAg(_ag2.mtd,D.agents);_mergeAg(_ag2.all,D.agents12m);}
-        if(note) note.textContent='No '+MONTH_NAMES[tgt.month-1]+' '+tgt.year+' data — showing '+MONTH_NAMES[pm-1]+' '+py;
+  } else {
+    if(RAW_TEXTS.agent){
+      var _agP=parseGladlyCSV(RAW_TEXTS.agent,tgt);
+      if(_agP){
+        D.agents=JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
+        D.agents12m=JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
+        var PF=['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+        function _mergeAgMain(liveArr,defArr){
+          if(!liveArr||!liveArr.length||!defArr) return;
+          liveArr.forEach(function(live){
+            var ll=normName(live.name).toLowerCase(), lf=ll.split(' ')[0], rl=resolveSheetName(normName(live.name));
+            var def=defArr.find(function(a){var dl=normName(a.name).toLowerCase();return dl===ll||dl.startsWith(lf+' ')||normName(a.name)===rl;});
+            if(def){PF.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});}
+          });
+        }
+        _mergeAgMain(_agP.mtd,D.agents); _mergeAgMain(_agP.all,D.agents12m);
+        if(!_agP.mtd.length&&!_agP.all.length){
+          var pm=tgt.month-1<1?12:tgt.month-1, py=tgt.month-1<1?tgt.year-1:tgt.year;
+          var _ag2=parseGladlyCSV(RAW_TEXTS.agent,{year:py,month:pm});
+          if(_ag2){_mergeAgMain(_ag2.mtd,D.agents);_mergeAgMain(_ag2.all,D.agents12m);}
+          if(note) note.textContent='No '+MONTH_NAMES[tgt.month-1]+' '+tgt.year+' data — showing '+MONTH_NAMES[pm-1]+' '+py;
+        }
       }
     }
+    if(RAW_TEXTS.fcr){var _fr=parseFCRSheetIdx(RAW_TEXTS.fcr,tgt);if(_fr&&_fr.agents){
+      _fr.agents.forEach(function(lv){var r=resolveSheetName(lv.name);
+        var d=D.agents.find(function(a){return normName(a.name)===r;});
+        var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
+        if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;if(d2&&lv.fcr12m!==null)d2.fcr=lv.fcr12m;
+      });
+      D.sla.forEach(function(ls){var la=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!=null;});if(la.length)ls.fcr=Math.round(la.reduce(function(s,a){return s+a.fcr;},0)/la.length*10000)/10000;});
+    }}
+    if(RAW_TEXTS.qa||RAW_TEXTS.qa2||RAW_TEXTS.qa3){var _qa=parseQASheetIdx(RAW_TEXTS.qa||'',RAW_TEXTS.qa2||'',RAW_TEXTS.qa3||'',tgt);if(_qa){
+      _qa.forEach(function(lv){var r=resolveSheetName(lv.name);
+        var d=D.agents.find(function(a){return normName(a.name)===r;});
+        var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
+        if(d&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
+        if(d2&&lv.qa12m!==null){d2.qa=lv.qa12m;d2.ztpFlag=lv.ztpFlag;}
+      });
+    }}
+    if(RAW_TEXTS.contact){var _w=parseContactWait(RAW_TEXTS.contact,tgt);if(_w){
+      D.avgWait=_w;
+      if(_w.byLOB)D.sla.forEach(function(ls){var lb=_w.byLOB[ls.lob];if(lb){if(lb.mtd!==null)ls.avgWait=lb.mtd;if(lb.prev!==null)ls.avgWaitPrev=lb.prev;}});
+    }}
+    var hasData = D.agents&&D.agents.some(function(a){return a.tickets>0;});
+    if(!hasData&&note&&!note.textContent){
+      var prevTgt={year:SEL_YEAR,month:SEL_MONTH-1}; if(prevTgt.month===0){prevTgt.month=12;prevTgt.year--;}
+      note.textContent='No '+MONTH_NAMES[SEL_MONTH-1]+' data yet — showing '+MONTH_NAMES[prevTgt.month-1]+' '+prevTgt.year;
+    }
   }
-  if(RAW_TEXTS.fcr){var _fr=parseFCRSheetIdx(RAW_TEXTS.fcr,tgt);if(_fr&&_fr.agents){
-    _fr.agents.forEach(function(lv){var r=resolveSheetName(lv.name);
-      var d=D.agents.find(function(a){return normName(a.name)===r;});
-      var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
-      if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;if(d2&&lv.fcr12m!==null)d2.fcr=lv.fcr12m;
-    });
-    D.sla.forEach(function(ls){var la=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!=null;});if(la.length)ls.fcr=Math.round(la.reduce(function(s,a){return s+a.fcr;},0)/la.length*10000)/10000;});
-  }}
-  if(RAW_TEXTS.qa){var _qa=parseQASheetIdx(RAW_TEXTS.qa,RAW_TEXTS.qa2||null,RAW_TEXTS.qa3||null,tgt);if(_qa){
-    _qa.forEach(function(lv){var r=resolveSheetName(lv.name);
-      var d=D.agents.find(function(a){return normName(a.name)===r;});
-      var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
-      if(d&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
-      if(d2&&lv.qa12m!==null){d2.qa=lv.qa12m;d2.ztpFlag=lv.ztpFlag;}
-    });
-  }}
-  if(RAW_TEXTS.contact){var _w=parseContactWait(RAW_TEXTS.contact,tgt);if(_w){
-    D.avgWait=_w;
-    if(_w.byLOB)D.sla.forEach(function(ls){var lb=_w.byLOB[ls.lob];if(lb){if(lb.mtd!==null)ls.avgWait=lb.mtd;if(lb.prev!==null)ls.avgWaitPrev=lb.prev;}});
-  }}
-  render();
+  renderKPIs(); renderLOB();
+}
+
+function _reRenderAgent(){
+  var tgt=SEL_AGENT_MONTH?{year:SEL_AGENT_YEAR,month:SEL_AGENT_MONTH}:null;
+  var note=document.getElementById('monthNoteAgent'); if(note) note.textContent='';
+  if(!tgt){
+    try{ var _c=localStorage.getItem('csm_kpi_v2'); var _cd=_c?JSON.parse(_c):null; if(_cd&&_cd.agents) D.agents=_cd.agents; } catch(e){}
+  } else {
+    if(RAW_TEXTS.agent){
+      var _agP2=parseGladlyCSV(RAW_TEXTS.agent,tgt);
+      if(_agP2&&_agP2.mtd&&_agP2.mtd.length){
+        var PF2=['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+        _agP2.mtd.forEach(function(live){
+          var ll=normName(live.name).toLowerCase(), lf=ll.split(' ')[0], rl=resolveSheetName(normName(live.name));
+          var def=D.agents.find(function(a){var dl=normName(a.name).toLowerCase();return dl===ll||dl.startsWith(lf+' ')||normName(a.name)===rl;});
+          if(def){PF2.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});}
+        });
+      } else if(note) {
+        note.textContent='No data for '+MONTH_NAMES[SEL_AGENT_MONTH-1]+' — showing previous month';
+      }
+    }
+    if(RAW_TEXTS.fcr){var _fr2=parseFCRSheetIdx(RAW_TEXTS.fcr,tgt);if(_fr2&&_fr2.agents){
+      _fr2.agents.forEach(function(lv){var r=resolveSheetName(lv.name);
+        var d=D.agents.find(function(a){return normName(a.name)===r;});
+        if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;
+      });
+    }}
+    if(RAW_TEXTS.qa||RAW_TEXTS.qa2||RAW_TEXTS.qa3){var _qa2=parseQASheetIdx(RAW_TEXTS.qa||'',RAW_TEXTS.qa2||'',RAW_TEXTS.qa3||'',tgt);if(_qa2){
+      _qa2.forEach(function(lv){var r=resolveSheetName(lv.name);
+        var d=D.agents.find(function(a){return normName(a.name)===r;});
+        if(d&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
+      });
+    }}
+  }
+  renderAgents();
+}
+
+function _buildMthBtns(prefix, handler){
+  var container=document.getElementById('mthBtns-'+prefix);
+  if(!container) return;
+  var now=new Date();
+  var btnStyle='font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text1);cursor:pointer;transition:all 0.15s;margin-right:4px';
+  var activeBtnStyle='font-size:11px;padding:3px 10px;border:1px solid var(--accent);border-radius:12px;background:var(--accent);color:#fff;cursor:pointer;transition:all 0.15s;margin-right:4px';
+  var html='<button data-mval="" style="'+activeBtnStyle+'" onclick="'+handler+'(\'\')">MTD</button>';
+  for(var i=1;i<=6;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    var y=d.getFullYear(),m=d.getMonth()+1;
+    var mval=y+'-'+m;
+    html+='<button data-mval="'+mval+'" style="'+btnStyle+'" onclick="'+handler+'(\''+mval+'\')">'+MONTH_NAMES[d.getMonth()].slice(0,3)+' '+y+'</button>';
+  }
+  container.innerHTML=html;
 }
 
 // Wire search input after DOM ready
 document.addEventListener('DOMContentLoaded', function(){
   var s = document.getElementById('agSearch');
   if(s) s.addEventListener('input', function(){ agSearch = this.value.toLowerCase().trim(); renderAgents(); });
-  // Initialize month pickers
-  var moHtml = buildMonthOptions();
-  ['monthPickerMain','monthPickerAgent','monthPickerEsc'].forEach(function(id){
-    var el=document.getElementById(id); if(el){ el.innerHTML=moHtml; }
-  });
+  // Build month button pills for each section
+  _buildMthBtns('main',  'onMainMonthChange');
+  _buildMthBtns('agent', 'onAgentMonthChange');
+  _buildMthBtns('esc',   'onEscMonthChange');
 });
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1536,13 +1594,8 @@ function parseQASheetIdx(text, text2, text3, tgt){
 }
 
 function parseEscalations(psText, ciText){
-  // Returns array of escalation objects for current calendar month
+  // Returns ALL rows (all months); renderEscalations filters by selected month
   var result = [];
-  var now = new Date();
-  var curYear = now.getFullYear();
-  var curMon  = now.getMonth()+1; // 1-12
-  var monNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var curMonName = monNames[curMon-1].toLowerCase();
   var idxPS=0, idxCI=0;
 
   function companyToLOB(c){
@@ -1562,12 +1615,9 @@ function parseEscalations(psText, ciText){
     for(var i=2;i<psLines.length;i++){
       var f=parseCSVRow(psLines[i]);
       if(!f||!f[1]||!f[1].trim()) continue;
-      var mon=(f[0]||'').trim().toLowerCase();
       var dateStr=(f[1]||'').trim();
       var dateParts=dateStr.split('/');
       if(dateParts.length!==3) continue;
-      var rowYear=parseInt(dateParts[2]);
-      if(mon!==curMonName||rowYear!==curYear) continue;
       var status=(f[12]||'').trim();
       if(!status) continue; // skip unprocessed rows (no status assigned yet)
       idxPS++;
@@ -1600,7 +1650,7 @@ function parseEscalations(psText, ciText){
       var ciDate=(g[0]||'').trim();
       var ciParts=ciDate.split('/');
       if(ciParts.length!==3) continue;
-      if(parseInt(ciParts[0])!==curMon||parseInt(ciParts[2])!==curYear) continue;
+
       var ciStatusRaw=(g[12]||'').trim();
       var ciResolution=(g[10]||'').trim();
       if(!ciStatusRaw&&!ciResolution) continue; // skip unprocessed rows (no status, no action)
@@ -1864,6 +1914,8 @@ function renderEmpty(){
 }
 
 function avg(arr, key){ if(!arr.length) return 0; return arr.reduce(function(s,r){ return s+r[key]; },0)/arr.length; }
+
+function renderOverview(){ renderKPIs(); }
 
 function renderKPIs(){
   var d = D;
@@ -2177,12 +2229,12 @@ function renderEscalations(){
   var _allEscs = D.escalations || [];
   // Filter by selected month if set
   var escs = _allEscs;
-  if(SEL_MONTH && SEL_YEAR){
+  if(SEL_ESC_MONTH && SEL_ESC_YEAR){
     escs = _allEscs.filter(function(e){
       if(!e.date) return false;
       var p=e.date.replace(/\s/g,'').split('/');
       if(p.length<3) return false;
-      return parseInt(p[0])===SEL_MONTH && parseInt(p[2])===SEL_YEAR;
+      return parseInt(p[0])===SEL_ESC_MONTH && parseInt(p[2])===SEL_ESC_YEAR;
     });
   }
   var total    = escs.length;
@@ -2291,7 +2343,7 @@ function renderEscalations(){
   }
 
   var wkStats = wkBuckets.map(function(b){
-    var w=escs.filter(function(e){ var d=parseEscDate(e.date); return d&&d>=b.start&&d<=b.end; });
+    var w=_allEscs.filter(function(e){ var d=parseEscDate(e.date); return d&&d>=b.start&&d<=b.end; });
     return { label:wkLabel(b), total:w.length, wtd:!!b.wtd,
       ps:w.filter(function(e){return /path/i.test(e.lob);}).length,
       ci:w.filter(function(e){return /crowd/i.test(e.lob);}).length };
@@ -2314,7 +2366,7 @@ function renderEscalations(){
       +'</tr>';
   }).join('');
 
-  var _escDisplayMon = SEL_MONTH ? MONTH_NAMES[SEL_MONTH-1]+' '+SEL_YEAR : MONTH_NAMES[todayWow.getMonth()]+' '+todayWow.getFullYear();
+  var _escDisplayMon = SEL_ESC_MONTH ? MONTH_NAMES[SEL_ESC_MONTH-1]+' '+SEL_ESC_YEAR : MONTH_NAMES[todayWow.getMonth()]+' '+todayWow.getFullYear();
   var wowHtml = '<div style="margin-bottom:14px">'
     +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · '+_escDisplayMon+'</div>'
     +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
