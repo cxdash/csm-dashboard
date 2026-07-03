@@ -1636,10 +1636,10 @@ function parseEscalations(psText, ciText){
   var idxPS=0, idxCI=0;
 
   function companyToLOB(c){
-    c=(c||'').toLowerCase().replace(/\s/g,'');
-    if(c==='path'||c==='')  return 'Path Social';
-    if(c==='crowd'||c==='crowdignite') return 'Crowd Ignite';
-    if(c==='recentfollow'||c==='followspy') return 'Follows';
+    c=(c||'').toLowerCase().replace(/[\s\-_]/g,'');
+    if(c.startsWith('follow')||c.startsWith('recentfollow')||c==='follows'||c==='fs') return 'Follows';
+    if(c==='crowd'||c.startsWith('crowdignite')||c==='ci') return 'Crowd Ignite';
+    if(c==='path'||c.startsWith('pathsocial')||c==='ps'||c==='') return 'Path Social';
     return 'Path Social';
   }
 
