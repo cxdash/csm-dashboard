@@ -2356,10 +2356,19 @@ function renderEscalations(){
   var topCount = reasonMap[topReason]||0;
 
   // ── WoW: 4 complete Mon–Sun weeks + current WTD partial week ──────────────────
-  var todayWow = new Date(); todayWow.setHours(0,0,0,0);
+  // Anchor to last day of selected month (past), or today (MTD)
+  var _isPastMonth = !!(SEL_ESC_MONTH && SEL_ESC_YEAR);
+  var todayWow;
+  if(_isPastMonth){
+    // Last day of selected month
+    todayWow = new Date(SEL_ESC_YEAR, SEL_ESC_MONTH, 0); // day 0 = last day of prev month
+  } else {
+    todayWow = new Date();
+  }
+  todayWow.setHours(0,0,0,0);
   var dowWow = todayWow.getDay();
   var daysSinceMon = (dowWow === 0) ? 6 : dowWow - 1;
-  var thisMon = new Date(todayWow); // Monday of current (partial) week
+  var thisMon = new Date(todayWow);
   thisMon.setDate(todayWow.getDate() - daysSinceMon);
 
   // Build 4 most recent complete Mon–Sun weeks (going backward from last Sunday)
@@ -2370,9 +2379,9 @@ function renderEscalations(){
     var _wStart=new Date(_wEnd); _wStart.setDate(_wEnd.getDate()-6);
     wkBuckets.push({start:_wStart, end:_wEnd, wtd:false});
   }
-  // Add current partial week (WTD: Monday – today)
+  // WTD: Monday through anchor day (for past months this is the last partial week)
   var _wtdStart=new Date(thisMon), _wtdEnd=new Date(todayWow);
-  wkBuckets.push({start:_wtdStart, end:_wtdEnd, wtd:true});
+  wkBuckets.push({start:_wtdStart, end:_wtdEnd, wtd:!_isPastMonth});
 
   function parseEscDate(s){
     if(!s) return null;
