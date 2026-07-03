@@ -598,6 +598,7 @@ var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 var ADMIN_CODE = 'Lisa2026cx';
 var SEL_MONTH = null; var SEL_YEAR = null; // Sections 1&2 main
+var _PICKER_VALS = {main:'', agent:'', esc:''};
 var SEL_AGENT_MONTH = null; var SEL_AGENT_YEAR = null; // Section 4 agent
 var SEL_ESC_MONTH = null; var SEL_ESC_YEAR = null; // Section 5 escalations
 var RAW_TEXTS = {}; // raw fetched text keyed by: agent, volume, sla, fcr, qa, qa2, qa3, contact, escPS, escCI
@@ -637,6 +638,7 @@ function _parsedMonth(val){ // "YYYY-M" → {year,month} or null
 }
 
 function onMainMonthChange(val){
+  _PICKER_VALS.main=val||'';
   var tgt=_parsedMonth(val);
   SEL_MONTH=tgt?tgt.month:null; SEL_YEAR=tgt?tgt.year:null;
   _setActiveMthBtn('main', val);
@@ -644,6 +646,7 @@ function onMainMonthChange(val){
 }
 
 function onAgentMonthChange(val){
+  _PICKER_VALS.agent=val||'';
   var tgt=_parsedMonth(val);
   SEL_AGENT_MONTH=tgt?tgt.month:null; SEL_AGENT_YEAR=tgt?tgt.year:null;
   _setActiveMthBtn('agent', val);
@@ -651,6 +654,7 @@ function onAgentMonthChange(val){
 }
 
 function onEscMonthChange(val){
+  _PICKER_VALS.esc=val||'';
   var tgt=_parsedMonth(val);
   SEL_ESC_MONTH=tgt?tgt.month:null; SEL_ESC_YEAR=tgt?tgt.year:null;
   _setActiveMthBtn('esc', val);
@@ -1906,6 +1910,10 @@ function render(){
   document.getElementById('periodPill').textContent=_dynPeriod;
   document.getElementById('periodTag').textContent=_dynPeriod;
   document.getElementById('footerSource').textContent = D._filename || 'Loaded data';
+  // Always restore picker active states after any full render
+  _setActiveMthBtn('main',  _PICKER_VALS.main||'');
+  _setActiveMthBtn('agent', _PICKER_VALS.agent||'');
+  _setActiveMthBtn('esc',   _PICKER_VALS.esc||'');
 }
 
 function renderEmpty(){
