@@ -593,7 +593,7 @@ var DEFAULT_DATA = {
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 var D = null; // parsed data
-var agLOB = 'Path Social', agSort = {col:3, dir:-1}, agSearch = '';
+var agLOB = 'Path Social', agSort = {col:11, dir:-1}, agSearch = '';
 var agPeriod = 'mtd'; // 'mtd' or '12m'
 var chartView = 'mom'; // 'mom' or 'wow'
 var ADMIN_CODE = 'Lisa2026cx';
@@ -628,6 +628,7 @@ function setAgSort(col){
   if(agSort.col===col) agSort.dir *= -1; else { agSort.col=col; agSort.dir=-1; }
   renderAgents();
 }
+function sortAg(col){ setAgSort(col); }
 // ── MONTH PICKER HELPERS ─────────────────────────────────────────────────────
 
 // ── MONTH PICKERS (section-isolated) ─────────────────────────────────────────
@@ -2178,11 +2179,14 @@ function renderAgents(){
     });
   }
 
-  document.querySelectorAll('#agTable thead th').forEach(function(th,i){
-    th.classList.remove('asc','desc');
-    if(i===agSort.col) th.classList.add(agSort.dir===1?'asc':'desc');
-    th.style.cursor='pointer';
-    th.onclick = function(){ setAgSort(i); };
+  // Update sort arrows on data-column headers only (skip group-header row)
+  var _COL_LABELS = ['Agent','Code','LOB','Avg/Day','Handle/Cust','Chat AHT','Missed','Avg Login','Login Util','Productivity','By Resp','QA Score','FCR'];
+  document.querySelectorAll('#agTable thead tr:last-child th').forEach(function(th,i){
+    var arrow = agSort.col===i ? (agSort.dir===1 ? ' ↑' : ' ↓') : ' <span style="color:var(--text3);font-size:9px">↕</span>';
+    th.innerHTML = _COL_LABELS[i] + arrow;
+    th.style.cursor = 'pointer';
+    th.style.userSelect = 'none';
+    th.style.whiteSpace = 'nowrap';
   });
 
   if(!agents.length){
@@ -2402,7 +2406,7 @@ function renderEscalations(){
   });
 
   var wowRows = wkStats.map(function(wk,i){
-    var isCurrent = wk.wtd || (i===wkStats.length-1);
+    var isCurrent = wk.wtd;
     var prev = i>0 ? wkStats[i-1].total : null;
     var delta = prev!==null ? wk.total-prev : null;
     var dStr  = delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
