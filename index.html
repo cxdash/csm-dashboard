@@ -1038,7 +1038,7 @@ function parseGladlyCSV(text, tgt){
 
   function getAg(map,email,name,lob,dt){
     if(!map[email]){
-      map[email]={name:name,email:email,lob:lob,lastDt:dt,days:new Set(),
+      map[email]={name:name,email:email,lob:lob,lastDt:dt,days:new Set(),bucketTimes:[],
                   fulfilled:0,byresp:0,missed:0,handleSec:0,activeSec:0,loggedinSec:0,chatFul:0,chatHT:0};
     } else if(dt>map[email].lastDt){
       // Keep most-recent name/LOB (handles agents who changed teams)
@@ -1066,6 +1066,16 @@ function parseGladlyCSV(text, tgt){
     function addTo(map){
       var ag=getAg(map,email,name,lob,dt);
       ag.days.add(dayKey);
+      // Store actual timestamp for session-based day counting
+      var _bkStr=row[COL.bucket]||'';
+      var _bkParts=_bkStr.split(' ');
+      var _bkD=_bkParts[0].split('/');
+      if(_bkD.length===3){
+        var _bkH=_bkParts[1]?parseInt(_bkParts[1].split(':')[0]):0;
+        var _bkM=_bkParts[1]?parseInt((_bkParts[1].split(':')[1])||'0'):0;
+        if(isNaN(_bkH))_bkH=0; if(isNaN(_bkM))_bkM=0;
+        ag.bucketTimes.push(new Date(+_bkD[2],+_bkD[0]-1,+_bkD[1],_bkH,_bkM).getTime());
+      }
       ag.fulfilled    +=fulfilled;
       ag.byresp       +=sf(row,COL.byresp);
       ag.missed       +=sf(row,COL.missed);
@@ -1089,7 +1099,16 @@ function parseGladlyCSV(text, tgt){
   function buildAgents(map){
     return Object.keys(map).map(function(k){
       var ag=map[k];
-      var days=ag.days.size;
+      // Session-based day count: gap > 8 hrs between consecutive buckets = new shift/day
+      var _times=ag.bucketTimes.slice().sort(function(a,b){return a-b;});
+      var _sessions=0;
+      if(_times.length){
+        _sessions=1;
+        for(var _ti=1;_ti<_times.length;_ti++){
+          if(_times[_ti]-_times[_ti-1]>8*3600*1000) _sessions++;
+        }
+      }
+      var days=_sessions||ag.days.size; // fallback to calendar-day count if no timestamps
       if(days===0||ag.fulfilled===0) return null;
       var f=defFlags[ag.name.toLowerCase()]||{};
       return {
