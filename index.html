@@ -1187,9 +1187,11 @@ function parseVolDaSheet(text, tgt){
     'plixi':'Plixi','goread':'Goread','viralpush':'Goread',
     'followspy':'Follows','recentfollow':'Follows'
   };
-  // Inbox row → LOB
+  // Inbox row → LOB (chat + email only — excludes IG/Instagram/Social Media/Facebook/Twitter)
   function inboxLOB(name){
     var n = name.toLowerCase().replace(/\s+/g,'');
+    if(n.endsWith('ig')||n.indexOf('instagram')>=0||n.indexOf('socialmedia')>=0||
+       n.indexOf('facebook')>=0||n.indexOf('twitter')>=0||n.indexOf('messenger')>=0) return null;
     if(n.startsWith('path'))          return 'Path Social';
     if(n.startsWith('crowdignite'))   return 'Crowd Ignite';
     if(n.startsWith('highsocial'))    return 'High Social';
@@ -1382,6 +1384,9 @@ function parseSLASummarySheet(text, tgt){
 
   function inboxLOB(name){
     var n = name.toLowerCase().replace(/\s+/g,'');
+    // SLA is chat + email only — exclude IG, Instagram, Social Media, Facebook, Twitter channels
+    if(n.endsWith('ig')||n.indexOf('instagram')>=0||n.indexOf('socialmedia')>=0||
+       n.indexOf('facebook')>=0||n.indexOf('twitter')>=0||n.indexOf('messenger')>=0) return null;
     if(n.startsWith('path'))         return 'Path Social';
     if(n.startsWith('crowdignite'))  return 'Crowd Ignite';
     if(n.startsWith('highsocial'))   return 'High Social';
