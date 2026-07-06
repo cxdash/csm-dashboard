@@ -1096,19 +1096,40 @@ function parseGladlyCSV(text, tgt){
 
   var LOB_ORDER=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
 
-  function buildAgents(map){
+  // Pre-compute session starts per agent from allMap (full history, no month boundary gaps)
+  var _agSessionStarts={};
+  Object.keys(allMap).forEach(function(k){
+    var times=allMap[k].bucketTimes.slice().sort(function(a,b){return a-b;});
+    if(!times.length){_agSessionStarts[k]=[];return;}
+    var starts=[times[0]];
+    for(var _ti=1;_ti<times.length;_ti++){
+      if(times[_ti]-times[_ti-1]>8*3600*1000) starts.push(times[_ti]);
+    }
+    _agSessionStarts[k]=starts;
+  });
+
+  function buildAgents(map, isAll){
     return Object.keys(map).map(function(k){
       var ag=map[k];
-      // Session-based day count: gap > 8 hrs between consecutive buckets = new shift/day
-      var _times=ag.bucketTimes.slice().sort(function(a,b){return a-b;});
-      var _sessions=0;
-      if(_times.length){
-        _sessions=1;
-        for(var _ti=1;_ti<_times.length;_ti++){
-          if(_times[_ti]-_times[_ti-1]>8*3600*1000) _sessions++;
+      var days;
+      var starts=_agSessionStarts[k]||[];
+      if(starts.length){
+        if(isAll){
+          days=starts.length; // all sessions across all months
+        } else {
+          // Count only sessions whose START timestamp falls in target month
+          days=starts.filter(function(ts){
+            var d=new Date(ts);
+            return d.getMonth()===curM && d.getFullYear()===curY;
+          }).length;
         }
       }
-      var days=_sessions||ag.days.size; // fallback to calendar-day count if no timestamps
+      if(!days){
+        // Fallback: session count from this map's own timestamps
+        var _times=ag.bucketTimes.slice().sort(function(a,b){return a-b;});
+        var _s=0; if(_times.length){_s=1;for(var _ti=1;_ti<_times.length;_ti++)if(_times[_ti]-_times[_ti-1]>8*3600*1000)_s++;}
+        days=_s||ag.days.size;
+      }
       if(days===0||ag.fulfilled===0) return null;
       var f=defFlags[ag.name.toLowerCase()]||{};
       return {
@@ -1131,7 +1152,7 @@ function parseGladlyCSV(text, tgt){
     });
   }
 
-  return { mtd: buildAgents(mtdMap), all: buildAgents(allMap) };
+  return { mtd: buildAgents(mtdMap, false), all: buildAgents(allMap, true) };
 }
 
 // ── VOLDA SHEET PARSER ───────────────────────────────────────────────────────
@@ -1404,14 +1425,16 @@ function parseSLASummarySheet(text, tgt){
   var MON_SH=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var tgtKey = tgt ? (tgt.year+'-'+MON_SH[tgt.month-1]) : null;
   // If a specific month was requested but not in the sheet, return null SLA values (no silent fallback)
-  if(tgtKey && !monthData[tgtKey]) return { sla: LOB_ORDER.map(function(l){ return {lob:l, sla:null}; }), monthMissing: true };
+  if(tgtKey && !monthData[tgtKey]) return { sla: LOB_ORDER.map(function(l){ return {lob:l, sla:null}; }), monthMissing: true, allMonths: null };
   var latest = tgtKey ? tgtKey : monthOrder[monthOrder.length-1];
   return {
     sla: LOB_ORDER.map(function(lob){
       var d=monthData[latest][lob];
       return { lob:lob, sla: d.total>0 ? d.met/d.total : null };
     }),
-    monthMissing: false
+    monthMissing: false,
+    // Full history — used to rebuild D.slaHistory so chart and card stay in sync
+    allMonths: { monthOrder: monthOrder, monthData: monthData }
   };
 }
 
@@ -1829,15 +1852,25 @@ async function loadFromSheets(){
       if(slaResult){
         slaResult.sla.forEach(function(vs){
           var def = D.sla.find(function(s){ return s.lob===vs.lob; });
-          if(def && vs.sla!==null){
-            def.sla = vs.sla;
-            // Sync the SLA trend chart's most recent month point
-            if(D.slaHistory && D.slaHistory.values && D.slaHistory.values[vs.lob]){
-              var arr = D.slaHistory.values[vs.lob];
-              if(arr.length) arr[arr.length-1] = vs.sla;
-            }
-          }
+          if(def && vs.sla!==null) def.sla = vs.sla;
         });
+        // Rebuild D.slaHistory entirely from live sheet so chart and cards always align
+        if(slaResult.allMonths){
+          var _am = slaResult.allMonths;
+          var _MON_SH2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          var _histMonths=[], _histVals={};
+          var _LOB_H=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+          _LOB_H.forEach(function(l){ _histVals[l]=[]; });
+          _am.monthOrder.forEach(function(key){ // key = '2026-Jun'
+            var parts=key.split('-'); // ['2026','Jun']
+            _histMonths.push(parts[1]+' '+parts[0]); // 'Jun 2026'
+            _LOB_H.forEach(function(lob){
+              var d=_am.monthData[key][lob];
+              _histVals[lob].push(d.total>0 ? d.met/d.total : null);
+            });
+          });
+          D.slaHistory = { months: _histMonths, values: _histVals };
+        }
       }
     }
 
@@ -2091,18 +2124,21 @@ function renderCharts(){
       };
     });
     var slaHist = D.slaHistory || {};
+    // SLA chart uses its own month labels from D.slaHistory — avoids misalignment
+    // when VolDA has more months (e.g. Jul loaded) than the SLA history array
+    var slaLabels = (slaHist.months && slaHist.months.length) ? slaHist.months : labels;
     slaDatasets = LOBS.map(function(lob){
-      var vals = (slaHist.values && slaHist.values[lob]) ? slaHist.values[lob].map(function(v){return +(v*100).toFixed(1);}) : [];
+      var vals = (slaHist.values && slaHist.values[lob]) ? slaHist.values[lob].map(function(v){return v!==null?+(v*100).toFixed(1):null;}) : [];
       return {
         label:lob, data:vals,
         borderColor:LOB_COLORS[lob], backgroundColor:'transparent',
-        borderWidth:2, pointRadius:3, tension:.3, fill:false
+        borderWidth:2, pointRadius:3, tension:.3, fill:false, spanGaps:false
       };
     });
     // Average SLA target line
     var allTgts = D.sla.map(function(r){ return r.slaTgt; });
     avgSLA = allTgts.length ? (allTgts.reduce(function(a,b){return a+b;},0)/allTgts.length*100).toFixed(1)*1 : 85;
-    slaDatasets.push({label:'Avg Target',data:new Array(labels.length).fill(avgSLA),type:'line',borderColor:'#64748b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
+    slaDatasets.push({label:'Avg Target',data:new Array(slaLabels.length).fill(avgSLA),type:'line',borderColor:'#64748b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
     document.getElementById('volChartTitle').textContent = 'Monthly Inbound Volume by LOB';
     document.getElementById('volChartSub').textContent = 'Jan – Jun · EMAIL + CHAT inbound';
     document.getElementById('slaChartTitle').textContent = 'Monthly SLA% Trend by LOB';
@@ -2164,7 +2200,7 @@ function renderCharts(){
   if(CHARTS.sla) CHARTS.sla.destroy();
   CHARTS.sla = new Chart(ctx2, {
     type:'line',
-    data:{ labels:labels, datasets:slaDatasets },
+    data:{ labels:isMoM ? slaLabels : labels, datasets:slaDatasets },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
