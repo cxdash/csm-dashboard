@@ -240,7 +240,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="sec-tag" id="periodTag"></div>
   </div>
   <div class="kpi-strip" id="kpiStrip">
-    <div class="kpi"><div class="kpi-lbl">Total Volume</div><div class="kpi-val" id="kVol">—</div><div class="kpi-sub">Jun inbound</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total Volume</div><div class="kpi-val" id="kVol">—</div><div class="kpi-sub" id="kVolSub">inbound</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg SLA</div><div class="kpi-val" id="kSLA">—</div><div class="kpi-sub">Target ≥ 80%</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg Wait Time</div><div class="kpi-val" id="kWait">—</div><div class="kpi-sub" id="kWaitSub">Email MTD</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg FCR</div><div class="kpi-val" id="kFCR">—</div><div class="kpi-sub">Target ≥ 75%</div></div>
@@ -755,6 +755,7 @@ function _reRenderMain(){
           var def=D.sla.find(function(s){return s.lob===vs.lob;});
           if(def&&!_volMon._monthMissing){ def.jun=vs.jun; def.may=vs.may; }
         });
+        if(_volMon.curMonthLabel) D.volCurMonth=_volMon.curMonthLabel;
       }
     }
   }
@@ -1364,10 +1365,14 @@ function parseVolDaSheet(text, tgt){
     };
   }
 
+  // curMonthLabel = actual month whose data is shown (falls back to months[0] if tgt missing)
+  var curMonthLabel = months[_curIdx] ? months[_curIdx].split('-')[0] : null;
+
   return {
     inbound:{ lobs:LOB_ORDER, months:chartLabels, values:LOB_ORDER.map(function(l){ return chartVals[l]; }) },
     sla: slaResult,
     _monthMissing: _monthMissing,
+    curMonthLabel: curMonthLabel,
     weekly: wowResult
   };
 }
@@ -2016,6 +2021,7 @@ async function loadFromSheets(){
           var def = D.sla.find(function(s){ return s.lob===vs.lob; });
           if(def){ def.jun = vs.jun; def.may = vs.may; }
         });
+        if(volResult.curMonthLabel) D.volCurMonth = volResult.curMonthLabel;
         if(volResult.weekly) D.weekly = volResult.weekly;
       }
     }
@@ -2195,6 +2201,8 @@ function renderKPIs(){
   var totalVol = d.sla.reduce(function(s,r){ return s+r.jun; },0);
   var aSLA = avg(d.sla,'sla'), aCsat = avg(d.sla,'csat'), aNps = avg(d.sla,'nps'), aFcr = avg(d.sla,'fcr');
   setKPI('kVol', fmt(totalVol), 'n');
+  var kVolSub = document.getElementById('kVolSub');
+  if(kVolSub) kVolSub.textContent = (D.volCurMonth || 'MTD') + ' inbound';
   setKPI('kSLA', pct(aSLA), cls(aSLA,0.8));
   setKPI('kCSAT', pct(aCsat), cls(aCsat,0.85));
   setKPI('kNPS', aNps.toFixed(1), cls(aNps,30));
