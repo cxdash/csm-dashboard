@@ -1840,19 +1840,18 @@ function parseVolWoWData(volText, fcrText){
       if(ch!=='EMAIL'&&ch!=='CHAT') continue;
       if(dir!=='INBOUND') continue;
       var wi=getWkIdxV((f[16]||'').trim()); if(wi<0) continue;
-      var slaDiff=parseFloat(f[12]), frt=parseFloat(f[11]), aht=parseFloat(f[13]);
       var lob=inboxToLOB((f[9]||'').trim());
+      if(!lob) continue; // skip non-whitelisted inboxes (matches parseVolume behaviour)
+      var slaDiff=parseFloat(f[12]), frt=parseFloat(f[11]), aht=parseFloat(f[13]);
       weeks[wi].vol++;
       if(!isNaN(slaDiff)&&slaDiff<=0) weeks[wi].within++;
       if(!isNaN(frt)&&frt>0){weeks[wi].frtSum+=frt;weeks[wi].frtCount++;}
       if(!isNaN(aht)&&aht>0){weeks[wi].ahtSum+=aht;weeks[wi].ahtCount++;}
-      if(lob){
-        ensureLOB(weeks[wi],lob);
-        weeks[wi].byLOB[lob].vol++;
-        if(!isNaN(slaDiff)&&slaDiff<=0) weeks[wi].byLOB[lob].within++;
-        if(!isNaN(frt)&&frt>0){weeks[wi].byLOB[lob].frtSum+=frt;weeks[wi].byLOB[lob].frtCount++;}
-        if(!isNaN(aht)&&aht>0){weeks[wi].byLOB[lob].ahtSum+=aht;weeks[wi].byLOB[lob].ahtCount++;}
-      }
+      ensureLOB(weeks[wi],lob);
+      weeks[wi].byLOB[lob].vol++;
+      if(!isNaN(slaDiff)&&slaDiff<=0) weeks[wi].byLOB[lob].within++;
+      if(!isNaN(frt)&&frt>0){weeks[wi].byLOB[lob].frtSum+=frt;weeks[wi].byLOB[lob].frtCount++;}
+      if(!isNaN(aht)&&aht>0){weeks[wi].byLOB[lob].ahtSum+=aht;weeks[wi].byLOB[lob].ahtCount++;}
     }
   }
   if(fcrText){
