@@ -729,16 +729,16 @@ function _reRenderMain(){
       note.textContent='No '+MONTH_NAMES[SEL_MONTH-1]+' data yet — showing '+MONTH_NAMES[prevTgt.month-1]+' '+prevTgt.year;
     }
     // Update SLA% and volume for selected month
-    if(RAW_TEXTS.sla){
-      var _slaMon=parseSLASummarySheet(RAW_TEXTS.sla,tgt);
-      if(_slaMon){
-        _slaMon.sla.forEach(function(vs){
-          var def=D.sla.find(function(s){return s.lob===vs.lob;});
-          if(def&&vs.sla!==null) def.sla=vs.sla;
-        });
-        if(_slaMon.monthMissing&&note&&!note.textContent)
-          note.textContent='SLA data not available for this month';
-      }
+    // Use raw contacts as primary SLA source (matches tracker exactly); fall back to pivot sheet
+    var _slaMonSrc = RAW_TEXTS.contact ? parseSLAFromContacts(RAW_TEXTS.contact,tgt)
+                   : (RAW_TEXTS.sla    ? parseSLASummarySheet(RAW_TEXTS.sla,tgt) : null);
+    if(_slaMonSrc){
+      _slaMonSrc.sla.forEach(function(vs){
+        var def=D.sla.find(function(s){return s.lob===vs.lob;});
+        if(def&&vs.sla!==null) def.sla=vs.sla;
+      });
+      if(_slaMonSrc.monthMissing&&note&&!note.textContent)
+        note.textContent='SLA data not available for this month';
     }
     if(RAW_TEXTS.vol){
       var _volMon=parseVolDaSheet(RAW_TEXTS.vol,tgt);
@@ -1545,6 +1545,86 @@ function parseContactWait(text, tgt){
     byLOB: byLOB
   };
 }
+
+// ── SLA FROM RAW CONTACTS ─────────────────────────────────────────────────────
+// Computes LOB SLA% directly from ContactExport (Volume sheet) — same logic as
+// tracker formula: COUNTIFS(Inbound, Email+Chat, K≠0, date in month, M≤0) / total
+// Fields: f[3]=Channel, f[4]=Direction, f[9]=Queue, f[10]=Count(K), f[12]=SLAFlag(M≤0=met), f[15]=Month-Year(MM-YYYY)
+function parseSLAFromContacts(text, tgt){
+  var LOB_ORDER=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+  var MON_SH=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function queueLOB(name){
+    var n=(name||'').toLowerCase().replace(/[\s\-_]/g,'');
+    // Exclude non-email/chat channels
+    if(n.endsWith('ig')||n.indexOf('instagram')>=0||n.indexOf('socialmedia')>=0||
+       n.indexOf('facebook')>=0||n.indexOf('twitter')>=0||n.indexOf('messenger')>=0) return null;
+    if(n.startsWith('path'))         return 'Path Social';
+    if(n.startsWith('crowdignite'))  return 'Crowd Ignite';
+    if(n.startsWith('highsocial'))   return 'High Social';
+    if(n.startsWith('cloutify'))     return 'High Social';
+    if(n.startsWith('plixi'))        return 'Plixi';
+    if(n.startsWith('goread'))       return 'Goread';
+    if(n.startsWith('viralpush'))    return 'Goread';
+    if(n.startsWith('followspy'))    return 'Follows';
+    if(n.startsWith('recentfollow')) return 'Follows';
+    return null;
+  }
+
+  var monthData={}, monthOrder=[];
+  var lines=text.split('\n');
+
+  for(var i=1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<13) continue;
+    // Direction = Inbound
+    if((f[4]||'').trim().toLowerCase()!=='inbound') continue;
+    // Channel = Email or Chat only
+    var ch=(f[3]||'').trim().toLowerCase();
+    if(ch!=='email'&&ch!=='chat') continue;
+    // Contact count ≠ 0 (Col K)
+    var cnt=parseFloat((f[10]||'').replace(/,/g,''));
+    if(!cnt) continue;
+    // Queue → LOB
+    var lob=queueLOB((f[9]||'').trim());
+    if(!lob) continue;
+    // Month from f[15] MM-YYYY e.g. "06-2026"
+    var mp=(f[15]||'').trim().split('-');
+    if(mp.length<2) continue;
+    var mo=parseInt(mp[0]), yr=parseInt(mp[1]);
+    if(isNaN(mo)||isNaN(yr)||mo<1||mo>12) continue;
+    var key=yr+'-'+MON_SH[mo-1]; // '2026-Jun'
+    if(!monthData[key]){
+      monthData[key]={};
+      monthOrder.push(key);
+      LOB_ORDER.forEach(function(l){ monthData[key][l]={met:0,total:0}; });
+    }
+    monthData[key][lob].total++;
+    // SLA met: Col M ≤ 0
+    var sv=parseFloat((f[12]||'').replace(/,/g,''));
+    if(!isNaN(sv)&&sv<=0) monthData[key][lob].met++;
+  }
+
+  if(!monthOrder.length) return null;
+  monthOrder.sort(function(a,b){
+    var pa=a.split('-'),pb=b.split('-');
+    var ya=parseInt(pa[0]),yb=parseInt(pb[0]);
+    return ya!==yb?ya-yb:MON_SH.indexOf(pa[1])-MON_SH.indexOf(pb[1]);
+  });
+
+  var tgtKey=tgt?(tgt.year+'-'+MON_SH[tgt.month-1]):null;
+  if(tgtKey&&!monthData[tgtKey]) return {sla:LOB_ORDER.map(function(l){return {lob:l,sla:null};}),monthMissing:true,allMonths:null};
+  var latest=tgtKey?tgtKey:monthOrder[monthOrder.length-1];
+  return {
+    sla: LOB_ORDER.map(function(lob){
+      var d=monthData[latest][lob];
+      return {lob:lob, sla:d.total>0?d.met/d.total:null};
+    }),
+    monthMissing:false,
+    allMonths:{monthOrder:monthOrder, monthData:monthData}
+  };
+}
+
 function parseFCRSheetIdx(text, tgt){
   var lines=text.split('\n');
   var hIdx=-1;
@@ -1852,31 +1932,29 @@ async function loadFromSheets(){
       }
     }
 
-    // SLA % (SLA pivot tab) — volume-weighted per-LOB SLA from Met SLA binary field
-    if(_rawSLAText){
-      var slaResult = _rawSLAText ? parseSLASummarySheet(_rawSLAText) : null;
-      if(slaResult){
-        slaResult.sla.forEach(function(vs){
-          var def = D.sla.find(function(s){ return s.lob===vs.lob; });
-          if(def && vs.sla!==null) def.sla = vs.sla;
-        });
-        // Rebuild D.slaHistory entirely from live sheet so chart and cards always align
-        if(slaResult.allMonths){
-          var _am = slaResult.allMonths;
-          var _MON_SH2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          var _histMonths=[], _histVals={};
-          var _LOB_H=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
-          _LOB_H.forEach(function(l){ _histVals[l]=[]; });
-          _am.monthOrder.forEach(function(key){ // key = '2026-Jun'
-            var parts=key.split('-'); // ['2026','Jun']
-            _histMonths.push(parts[1]+' '+parts[0]); // 'Jun 2026'
-            _LOB_H.forEach(function(lob){
-              var d=_am.monthData[key][lob];
-              _histVals[lob].push(d.total>0 ? d.met/d.total : null);
-            });
+    // SLA % — raw ContactExport primary (matches tracker formula exactly), pivot sheet fallback
+    var slaResult = _rawContText ? parseSLAFromContacts(_rawContText)
+                  : (_rawSLAText  ? parseSLASummarySheet(_rawSLAText) : null);
+    if(slaResult){
+      slaResult.sla.forEach(function(vs){
+        var def = D.sla.find(function(s){ return s.lob===vs.lob; });
+        if(def && vs.sla!==null) def.sla = vs.sla;
+      });
+      // Rebuild D.slaHistory entirely from live data so chart and cards always align
+      if(slaResult.allMonths){
+        var _am = slaResult.allMonths;
+        var _histMonths=[], _histVals={};
+        var _LOB_H=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+        _LOB_H.forEach(function(l){ _histVals[l]=[]; });
+        _am.monthOrder.forEach(function(key){ // key = '2026-Jun'
+          var parts=key.split('-'); // ['2026','Jun']
+          _histMonths.push(parts[1]+' '+parts[0]); // 'Jun 2026'
+          _LOB_H.forEach(function(lob){
+            var d=_am.monthData[key][lob];
+            _histVals[lob].push(d.total>0 ? d.met/d.total : null);
           });
-          D.slaHistory = { months: _histMonths, values: _histVals };
-        }
+        });
+        D.slaHistory = { months: _histMonths, values: _histVals };
       }
     }
 
