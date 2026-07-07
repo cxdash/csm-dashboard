@@ -94,10 +94,17 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .rec-table tr:last-child td{border-bottom:none}
 
 /* ── VOLUME TABLE ── */
-.vol-table{width:100%;border-collapse:collapse;font-size:13px}
-.vol-table th{background:var(--masthead);color:#fff;padding:8px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.vol-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.vol-table col.c-lob{width:14%}
+.vol-table col.c-num{width:10%}
+.vol-table col.c-bench{width:13%}
+.vol-table col.c-frt{width:12%}
+.vol-table col.c-aht{width:13%}
+.vol-table col.c-fcr{width:10%}
+.vol-table col.c-note{width:18%}
+.vol-table th{background:var(--masthead);color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vol-table th.r{text-align:right}
-.vol-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.vol-table td{padding:8px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis}
 .vol-table td.r{text-align:right;font-family:'DM Mono',monospace}
 .vol-table tr.socials-avg td{background:var(--masthead);color:#fff;font-weight:700}
 .vol-table tr.follows-row td{background:var(--amber-bg)}
@@ -296,15 +303,51 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
     </div>
   </div>
 
-  <!-- 7 — CONTACT VOLUME & SLA -->
+  <!-- 7 — ESCALATIONS WEEK-OVER-WEEK -->
   <div class="sec" id="s7">
     <div class="sec-hdr">
       <div class="sec-dot" style="background:#0ea5e9"></div>
-      <div><div class="sec-title">7 — Contact Volume &amp; SLA</div><div class="sec-sub" id="s7sub">Email + Chat · Inbound only · SLA benchmark 90%</div></div>
+      <div><div class="sec-title">7 — Escalations Week-over-Week</div><div class="sec-sub">Last 8 weeks · Mon–Sun · all escalations</div></div>
+    </div>
+    <div class="sec-body" style="padding:0">
+      <div id="wowSection">
+        <div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 — CONTACT VOLUME & SLA WEEK-OVER-WEEK -->
+  <div class="sec" id="s8">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#0ea5e9"></div>
+      <div><div class="sec-title">8 — Contact Volume &amp; SLA Week-over-Week</div><div class="sec-sub">Last 8 weeks · Mon–Sun · email + chat inbound</div></div>
+    </div>
+    <div class="sec-body" style="padding:0">
+      <div id="volWowSection">
+        <div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 — CONTACT VOLUME & SLA MTD -->
+  <div class="sec" id="s9">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#0ea5e9"></div>
+      <div><div class="sec-title">9 — Contact Volume &amp; SLA</div><div class="sec-sub" id="s7sub">Email + Chat · Inbound only · SLA benchmark 90%</div></div>
     </div>
     <div class="sec-body">
       <div style="overflow-x:auto">
         <table class="vol-table" id="volTable">
+          <colgroup>
+            <col class="c-lob">
+            <col class="c-num">
+            <col class="c-num">
+            <col class="c-bench">
+            <col class="c-frt">
+            <col class="c-aht">
+            <col class="c-fcr">
+            <col class="c-note">
+          </colgroup>
           <thead><tr>
             <th>LOB</th>
             <th class="r">Volume</th>
@@ -319,19 +362,6 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         </table>
       </div>
       <div id="volAlerts" style="margin-top:12px"></div>
-    </div>
-  </div>
-
-  <!-- 8 — WEEK-OVER-WEEK TREND -->
-  <div class="sec" id="s8">
-    <div class="sec-hdr">
-      <div class="sec-dot" style="background:#0ea5e9"></div>
-      <div><div class="sec-title">8 — Week-over-Week Trend</div><div class="sec-sub">Month to date · Mon–Sun · all escalations</div></div>
-    </div>
-    <div class="sec-body" style="padding:0">
-      <div id="wowSection">
-        <div style="padding:16px;color:var(--text3);font-size:13px">Loading…</div>
-      </div>
     </div>
   </div>
 
@@ -514,7 +544,7 @@ function parseVolume(text){
     if(ch!=='EMAIL'&&ch!=='CHAT') continue;
     if(dir!=='INBOUND') continue;
     var dateStr=(f[16]||'').trim();
-    if(!dateStr||!inPeriod(dateStr, period)) continue;
+    if(!dateStr||!inPeriod(dateStr, 'monthly')) continue; // Section 7 is always MTD
     var inbox=(f[9]||'').trim();
     var lob=inboxToLOB(inbox);
     if(!lob) continue;
@@ -585,7 +615,7 @@ function parseFCR(text){
     var f=parseCSVRow(lines[i]);
     if(f.length<9) continue;
     var dateStr=(f[4]||'').trim();
-    if(!dateStr||!inPeriod(dateStr,period)) continue;
+    if(!dateStr||!inPeriod(dateStr,'monthly')) continue; // Section 7 is always MTD
     var rate=parseFloat(f[5]);
     if(isNaN(rate)) continue;
     var email=(f[8]||'').trim().toLowerCase();
@@ -1132,7 +1162,7 @@ function renderVolume(volData, fcrByLOB){
   // Update s7sub with current month dynamically
   var now=new Date();
   var s7sub=document.getElementById('s7sub');
-  if(s7sub){ var mn=now.toLocaleString('default',{month:'long'}); s7sub.textContent='Email + Chat · Inbound only · '+(period==='monthly'?'MTD '+mn+' '+now.getFullYear():periodLabel())+' · SLA benchmark '+SLA_TARGET+'%'; }
+  if(s7sub){ var mn=now.toLocaleString('default',{month:'long'}); s7sub.textContent='Email + Chat · Inbound only · MTD '+mn+' '+now.getFullYear()+' · SLA benchmark '+SLA_TARGET+'%'; }
   var byLOB = volData.byLOB;
   var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
   var rows='', socialsVol=0,socialsWithin=0, overallVol=0,overallWithin=0,overallFrtSum=0,overallFrtCount=0,overallAhtSum=0,overallAhtCount=0;
@@ -1641,19 +1671,12 @@ function parseWoWData(psText, ciText){
   var dow=today.getDay(), daysSinceMon=dow===0?6:dow-1;
   var thisMon=new Date(today); thisMon.setDate(today.getDate()-daysSinceMon);
 
-  // Dynamic month buckets: first Monday on/before month start through current Monday
-  var monthStart=new Date(today.getFullYear(),today.getMonth(),1);
-  var msDay=monthStart.getDay();
-  var daysToMon=msDay===0?6:msDay-1;
-  var firstMon=new Date(monthStart); firstMon.setDate(monthStart.getDate()-daysToMon);
-
+  // Rolling 8-week window ending with current week
   var weeks=[];
-  var wCursor=new Date(firstMon);
-  while(wCursor<=thisMon){
-    var wS=new Date(wCursor);
-    var wE=new Date(wCursor); wE.setDate(wCursor.getDate()+6);
+  for(var wb=7;wb>=0;wb--){
+    var wS=new Date(thisMon); wS.setDate(thisMon.getDate()-wb*7);
+    var wE=new Date(wS); wE.setDate(wS.getDate()+6);
     weeks.push({start:wS,end:wE,ps:[],ci:[]});
-    wCursor.setDate(wCursor.getDate()+7);
   }
 
   function parseDateWoW(s){
@@ -1787,6 +1810,134 @@ function renderWoW(psText, ciText){
   el.innerHTML = kpiRow + tbl;
 }
 
+// ── CONTACT VOLUME WoW ───────────────────────────────────────────────────────
+function parseVolWoWData(volText, fcrText){
+  var today=new Date(); today.setHours(0,0,0,0);
+  var dow=today.getDay(), dsm=dow===0?6:dow-1;
+  var thisMon=new Date(today); thisMon.setDate(today.getDate()-dsm);
+  var weeks=[];
+  for(var wb=7;wb>=0;wb--){
+    var wS=new Date(thisMon); wS.setDate(thisMon.getDate()-wb*7);
+    var wE=new Date(wS); wE.setDate(wS.getDate()+6);
+    weeks.push({start:wS,end:wE,vol:0,within:0,frtSum:0,frtCount:0,ahtSum:0,ahtCount:0,fcrSum:0,fcrCount:0});
+  }
+  function getWkIdxV(dateStr){
+    var p=dateStr.split('/'); if(p.length!==3) return -1;
+    var d=new Date(parseInt(p[2]),parseInt(p[0])-1,parseInt(p[1])); d.setHours(0,0,0,0);
+    for(var i=0;i<weeks.length;i++) if(d>=weeks[i].start&&d<=weeks[i].end) return i;
+    return -1;
+  }
+  if(volText){
+    var vl=volText.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    for(var i=1;i<vl.length;i++){
+      var f=parseCSVRow(vl[i]);
+      if(!f||f.length<17) continue;
+      var ch=(f[3]||'').trim().toUpperCase(), dir=(f[4]||'').trim().toUpperCase();
+      if(ch!=='EMAIL'&&ch!=='CHAT') continue;
+      if(dir!=='INBOUND') continue;
+      var wi=getWkIdxV((f[16]||'').trim()); if(wi<0) continue;
+      var slaDiff=parseFloat(f[12]), frt=parseFloat(f[11]), aht=parseFloat(f[13]);
+      weeks[wi].vol++;
+      if(!isNaN(slaDiff)&&slaDiff<=0) weeks[wi].within++;
+      if(!isNaN(frt)&&frt>0){weeks[wi].frtSum+=frt;weeks[wi].frtCount++;}
+      if(!isNaN(aht)&&aht>0){weeks[wi].ahtSum+=aht;weeks[wi].ahtCount++;}
+    }
+  }
+  if(fcrText){
+    var fl=fcrText.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    for(var j=1;j<fl.length;j++){
+      var g=parseCSVRow(fl[j]);
+      if(g.length<9) continue;
+      var wi2=getWkIdxV((g[4]||'').trim()); if(wi2<0) continue;
+      var rate=parseFloat(g[5]); if(isNaN(rate)) continue;
+      var email=(g[8]||'').trim().toLowerCase();
+      if(!EMAIL_LOB[email]) continue;
+      weeks[wi2].fcrSum+=rate; weeks[wi2].fcrCount++;
+    }
+  }
+  return weeks;
+}
+
+function renderVolWoW(volText, fcrText){
+  var el=document.getElementById('volWowSection'); if(!el) return;
+  var weeks=parseVolWoWData(volText,fcrText);
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function wkLbl(w){var s=w.start,e=w.end;return MO[s.getMonth()]+' '+s.getDate()+'–'+(e.getMonth()!==s.getMonth()?MO[e.getMonth()]+' ':'')+e.getDate();}
+  var stats=weeks.map(function(w){
+    return {
+      label:wkLbl(w), vol:w.vol,
+      sla:w.vol>0?w.within/w.vol:null,
+      frt:w.frtCount>0?w.frtSum/w.frtCount:null,
+      aht:w.ahtCount>0?w.ahtSum/w.ahtCount:null,
+      fcr:w.fcrCount>0?w.fcrSum/w.fcrCount:null
+    };
+  });
+  var cur=stats[stats.length-1], prev=stats[stats.length-2]||null;
+
+  function kpiCardV(label,val,prevVal,lowerIsBetter,fmtFn){
+    var delta=(prevVal!==null&&val!==null)?val-prevVal:null;
+    var pos=delta===null?null:lowerIsBetter?delta<0:delta>0;
+    var dc=delta===null?'#94a3b8':delta===0?'#94a3b8':pos?'#16a34a':'#dc2626';
+    var dStr=delta===null?'':Math.abs(delta)<0.0001?'→ same':(delta>0?'▲ +':('▼ '))+fmtFn(Math.abs(delta))+' vs prev wk';
+    return '<div style="flex:1;min-width:120px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">'
+      +'<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+label+'</div>'
+      +'<div style="font-size:24px;font-weight:700;color:#0f172a;line-height:1">'+(val===null?'—':fmtFn(val))+'</div>'
+      +(dStr?'<div style="font-size:11px;color:'+dc+';margin-top:3px">'+dStr+'</div>':'<div style="font-size:11px;color:#94a3b8;margin-top:3px">—</div>')
+      +'</div>';
+  }
+  var kpiRow='<div style="display:flex;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid #e2e8f0">'
+    +kpiCardV('Volume',cur.vol,prev?prev.vol:null,false,function(v){return fmtNum(Math.round(v));})
+    +kpiCardV('SLA %',cur.sla,prev?prev.sla:null,false,function(v){return pct(v);})
+    +kpiCardV('FRT Avg',cur.frt,prev?prev.frt:null,true,function(v){return fmtSec(v);})
+    +kpiCardV('Avg Handle Time',cur.aht,prev?prev.aht:null,true,function(v){return fmtSec(v);})
+    +kpiCardV('FCR',cur.fcr,prev?prev.fcr:null,false,function(v){return pct(v);})
+    +'</div>';
+
+  var TH='style="padding:8px 10px;text-align:right;color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap"';
+  var THl='style="padding:8px 10px;text-align:left;color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em"';
+  var tblRows=stats.map(function(wk,i){
+    var isCur=i===stats.length-1;
+    var prevVol=i>0?stats[i-1].vol:null;
+    var delta=prevVol!==null?wk.vol-prevVol:null;
+    var dStr=delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
+    var dColor=delta===null?'#94a3b8':delta>0?'#dc2626':delta<0?'#16a34a':'#94a3b8';
+    var bg=isCur?'#eff6ff':i%2===0?'#fff':'#f8fafc';
+    var slaOk=wk.sla!==null&&wk.sla*100>=SLA_TARGET;
+    var slaDelta=wk.sla!==null?((wk.sla*100)-SLA_TARGET).toFixed(1):null;
+    var TD='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px';
+    var TDl='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px';
+    return '<tr style="background:'+bg+'">'
+      +'<td style="'+TDl+';font-weight:'+(isCur?700:400)+'">'+wk.label
+      +(isCur?'<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle">CURRENT</span>':'')
+      +'</td>'
+      +'<td style="'+TD+';font-weight:700">'+(wk.vol>0?fmtNum(wk.vol):'—')+'</td>'
+      +'<td style="'+TD+';color:'+(wk.sla===null?'#94a3b8':slaOk?'#16a34a':'#dc2626')+';font-weight:600">'+(wk.sla===null?'—':pct(wk.sla))+'</td>'
+      +'<td style="'+TD+';color:'+(slaDelta===null?'#94a3b8':parseFloat(slaDelta)>=0?'#16a34a':'#dc2626')+'">'+(slaDelta===null?'—':(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pts')+'</td>'
+      +'<td style="'+TD+'">'+(wk.frt===null?'—':fmtSec(wk.frt))+'</td>'
+      +'<td style="'+TD+'">'+(wk.aht===null?'—':fmtSec(wk.aht))+'</td>'
+      +'<td style="'+TD+'">'+(wk.fcr===null?'—':pct(wk.fcr))+'</td>'
+      +'<td style="'+TD+';font-weight:700;color:'+dColor+'">'+dStr+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var tbl='<div style="overflow-x:auto;padding:16px 18px">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="background:#1A1A2E">'
+    +'<th '+THl+'>Week</th>'
+    +'<th '+TH+'>Volume</th>'
+    +'<th '+TH+'>SLA %</th>'
+    +'<th '+TH+'>vs Benchmark</th>'
+    +'<th '+TH+'>FRT Avg</th>'
+    +'<th '+TH+'>Avg Handle Time</th>'
+    +'<th '+TH+'>FCR</th>'
+    +'<th '+TH+'>WoW Δ Vol</th>'
+    +'</tr></thead>'
+    +'<tbody>'+tblRows+'</tbody>'
+    +'</table></div>';
+
+  el.innerHTML=kpiRow+tbl;
+}
+
 function renderAll(data){
   var parsedPS = data.psText ? parsePS(data.psText) : {psRows:data.psRows||[], ciFromPS:[]};
   var psRows   = parsedPS.psRows;
@@ -1806,6 +1957,13 @@ function renderAll(data){
     console.error('[renderWoW] error:',e);
     var el=document.getElementById('wowSection');
     if(el) el.innerHTML='<div style="padding:16px;color:var(--red);font-size:13px">⚠ Could not load WoW data — check console for details.</div>';
+  }
+  try{
+    renderVolWoW(data.volText||'', data.fcrText||'');
+  }catch(e){
+    console.error('[renderVolWoW] error:',e);
+    var el2=document.getElementById('volWowSection');
+    if(el2) el2.innerHTML='<div style="padding:16px;color:var(--red);font-size:13px">⚠ Could not load Volume WoW data.</div>';
   }
 }
 </script>
