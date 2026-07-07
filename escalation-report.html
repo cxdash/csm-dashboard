@@ -1872,13 +1872,14 @@ function parseVolWoWData(volText, fcrText){
   return weeks;
 }
 
-function toggleVolLOB(id){
-  var row=document.getElementById(id);
-  var arrow=document.getElementById(id+'-arrow');
-  if(!row) return;
-  var open=row.style.display!=='none';
-  row.style.display=open?'none':'table-row';
-  if(arrow) arrow.style.transform=open?'rotate(0deg)':'rotate(90deg)';
+// Toggle LOB detail rows by shared CSS class (flat rows, no nested table)
+function toggleVolLOB(cls){
+  var rows=document.querySelectorAll('tr.'+cls);
+  var arrow=document.getElementById(cls+'-arrow');
+  if(!rows.length) return;
+  var open=rows[0].style.display!=='none';
+  for(var ri=0;ri<rows.length;ri++) rows[ri].style.display=open?'none':'table-row';
+  if(arrow) arrow.style.transform=open?'':'rotate(90deg)';
 }
 
 function renderVolWoW(volText, fcrText){
@@ -1911,14 +1912,13 @@ function renderVolWoW(volText, fcrText){
     };
   }
 
-  // Last element = current (incomplete) week — used only for KPI cards
-  var curStat=mkStat(allWeeks[allWeeks.length-1]);
-  var completedWeeks=allWeeks.slice(0,-1); // 8 completed weeks
-  var stats=completedWeeks.map(mkStat);
-  var prev=stats[stats.length-1]; // most recent completed = prev for cards
+  // 8 completed weeks only; cards show last completed vs the one before
+  var stats=allWeeks.slice(0,-1).map(mkStat);
+  var cur=stats[stats.length-1];
+  var prev=stats.length>=2?stats[stats.length-2]:null;
 
   function kpiCardV(label,val,prevVal,lowerIsBetter,fmtFn){
-    var delta=(prevVal!==null&&val!==null)?val-prevVal:null;
+    var delta=(prevVal!==null&&prevVal!==undefined&&val!==null)?val-prevVal:null;
     var pos=delta===null?null:lowerIsBetter?delta<0:delta>0;
     var dc=delta===null?'#94a3b8':delta===0?'#94a3b8':pos?'#16a34a':'#dc2626';
     var dStr=delta===null?'':Math.abs(delta)<0.0001?'→ same':(delta>0?'▲ +':'▼ ')+fmtFn(Math.abs(delta))+' vs last wk';
@@ -1929,19 +1929,15 @@ function renderVolWoW(volText, fcrText){
       +'</div>';
   }
   var kpiRow='<div style="display:flex;gap:10px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid #e2e8f0">'
-    +kpiCardV('Volume (this wk)',curStat.vol,prev.vol,false,function(v){return fmtNum(Math.round(v));})
-    +kpiCardV('SLA %',curStat.sla,prev.sla,false,function(v){return pct(v);})
-    +kpiCardV('FRT Avg',curStat.frt,prev.frt,true,function(v){return fmtSec(v);})
-    +kpiCardV('Avg Handle Time',curStat.aht,prev.aht,true,function(v){return fmtSec(v);})
-    +kpiCardV('FCR',curStat.fcr,prev.fcr,false,function(v){return pct(v);})
+    +kpiCardV('Volume',cur.vol,prev?prev.vol:null,false,function(v){return fmtNum(Math.round(v));})
+    +kpiCardV('SLA %',cur.sla,prev?prev.sla:null,false,function(v){return pct(v);})
+    +kpiCardV('FRT Avg',cur.frt,prev?prev.frt:null,true,function(v){return fmtSec(v);})
+    +kpiCardV('Avg Handle Time',cur.aht,prev?prev.aht:null,true,function(v){return fmtSec(v);})
+    +kpiCardV('FCR',cur.fcr,prev?prev.fcr:null,false,function(v){return pct(v);})
     +'</div>';
 
   var TH='style="padding:8px 10px;text-align:right;color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap"';
   var THl='style="padding:8px 10px;text-align:left;color:#fff;font-size:11px;font-weight:600;letter-spacing:.04em"';
-
-  // Sub-table style helpers
-  var STD='padding:6px 10px;text-align:right;font-size:11px;color:#475569;border-bottom:1px solid #f1f5f9';
-  var STDl='padding:6px 10px 6px 32px;font-size:11px;color:#475569;border-bottom:1px solid #f1f5f9';
 
   var tblRows=stats.map(function(wk,i){
     var prevVol=i>0?stats[i-1].vol:null;
@@ -1952,29 +1948,31 @@ function renderVolWoW(volText, fcrText){
     var slaOk=wk.sla!==null&&wk.sla*100>=SLA_TARGET;
     var slaDelta=wk.sla!==null?((wk.sla*100)-SLA_TARGET).toFixed(1):null;
     var TD='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px';
-    var TDl='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;cursor:pointer';
-    var rowId='vwow-lob-'+i;
+    var TDl='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;cursor:pointer;user-select:none';
+    var cls='vlob-'+i;
 
-    // LOB sub-rows
-    var lobRows=LOB_ORDER.filter(function(lob){return wk.byLOB[lob];}).map(function(lob){
+    // Flat LOB detail rows — same columns as main row (no nested table = proper alignment)
+    var lTD='padding:5px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-size:11px;color:#475569;background:#f8fafc';
+    var lTDl='padding:5px 10px 5px 28px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#64748b;font-style:italic;background:#f8fafc';
+    var lobDetailRows=LOB_ORDER.filter(function(lob){return wk.byLOB[lob];}).map(function(lob){
       var d=wk.byLOB[lob];
       var lSlaOk=d.sla!==null&&d.sla*100>=SLA_TARGET;
-      var lSlaDelta=d.sla!==null?((d.sla*100)-SLA_TARGET).toFixed(1):null;
-      return '<tr>'
-        +'<td style="'+STDl+'">'+lob+'</td>'
-        +'<td style="'+STD+'">'+fmtNum(d.vol)+'</td>'
-        +'<td style="'+STD+';color:'+(d.sla===null?'#94a3b8':lSlaOk?'#16a34a':'#dc2626')+'">'+(d.sla===null?'—':pct(d.sla))+'</td>'
-        +'<td style="'+STD+';color:'+(lSlaDelta===null?'#94a3b8':parseFloat(lSlaDelta)>=0?'#16a34a':'#dc2626')+'">'+(lSlaDelta===null?'—':(parseFloat(lSlaDelta)>=0?'+':'')+lSlaDelta+'pts')+'</td>'
-        +'<td style="'+STD+'">'+(d.frt===null?'—':fmtSec(d.frt))+'</td>'
-        +'<td style="'+STD+'">'+(d.aht===null?'—':fmtSec(d.aht))+'</td>'
-        +'<td style="'+STD+'">'+(d.fcr===null?'—':pct(d.fcr))+'</td>'
-        +'<td style="'+STD+'"></td>'
+      var lSD=d.sla!==null?((d.sla*100)-SLA_TARGET).toFixed(1):null;
+      return '<tr class="'+cls+'" style="display:none">'
+        +'<td style="'+lTDl+'">'+lob+'</td>'
+        +'<td style="'+lTD+'">'+fmtNum(d.vol)+'</td>'
+        +'<td style="'+lTD+';color:'+(d.sla===null?'#94a3b8':lSlaOk?'#16a34a':'#dc2626')+'">'+(d.sla===null?'—':pct(d.sla))+'</td>'
+        +'<td style="'+lTD+';color:'+(lSD===null?'#94a3b8':parseFloat(lSD)>=0?'#16a34a':'#dc2626')+'">'+(lSD===null?'—':(parseFloat(lSD)>=0?'+':'')+lSD+'pts')+'</td>'
+        +'<td style="'+lTD+'">'+(d.frt===null?'—':fmtSec(d.frt))+'</td>'
+        +'<td style="'+lTD+'">'+(d.aht===null?'—':fmtSec(d.aht))+'</td>'
+        +'<td style="'+lTD+'">'+(d.fcr===null?'—':pct(d.fcr))+'</td>'
+        +'<td style="'+lTD+'"></td>'
         +'</tr>';
     }).join('');
 
-    return '<tr style="background:'+bg+'" onclick="toggleVolLOB(\''+rowId+'\')" style="cursor:pointer">'
+    return '<tr style="background:'+bg+';cursor:pointer" onclick="toggleVolLOB(\''+cls+'\')">'
       +'<td style="'+TDl+'">'
-      +'<span id="'+rowId+'-arrow" style="display:inline-block;font-size:10px;margin-right:6px;transition:transform 0.15s;color:#94a3b8">▶</span>'
+      +'<span id="'+cls+'-arrow" style="display:inline-block;font-size:9px;margin-right:6px;transition:transform 0.15s;color:#94a3b8">▶</span>'
       +wk.label+'</td>'
       +'<td style="'+TD+';font-weight:700">'+(wk.vol>0?fmtNum(wk.vol):'—')+'</td>'
       +'<td style="'+TD+';color:'+(wk.sla===null?'#94a3b8':slaOk?'#16a34a':'#dc2626')+';font-weight:600">'+(wk.sla===null?'—':pct(wk.sla))+'</td>'
@@ -1984,10 +1982,7 @@ function renderVolWoW(volText, fcrText){
       +'<td style="'+TD+'">'+(wk.fcr===null?'—':pct(wk.fcr))+'</td>'
       +'<td style="'+TD+';font-weight:700;color:'+dColor+'">'+dStr+'</td>'
       +'</tr>'
-      +'<tr id="'+rowId+'" style="display:none;background:#f8fafc">'
-      +'<td colspan="8" style="padding:0">'
-      +'<table style="width:100%;border-collapse:collapse">'+lobRows+'</table>'
-      +'</td></tr>';
+      +lobDetailRows;
   }).join('');
 
   var tbl='<div style="overflow-x:auto;padding:16px 18px">'
