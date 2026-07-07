@@ -709,7 +709,15 @@ function _reRenderMain(){
         var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
         if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;if(d2&&lv.fcr12m!==null)d2.fcr=lv.fcr12m;
       });
-      D.sla.forEach(function(ls){var la=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!=null;});if(la.length)ls.fcr=Math.round(la.reduce(function(s,a){return s+a.fcr;},0)/la.length*10000)/10000;});
+      var _lobFcrRr=parseFCRByLOB(RAW_TEXTS.fcr,tgt);
+      D.sla.forEach(function(ls){
+        if(_lobFcrRr[ls.lob]!=null){
+          ls.fcr=_lobFcrRr[ls.lob];
+        } else {
+          var la=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!=null;});
+          if(la.length)ls.fcr=Math.round(la.reduce(function(s,a){return s+a.fcr;},0)/la.length*10000)/10000;
+        }
+      });
     }}
     if(RAW_TEXTS.qa||RAW_TEXTS.qa2||RAW_TEXTS.qa3){var _qa=parseQASheetIdx(RAW_TEXTS.qa||'',RAW_TEXTS.qa2||'',RAW_TEXTS.qa3||'',tgt);if(_qa){
       _qa.forEach(function(lv){var r=resolveSheetName(lv.name);
@@ -1554,21 +1562,36 @@ function parseSLAFromContacts(text, tgt){
   var LOB_ORDER=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
   var MON_SH=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+  // Explicit inbox whitelist — only these inboxes count toward SLA.
+  // Add new inboxes here if queues change; anything not listed is excluded.
+  var INBOX_LOB = {
+    // Path Social
+    'pathgeneral':            'Path Social',
+    'pathescalations':        'Path Social',
+    'pathbilling':            'Path Social',
+    'pathwinback':            'Path Social',
+    'pathfailedpayments':     'Path Social',
+    'pathonboardinginsights': 'Path Social',
+    // Crowd Ignite
+    'crowdignitegeneral':            'Crowd Ignite',
+    'crowdigniteonboardinginsights': 'Crowd Ignite',
+    // High Social
+    'highsocialgeneral':      'High Social',
+    'highsocialescalations':  'High Social',
+    'cloutifygeneral':        'High Social',
+    // Plixi
+    'plixigeneral':  'Plixi',
+    'plixibilling':  'Plixi',
+    // Goread
+    'goreadgeneral':   'Goread',
+    'viralpushgeneral':'Goread',
+    // Follows
+    'followspygeneral':    'Follows',
+    'recentfollowgeneral': 'Follows'
+  };
   function queueLOB(name){
     var n=(name||'').toLowerCase().replace(/[\s\-_]/g,'');
-    // Exclude non-email/chat channels
-    if(n.endsWith('ig')||n.indexOf('instagram')>=0||n.indexOf('socialmedia')>=0||
-       n.indexOf('facebook')>=0||n.indexOf('twitter')>=0||n.indexOf('messenger')>=0) return null;
-    if(n.startsWith('path'))         return 'Path Social';
-    if(n.startsWith('crowdignite'))  return 'Crowd Ignite';
-    if(n.startsWith('highsocial'))   return 'High Social';
-    if(n.startsWith('cloutify'))     return 'High Social';
-    if(n.startsWith('plixi'))        return 'Plixi';
-    if(n.startsWith('goread'))       return 'Goread';
-    if(n.startsWith('viralpush'))    return 'Goread';
-    if(n.startsWith('followspy'))    return 'Follows';
-    if(n.startsWith('recentfollow')) return 'Follows';
-    return null;
+    return INBOX_LOB[n] || null;
   }
 
   var monthData={}, monthOrder=[];
@@ -1623,6 +1646,71 @@ function parseSLAFromContacts(text, tgt){
     monthMissing:false,
     allMonths:{monthOrder:monthOrder, monthData:monthData}
   };
+}
+
+// Agent email → LOB map — same source of truth as escalation-report.html
+// Goread agents not yet mapped (emails unknown); they fall back to agent-average
+var INDEX_EMAIL_LOB = {
+  // Path Social
+  'geric@pathsocial.com':'Path Social','zheraine@pathsocial.com':'Path Social',
+  'abigailaquino@pathsocial.com':'Path Social','benedict@pathsocial.com':'Path Social',
+  'kaila@pathsocial.com':'Path Social','jennilen@pathsocial.com':'Path Social',
+  'pherbia@pathsocial.com':'Path Social','janelle@pathsocial.com':'Path Social',
+  'apple@pathsocial.com':'Path Social','bianca@pathsocial.com':'Path Social',
+  // Crowd Ignite
+  'mark@pathsocial.com':'Crowd Ignite','faye@pathsocial.com':'Crowd Ignite',
+  'mariam@pathsocial.com':'Crowd Ignite','materesa@pathsocial.com':'Crowd Ignite',
+  'ricardo@pathsocial.com':'Crowd Ignite','johnbaylon@pathsocial.com':'Crowd Ignite',
+  // High Social
+  'rosie@highsocial.com':'High Social','rockwell@pathsocial.com':'High Social',
+  'samantha@highsocial.com':'High Social','charito@pathsocial.com':'High Social',
+  'polly@highsocial.com':'High Social','christine@highsocial.com':'High Social',
+  // Plixi
+  'jaycel@plixi.com':'Plixi','trisha@plixi.com':'Plixi','mary@plixi.com':'Plixi',
+  'rhian@plixi.com':'Plixi','djamillah@plixi.com':'Plixi','annenicole@plixi.com':'Plixi',
+  'eunice@plixi.com':'Plixi','rushelle@plixi.com':'Plixi','monica@plixi.com':'Plixi',
+  // Goread
+  'dencio@adly.com':'Goread','moses@adly.com':'Goread',
+  'nay@adly.com':'Goread','suzette@adly.com':'Goread',
+  // Follows
+  'roynalyn@pathsocial.com':'Follows','geal@pathsocial.com':'Follows',
+  'jessica@pathsocial.com':'Follows','jgallier224@gmail.com':'Follows',
+  'jasmine@pathsocial.com':'Follows','ryan@pathsocial.com':'Follows',
+  'cris@pathsocial.com':'Follows','neil@pathsocial.com':'Follows',
+  'valentin@pathsocial.com':'Follows','jophil@pathsocial.com':'Follows'
+};
+
+// Compute LOB-level FCR directly from daily rate rows, filtered to target month
+// Returns {lob: rate} — only for LOBs with email coverage in INDEX_EMAIL_LOB
+function parseFCRByLOB(text, tgt){
+  var now=new Date();
+  var targetYear=tgt?tgt.year:now.getFullYear();
+  var targetMonth=tgt?tgt.month:(now.getMonth()+1);
+  var lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var byLOB={};
+  for(var i=1;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(f.length<9) continue;
+    var dateStr=(f[4]||'').trim();
+    if(!dateStr) continue;
+    var dp=dateStr.split('/');
+    if(dp.length<3) continue;
+    var dYear=parseInt(dp[2]), dMonth=parseInt(dp[0]);
+    if(dYear!==targetYear||dMonth!==targetMonth) continue;
+    var rate=parseFloat(f[5]);
+    if(isNaN(rate)) continue;
+    var email=(f[8]||'').trim().toLowerCase();
+    var lob=INDEX_EMAIL_LOB[email];
+    if(!lob) continue;
+    if(!byLOB[lob]) byLOB[lob]={sum:0,count:0};
+    byLOB[lob].sum+=rate; byLOB[lob].count++;
+  }
+  var result={};
+  Object.keys(byLOB).forEach(function(lob){
+    var d=byLOB[lob];
+    if(d.count) result[lob]=Math.round(d.sum/d.count*10000)/10000;
+  });
+  return result;
 }
 
 function parseFCRSheetIdx(text, tgt){
@@ -1981,10 +2069,15 @@ async function loadFromSheets(){
         }
         if(def12 && lv.fcr12m!==null) def12.fcr=lv.fcr12m;
       });
-      // Compute per-LOB FCR average from updated agent values
+      // Compute per-LOB FCR: email-based direct computation first, agent-average fallback for Goread
+      var _lobFcrInit=parseFCRByLOB(_rawFCRText);
       D.sla.forEach(function(ls){
-        var lobAg=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!==null&&a.fcr!==undefined;});
-        if(lobAg.length) ls.fcr=Math.round(lobAg.reduce(function(s,a){return s+a.fcr;},0)/lobAg.length*10000)/10000;
+        if(_lobFcrInit[ls.lob]!=null){
+          ls.fcr=_lobFcrInit[ls.lob]; // email-based (matches escalation report)
+        } else {
+          var lobAg=D.agents.filter(function(a){return a.lob===ls.lob&&a.fcr!==null&&a.fcr!==undefined;});
+          if(lobAg.length) ls.fcr=Math.round(lobAg.reduce(function(s,a){return s+a.fcr;},0)/lobAg.length*10000)/10000;
+        }
       });
     }
 
