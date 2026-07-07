@@ -1422,6 +1422,7 @@ function parseSLASummarySheet(text, tgt){
     var sla = parsePct(c2);
     var cnt = parseFloat((c3||'').replace(/,/g,''))||0;
     if(cnt<=0) continue;
+    // Volume-weighted: sum(sla% × count) across all inboxes, then divide by total count
     monthData[curMonth][lob].met   += sla * cnt;
     monthData[curMonth][lob].total += cnt;
   }
