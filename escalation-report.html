@@ -300,7 +300,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   <div class="sec" id="s7">
     <div class="sec-hdr">
       <div class="sec-dot" style="background:#0ea5e9"></div>
-      <div><div class="sec-title">7 — Contact Volume &amp; SLA</div><div class="sec-sub" id="s7sub">Email + Chat · Inbound only · MTD July 2026 · SLA benchmark 90%</div></div>
+      <div><div class="sec-title">7 — Contact Volume &amp; SLA</div><div class="sec-sub" id="s7sub">Email + Chat · Inbound only · SLA benchmark 90%</div></div>
     </div>
     <div class="sec-body">
       <div style="overflow-x:auto">
@@ -309,10 +309,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
             <th>LOB</th>
             <th class="r">Volume</th>
             <th class="r">SLA %</th>
+            <th class="r">vs Benchmark</th>
             <th class="r">FRT avg</th>
             <th class="r">Avg Handle Time</th>
             <th class="r">FCR</th>
-            <th class="r">vs Benchmark</th>
             <th class="r">Note</th>
           </tr></thead>
           <tbody id="volBody"></tbody>
@@ -545,19 +545,49 @@ function fmtSec(s){
   return h+'h'+(m?' '+m+'m':'');
 }
 
-// FCR sheet: f[4]=Date, f[5]=daily FCR rate (0–1), f[9]=LOB
+// Agent email → LOB mapping (source of truth for FCR attribution)
+var EMAIL_LOB = {
+  // Path Social
+  'geric@pathsocial.com':'Path Social','zheraine@pathsocial.com':'Path Social',
+  'abigailaquino@pathsocial.com':'Path Social','benedict@pathsocial.com':'Path Social',
+  'kaila@pathsocial.com':'Path Social','jennilen@pathsocial.com':'Path Social',
+  'pherbia@pathsocial.com':'Path Social','janelle@pathsocial.com':'Path Social',
+  'apple@pathsocial.com':'Path Social','bianca@pathsocial.com':'Path Social',
+  // Crowd Ignite
+  'mark@pathsocial.com':'Crowd Ignite','faye@pathsocial.com':'Crowd Ignite',
+  'mariam@pathsocial.com':'Crowd Ignite','materesa@pathsocial.com':'Crowd Ignite',
+  'ricardo@pathsocial.com':'Crowd Ignite','johnbaylon@pathsocial.com':'Crowd Ignite',
+  // High Social
+  'rosie@highsocial.com':'High Social','rockwell@pathsocial.com':'High Social',
+  'samantha@highsocial.com':'High Social','charito@pathsocial.com':'High Social',
+  'polly@highsocial.com':'High Social','christine@highsocial.com':'High Social',
+  // Plixi
+  'jaycel@plixi.com':'Plixi','trisha@plixi.com':'Plixi','mary@plixi.com':'Plixi',
+  'rhian@plixi.com':'Plixi','djamillah@plixi.com':'Plixi','annenicole@plixi.com':'Plixi',
+  'eunice@plixi.com':'Plixi','rushelle@plixi.com':'Plixi','monica@plixi.com':'Plixi',
+  // Follows
+  'roynalyn@pathsocial.com':'Follows','geal@pathsocial.com':'Follows',
+  'jessica@pathsocial.com':'Follows','jasmine@pathsocial.com':'Follows',
+  'ryan@pathsocial.com':'Follows','cris@pathsocial.com':'Follows',
+  'neil@pathsocial.com':'Follows','valentin@pathsocial.com':'Follows',
+  'jophil@pathsocial.com':'Follows'
+};
+
+// FCR sheet: f[4]=Date, f[5]=daily FCR rate (0–1), f[8]=agent email
+// Groups by email→LOB via EMAIL_LOB roster map (more reliable than f[9] LOB field)
 function parseFCR(text){
   var lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var byLOB={};
   for(var i=1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
-    if(f.length<10) continue;
+    if(f.length<9) continue;
     var dateStr=(f[4]||'').trim();
     if(!dateStr||!inPeriod(dateStr,period)) continue;
     var rate=parseFloat(f[5]);
     if(isNaN(rate)) continue;
-    var lob=(f[9]||'').trim();
-    if(!lob) continue;
+    var email=(f[8]||'').trim().toLowerCase();
+    var lob=EMAIL_LOB[email];
+    if(!lob) continue; // skip agents not in roster
     if(!byLOB[lob]) byLOB[lob]={sum:0,count:0};
     byLOB[lob].sum+=rate; byLOB[lob].count++;
   }
@@ -1096,6 +1126,10 @@ function render(d){
 function renderVolume(volData, fcrByLOB){
   fcrByLOB = fcrByLOB || {};
   if(!volData || !volData.byLOB){ document.getElementById('volBody').innerHTML='<tr><td colspan="8" style="color:var(--text3);text-align:center;padding:24px">Volume data unavailable</td></tr>'; return; }
+  // Update s7sub with current month dynamically
+  var now=new Date();
+  var s7sub=document.getElementById('s7sub');
+  if(s7sub){ var mn=now.toLocaleString('default',{month:'long'}); s7sub.textContent='Email + Chat · Inbound only · '+(period==='monthly'?'MTD '+mn+' '+now.getFullYear():periodLabel())+' · SLA benchmark '+SLA_TARGET+'%'; }
   var byLOB = volData.byLOB;
   var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
   var rows='', socialsVol=0,socialsWithin=0, overallVol=0,overallWithin=0,overallFrtSum=0,overallFrtCount=0,overallAhtSum=0,overallAhtCount=0;
@@ -1127,11 +1161,11 @@ function renderVolume(volData, fcrByLOB){
       +'<td style="color:'+lobColor+'"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+LOB_COLORS[lob]+';margin-right:6px"></span>'+(lobShort[lob]||lob)+'</td>'
       +'<td class="r">'+fmtNum(ld.vol)+'</td>'
       +'<td class="r" style="color:'+(sla===null?'var(--text3)':slaOk?'var(--green)':'var(--red)')+'">'+( sla!==null?sla.toFixed(1)+'%':'—')+'</td>'
+      +'<td class="r" style="color:'+(slaDelta===null?'var(--text3)':parseFloat(slaDelta)>=0?'var(--green)':'var(--red)')+'">'+
+        (slaDelta!==null?(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pts':'—')+'</td>'
       +'<td class="r" style="color:var(--text3)">'+(frtSec!==null?fmtSec(frtSec):'—')+'</td>'
       +'<td class="r" style="color:var(--text3)">'+(ahtMin!==null?ahtMin.toFixed(1)+'m':'—')+'</td>'
       +'<td class="r" style="color:'+(fcr===null?'var(--text3)':'inherit')+'">'+(fcr!==null?(fcr*100).toFixed(1)+'%':'—')+'</td>'
-      +'<td class="r" style="color:'+(slaDelta===null?'var(--text3)':parseFloat(slaDelta)>=0?'var(--green)':'var(--red)')+'">'+
-        (slaDelta!==null?(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pts':'—')+'</td>'
       +'<td class="r" style="color:var(--text3);font-size:11px">'+note+'</td>'
       +'</tr>';
   });
@@ -1142,9 +1176,9 @@ function renderVolume(volData, fcrByLOB){
   var socFCR=socialsFcrCount?(socialsFcrSum/socialsFcrCount*100).toFixed(1)+'%':'—';
   rows+='<tr class="socials-avg"><td>Socials Avg</td><td class="r">'+fmtNum(socialsVol)+'</td>'
     +'<td class="r">'+(socSLA!==null?socSLA.toFixed(1)+'%':'—')+'</td>'
+    +'<td class="r">'+(socDelta!==null?(parseFloat(socDelta)>=0?'+':'')+socDelta+'pts':'—')+'</td>'
     +'<td class="r">—</td><td class="r">—</td>'
     +'<td class="r">'+socFCR+'</td>'
-    +'<td class="r">'+(socDelta!==null?(parseFloat(socDelta)>=0?'+':'')+socDelta+'pts':'—')+'</td>'
     +'<td class="r" style="color:var(--text3);font-size:11px">Benchmark: '+SLA_TARGET+'%</td></tr>';
 
   // Overall avg
@@ -1155,10 +1189,10 @@ function renderVolume(volData, fcrByLOB){
   var ovDelta=ovSLA!==null?(ovSLA-SLA_TARGET).toFixed(1):null;
   rows+='<tr class="overall-avg"><td>Overall</td><td class="r">'+fmtNum(overallVol)+'</td>'
     +'<td class="r">'+(ovSLA!==null?ovSLA.toFixed(1)+'%':'—')+'</td>'
+    +'<td class="r">'+(ovDelta!==null?(parseFloat(ovDelta)>=0?'+':'')+ovDelta+'pts':'—')+'</td>'
     +'<td class="r">'+(ovFRT!==null?fmtSec(ovFRT):'—')+'</td>'
     +'<td class="r">'+(ovAHT!==null?ovAHT.toFixed(1)+'m':'—')+'</td>'
     +'<td class="r">'+ovFCR+'</td>'
-    +'<td class="r">'+(ovDelta!==null?(parseFloat(ovDelta)>=0?'+':'')+ovDelta+'pts':'—')+'</td>'
     +'<td class="r" style="color:var(--text3);font-size:11px">Inbound · Email + Chat</td></tr>';
 
   document.getElementById('volBody').innerHTML = rows||'<tr><td colspan="8" style="color:var(--text3);text-align:center;padding:24px">No volume data this period</td></tr>';
@@ -1485,10 +1519,10 @@ function renderHighlights(d){
       }
       volRows+='<tr><td '+TD+'>'+lob+'</td><td '+TDR+'>'+ld.vol.toLocaleString()+'</td>'
         +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:'+(ok?'#15803d':'#dc2626')+'">'+sla+'%</td>'
+        +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;color:'+dColor+'">'+(parseFloat(delta)>=0?'+':'')+delta+'pp</td>'
         +'<td '+TDR+'>'+frtStr+'</td>'
         +'<td '+TDR+'>'+ahtStr+'</td>'
         +'<td '+TDR+'>'+fcrStr+'</td>'
-        +'<td style="padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e8f0;text-align:right;color:'+dColor+'">'+(parseFloat(delta)>=0?'+':'')+delta+'pp</td>'
         +'</tr>';
     });
     if(socVolE){
@@ -1498,9 +1532,9 @@ function renderHighlights(d){
       var socFcrE=socialsFcrCntE?(socialsFcrSumE/socialsFcrCntE*100).toFixed(1)+'%':'—';
       volRows+='<tr style="background:#f0f9ff"><td '+TDBOLD+'>Socials Avg (excl. Follows)</td><td '+TDRB+'>'+socVolE.toLocaleString()+'</td>'
         +'<td style="padding:7px 10px;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(socOk?'#15803d':'#dc2626')+'">'+socSLAe+'%</td>'
+        +'<td style="padding:7px 10px;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(socOk?'#15803d':'#dc2626')+'">'+(parseFloat(socD)>=0?'+':'')+socD+'pp vs '+SLA_TARGET+'%</td>'
         +'<td '+TDR+'>—</td><td '+TDR+'>—</td>'
         +'<td '+TDR+'>'+socFcrE+'</td>'
-        +'<td style="padding:7px 10px;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(socOk?'#15803d':'#dc2626')+'">'+(parseFloat(socD)>=0?'+':'')+socD+'pp vs '+SLA_TARGET+'%</td>'
         +'</tr>';
     }
     if(ovVolE){
@@ -1512,15 +1546,15 @@ function renderHighlights(d){
       var ovFcrE=ovFcrCntE?(ovFcrSumE/ovFcrCntE*100).toFixed(1)+'%':'—';
       volRows+='<tr style="background:#f8fafc"><td '+TDBOLD+'>Overall</td><td '+TDRB+'>'+ovVolE.toLocaleString()+'</td>'
         +'<td style="padding:7px 10px;font-size:13px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(ovOk?'#15803d':'#dc2626')+'">'+ovSLAe+'%</td>'
+        +'<td style="padding:7px 10px;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(ovOk?'#15803d':'#dc2626')+'">'+(parseFloat(ovD)>=0?'+':'')+ovD+'pp vs '+SLA_TARGET+'%</td>'
         +'<td '+TDR+'>'+ovFrtE+'</td>'
         +'<td '+TDR+'>'+ovAhtE+'</td>'
         +'<td '+TDR+'>'+ovFcrE+'</td>'
-        +'<td style="padding:7px 10px;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right;color:'+(ovOk?'#15803d':'#dc2626')+'">'+(parseFloat(ovD)>=0?'+':'')+ovD+'pp vs '+SLA_TARGET+'%</td>'
         +'</tr>';
     }
     html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
       +'<tr><td colspan="7" style="background:#1e3a5f;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">📊 VOLUME & SLA</td></tr>'
-      +'<tr><th '+TH+'>LOB</th><th '+THR+'>Contacts</th><th '+THR+'>SLA %</th><th '+THR+'>FRT</th><th '+THR+'>AHT</th><th '+THR+'>FCR</th><th '+THR+'>vs Target</th></tr>'
+      +'<tr><th '+TH+'>LOB</th><th '+THR+'>Contacts</th><th '+THR+'>SLA %</th><th '+THR+'>vs Target</th><th '+THR+'>FRT</th><th '+THR+'>AHT</th><th '+THR+'>FCR</th></tr>'
       +volRows+'</table>';
   }
 
