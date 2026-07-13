@@ -229,6 +229,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
         <div class="stat-card"><div class="stat-val" id="ciCancellations">—</div><div class="stat-lbl">Cancellations</div></div>
       </div>
       <table class="insight-table" id="ciInsights"></table>
+      <div id="ciActionBreakdown" style="display:none;margin-top:12px"></div>
     </div>
   </div>
 
@@ -504,7 +505,7 @@ function parsePS(text){
 
 function parseCI(text){
   // CI sheet: 2 header rows
-  // f[0]=Date, f[1]=Category, f[2]=Root Cause, f[10]=Resolution/Action, f[12]=Status
+  // f[0]=Date, f[1]=Category, f[10]=Root Cause (Col K), f[11]=Action Taken (Col L, credits/discounts), f[12]=Status
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var rows = [];
   for(var i=2;i<lines.length;i++){
@@ -513,15 +514,16 @@ function parseCI(text){
     var dateStr=(f[0]||'').trim();
     if(!inPeriod(dateStr, period)) continue;
     var ciStatusRaw=(f[12]||'').trim();
-    var ciResolution=(f[10]||'').trim();
-    if(!ciStatusRaw&&!ciResolution) continue; // skip unprocessed rows
-    var ciStatus=ciStatusRaw?ciStatusRaw:(ciResolution?'Resolved':'Open');
+    var ciAction=(f[11]||'').trim();    // Col L — credits, discounts, etc.
+    var ciRootCause=(f[10]||'').trim(); // Col K — root cause
+    if(!ciStatusRaw&&!ciAction&&!ciRootCause) continue; // skip completely unprocessed rows
+    var ciStatus=ciStatusRaw?ciStatusRaw:(ciAction?'Resolved':'Open');
     rows.push({
       date:dateStr,
       category:(f[1]||'').trim(),
-      rootCause:(f[2]||'').trim(),
+      rootCause:ciRootCause,
       reason:(f[13]||'').trim(),
-      action:ciResolution,
+      action:ciAction,
       status:ciStatus
     });
   }
@@ -852,6 +854,20 @@ function compute(psRows, ciRows, volData, fcrData){
   var topCICategories=Object.keys(ciCatCounts).sort(function(a,b){return ciCatCounts[b]-ciCatCounts[a];}).slice(0,5).map(function(k){return {cat:k,count:ciCatCounts[k]};});
 
   var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
+
+  // CI Action breakdown (Col L — credits, discounts, etc.)
+  var ciActionCounts={};
+  ciRows.forEach(function(r){
+    var act=(r.action||'').trim();
+    if(!act) return;
+    ciActionCounts[act]=(ciActionCounts[act]||0)+1;
+  });
+  var topCIActions=Object.keys(ciActionCounts)
+    .sort(function(a,b){return ciActionCounts[b]-ciActionCounts[a];})
+    .slice(0,6)
+    .map(function(k){return {action:k,count:ciActionCounts[k]};});
+  var ciWithAction=ciRows.filter(function(r){return (r.action||'').trim();}).length;
+
   return {
     totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
     totalCI, resolvedCI, openCI, topCatCI,
@@ -861,6 +877,7 @@ function compute(psRows, ciRows, volData, fcrData){
     ciBillingRows, topCIBillingReasons, ciBillingL2,
     ciRefundRows, topCIRefundReasons, ciCBRows, topCICBReasons,
     ciRefunds, ciCB, ciCancellations, topCICategories,
+    topCIActions, ciWithAction,
     volData,
     fcrData: fcrData||{}
   };
@@ -915,9 +932,36 @@ function render(d){
     document.getElementById('ciInsights').innerHTML = ciInsightRows.join('') ||
       '<tr><td colspan="2" style="color:var(--text3)">No CI escalations this period.</td></tr>';
     document.getElementById('ciStatRow').style.display = '';
+    // CI Action Taken breakdown (Col L — credits, discounts, etc.)
+    var ciActEl = document.getElementById('ciActionBreakdown');
+    if(d.topCIActions && d.topCIActions.length){
+      var actHtml = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px">Actions Taken ('+d.ciWithAction+' of '+d.totalCI+' cases)</div>';
+      actHtml += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+        +'<th style="text-align:left;padding:4px 8px;color:var(--text3);font-weight:600;border-bottom:2px solid var(--border)">Action</th>'
+        +'<th style="text-align:right;padding:4px 8px;color:var(--text3);font-weight:600;border-bottom:2px solid var(--border)">Count</th>'
+        +'<th style="text-align:right;padding:4px 8px;color:var(--text3);font-weight:600;border-bottom:2px solid var(--border)">%</th>'
+        +'</tr></thead><tbody>';
+      actHtml += d.topCIActions.map(function(a){
+        var isSave = SAVE_ACTION_RE.test(a.action);
+        var pct = d.totalCI ? (a.count/d.totalCI*100).toFixed(0)+'%' : '—';
+        return '<tr>'
+          +'<td style="padding:5px 8px;border-top:1px solid var(--border)">'+a.action
+          +(isSave?'  <span style="font-size:10px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px;margin-left:4px">save</span>':'')
+          +'</td>'
+          +'<td style="padding:5px 8px;border-top:1px solid var(--border);text-align:right;font-weight:700">'+a.count+'</td>'
+          +'<td style="padding:5px 8px;border-top:1px solid var(--border);text-align:right;color:var(--text3)">'+pct+'</td>'
+          +'</tr>';
+      }).join('');
+      actHtml += '</tbody></table>';
+      ciActEl.innerHTML = actHtml;
+      ciActEl.style.display = '';
+    } else {
+      ciActEl.style.display = 'none';
+    }
   } else {
     document.getElementById('ciStatRow').style.display = 'none';
     document.getElementById('ciInsights').innerHTML = '<tr><td colspan="2" style="color:var(--text3)">No CI escalations this period.</td></tr>';
+    document.getElementById('ciActionBreakdown').style.display = 'none';
   }
 
   // ── Section 4: Saves ──
