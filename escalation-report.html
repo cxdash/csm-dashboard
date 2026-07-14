@@ -636,7 +636,9 @@ function parseFCR(text){
 
 // ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
 // Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
-var SAVE_ACTION_RE = /applied discount|applied credit|free month|free addon|refund.*difference|refunded credit/i;
+// Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
+// Note: sheet uses both "Applied 1 Month Free" (month free) and "Applied Free Month" — match both orderings
+var SAVE_ACTION_RE = /applied discount|applied credit|free month|month free|free addon|refund.*difference|refunded credit/i;
 // Save escalation reasons (exact values from sheet):
 //   "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
 var SAVE_REASON_RE = /manual save|refund dg difference/i;
@@ -650,6 +652,7 @@ function normalizeOfferLabel(action){
   if(/applied discount/i.test(action))        return 'Applied Discount (Monthly Plans)';
   if(/free month.*growth|growth.*free/i.test(action)) return 'Applied Free Month Growth';
   if(/free month.*addon|addon.*free|free addon/i.test(action)) return 'Applied Free Month Addon';
+  if(/free month|month free/i.test(action))   return 'Applied 1 Month Free';
   return action||'(no action recorded)';
 }
 
