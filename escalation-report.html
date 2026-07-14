@@ -850,7 +850,7 @@ function compute(psRows, ciRows, volData, fcrData){
   var ciCancellations= ciRows.filter(function(r){ return /retention|cancel/i.test(r.category||''); }).length;
   // Top CI categories for insight table
   var ciCatCounts={};
-  ciRows.forEach(function(r){ var k=(r.reason||r.rootCause||r.category||'Other').trim()||'Other'; ciCatCounts[k]=(ciCatCounts[k]||0)+1; });
+  ciRows.forEach(function(r){ var k=(r.rootCause||r.category||'Other').trim()||'Other'; ciCatCounts[k]=(ciCatCounts[k]||0)+1; });
   var topCICategories=Object.keys(ciCatCounts).sort(function(a,b){return ciCatCounts[b]-ciCatCounts[a];}).slice(0,5).map(function(k){return {cat:k,count:ciCatCounts[k]};});
 
   var ciSaveRate = totalCI ? ciSaves.savesConverted.length / totalCI : 0;
