@@ -708,8 +708,8 @@ function compute(psRows, ciRows, volData, fcrData){
   var saveRate = (totalPS + totalCI) ? (saves.savesConverted.length + ciSaves.savesConverted.length) / (totalPS + totalCI) : 0;
 
   // CI
-  var resolvedCI = ciRows.filter(function(r){return /resolv|fixed/i.test(r.status||r.action);}).length;
-  var openCI = ciRows.filter(function(r){return !/resolv|fixed/i.test(r.status||r.action);}).length;
+  var resolvedCI = ciRows.filter(function(r){return /resolv|fixed|done|complet|closed/i.test(r.status||r.action);}).length;
+  var openCI = ciRows.length - resolvedCI;
   var ciCats = {};
   ciRows.forEach(function(r){ ciCats[r.category]=(ciCats[r.category]||0)+1; });
   var topCatCI = Object.keys(ciCats).sort(function(a,b){return ciCats[b]-ciCats[a];})[0]||'—';
@@ -825,7 +825,7 @@ function compute(psRows, ciRows, volData, fcrData){
   });
   var ciBillingRootCauses={};
   ciBillingRows.forEach(function(r){
-    var k=(r.reason||r.rootCause||r.category||'Other').trim()||'Other';
+    var k=(r.rootCause||r.category||'Other').trim()||'Other';
     ciBillingRootCauses[k]=(ciBillingRootCauses[k]||0)+1;
   });
   var topCIBillingReasons=Object.keys(ciBillingRootCauses).sort(function(a,b){return ciBillingRootCauses[b]-ciBillingRootCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciBillingRootCauses[k]};});
@@ -836,7 +836,7 @@ function compute(psRows, ciRows, volData, fcrData){
     return /refund/i.test(r.category||'') || /refund/i.test(r.rootCause||'');
   });
   var ciRefundCauses={};
-  ciRefundRows.forEach(function(r){ var k=(r.reason||r.rootCause||r.category||'Other').trim()||'Other'; ciRefundCauses[k]=(ciRefundCauses[k]||0)+1; });
+  ciRefundRows.forEach(function(r){ var k=(r.rootCause||r.category||'Other').trim()||'Other'; ciRefundCauses[k]=(ciRefundCauses[k]||0)+1; });
   var topCIRefundReasons=Object.keys(ciRefundCauses).sort(function(a,b){return ciRefundCauses[b]-ciRefundCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciRefundCauses[k]};});
 
   // CI CB/Dispute breakdown
@@ -844,7 +844,7 @@ function compute(psRows, ciRows, volData, fcrData){
     return /dispute|chargeback/i.test(r.category||'') || /dispute|chargeback/i.test(r.rootCause||'');
   });
   var ciCBCauses={};
-  ciCBRows.forEach(function(r){ var k=(r.reason||r.rootCause||r.category||'Other').trim()||'Other'; ciCBCauses[k]=(ciCBCauses[k]||0)+1; });
+  ciCBRows.forEach(function(r){ var k=(r.rootCause||r.category||'Other').trim()||'Other'; ciCBCauses[k]=(ciCBCauses[k]||0)+1; });
   var topCICBReasons=Object.keys(ciCBCauses).sort(function(a,b){return ciCBCauses[b]-ciCBCauses[a];}).slice(0,5).map(function(k){return {reason:k,count:ciCBCauses[k]};});
 
   // CI insight counts for Section 3
