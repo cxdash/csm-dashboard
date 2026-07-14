@@ -505,7 +505,7 @@ function parsePS(text){
 
 function parseCI(text){
   // CI sheet: 2 header rows
-  // f[0]=Date, f[1]=Category, f[10]=Root Cause (Col K), f[11]=Action Taken (Col L, credits/discounts), f[12]=Status
+  // f[0]=Date, f[1]=Category, f[10]=Root Cause (Col K), f[11]=Action Taken (Col L, credits/discounts), f[14]=Status (Col O)
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var rows = [];
   for(var i=2;i<lines.length;i++){
@@ -513,9 +513,9 @@ function parseCI(text){
     if(!f||!f[0]||!f[0].trim()) continue;
     var dateStr=(f[0]||'').trim();
     if(!inPeriod(dateStr, period)) continue;
-    var ciStatusRaw=(f[12]||'').trim();
-    var ciAction=(f[11]||'').trim();    // Col L — credits, discounts, etc.
-    var ciRootCause=(f[10]||'').trim(); // Col K — root cause
+    var ciStatusRaw=(f[14]||'').trim();  // Col O — case status
+    var ciAction=(f[11]||'').trim();     // Col L — credits, discounts, etc.
+    var ciRootCause=(f[10]||'').trim();  // Col K — root cause
     if(!ciStatusRaw&&!ciAction&&!ciRootCause) continue; // skip completely unprocessed rows
     var ciStatus=ciStatusRaw?ciStatusRaw:(ciAction?'Resolved':'Open');
     rows.push({
