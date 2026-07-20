@@ -2053,7 +2053,9 @@ function renderAll(data){
   var parsedPS = data.psText ? parsePS(data.psText) : {psRows:data.psRows||[], ciFromPS:[]};
   var psRows   = parsedPS.psRows;
   var ciFromPS = parsedPS.ciFromPS||[];
-  var ciRows   = (data.ciText ? parseCI(data.ciText) : data.ciRows||[]).concat(ciFromPS);
+  // CI sheet is the authoritative source — do NOT merge ciFromPS to avoid double-counting
+  // (PS-tracker CI entries are rare legacy; Janelle's CI cases should be logged in the CI sheet)
+  var ciRows   = data.ciText ? parseCI(data.ciText) : data.ciRows||[];
   var volData  = data.volText?parseVolume(data.volText):data.volData||null;
   var fcrData  = data.fcrText?parseFCR(data.fcrText):(data.fcrData||{});
   try{
