@@ -2886,6 +2886,27 @@ function parseRfndOverview(csvText){
     var we=new Date(lastSun); we.setDate(lastSun.getDate()-wi*7); we.setHours(23,59,59,999);
     var ws=new Date(we); ws.setDate(we.getDate()-6); ws.setHours(0,0,0,0);
     var wr=rows.filter(function(r){return r.date>=ws&&r.date<=we;});
+    // DEBUG: show all rows for Jul 27-Aug 2 week (wi===0)
+    if(wi===0){
+      var dbCxl=0,dbRef=0,dbOther=0;
+      wr.forEach(function(r){
+        if(isCxl(r))dbCxl++; else if(isRef(r))dbRef++; else dbOther++;
+      });
+      console.log('[RFND DEBUG] Jul27-Aug2 | total rows:'+wr.length+' | cxl:'+dbCxl+' | ref:'+dbRef+' | other:'+dbOther);
+      // Show category breakdown
+      var catMap={};
+      wr.forEach(function(r){ catMap[r.cat]=(catMap[r.cat]||0)+1; });
+      console.log('[RFND DEBUG] Category breakdown:', JSON.stringify(catMap));
+      // Show status breakdown for all rows
+      var stMap={};
+      wr.forEach(function(r){ var k=(r.status||'(empty)'); stMap[k]=(stMap[k]||0)+1; });
+      console.log('[RFND DEBUG] Status breakdown:', JSON.stringify(stMap));
+      // Show rows that fail isCxl but have Dashboard Cancellation category
+      wr.forEach(function(r){
+        if(r.cat==='Dashboard Cancellation'&&!isCxl(r))
+          console.log('[RFND DEBUG] MISSED cxl row | status:"'+r.status+'" | cf:"'+r.cf+'" | date:'+r.date.toISOString());
+      });
+    }
     var c2=0,r2=0,cxlCan=0,cxlTerm=0,cxlRef=0,ci2=0;
     wr.forEach(function(r){
       if(isCxl(r)){
