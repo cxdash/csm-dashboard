@@ -148,13 +148,13 @@
   <table id="agentTable">
     <thead><tr>
       <th data-sort="agent" class="sortable">Agent</th>
-      <th data-sort="cancellations" class="sortable num">Cancellations</th>
-      <th data-sort="manual" class="sortable num">Manually Terminated</th>
-      <th data-sort="pct_manual" class="sortable num" style="width:150px;">% Manual</th>
-      <th data-sort="refunds" class="sortable num">Refunds Processed</th>
+      <th data-sort="cancellations" class="sortable num">Total Cxls</th>
+      <th data-sort="cxlTerminated" class="sortable num" title="Status = Terminate (expired)">Terminated</th>
+      <th data-sort="cxlCancelled" class="sortable num" title="Status = Cancelled (cancelled state)">Cancelled</th>
+      <th data-sort="pct_manual" class="sortable num" style="width:150px;">% Manually Term</th>
+      <th data-sort="refunds" class="sortable num">Refunds</th>
       <th data-sort="refund_amount" class="sortable num">Refund $</th>
       <th>Top Termination Reason</th>
-      <th>Top Refund Reason</th>
     </tr></thead>
     <tbody></tbody>
   </table>
@@ -212,13 +212,18 @@ function _isPS(r){ return /path/i.test(r.company); }
 function _isCI(r){ return /crowd/i.test(r.company); }
 
 // Classify cancellation as manual / refunded(7-day) / selfserve
-// Uses f[11] (Cancelled/Refunded) text and reason as signals
+// Primary: Status col (f[18]) — "Terminate"=manual, "Cancelled"=self, "Refunded"=ref
+// Fallback: f[11] text patterns
 function _cxlStatus(r){
+  const st=(r.status||'').toLowerCase();
+  if(/terminat/i.test(st)) return 'manual';
+  if(/refund/i.test(st))   return 'ref';
+  if(/cancel/i.test(st))   return 'self';
+  // Fallback: check f[11] Cancelled/Refunded column
   const cf=(r.cf||'').toLowerCase();
   if(/self[- ]?serv|complian/i.test(cf)) return 'self';
   if(/refund|7[- ]?day/i.test(cf)) return 'ref';
   if(/manual|terminat/i.test(cf)) return 'manual';
-  // Fallback on reason
   if(/sub[- ]?ending|expir|auto[- ]?cancel/i.test(r.reason)) return 'self';
   return 'manual';
 }
@@ -257,12 +262,14 @@ function _aggBucket(rows){
 function _aggPeriod(rows){
   const agents={},termR={},refR={},planR={};
   for(const r of rows){
-    if(!agents[r.agentName]) agents[r.agentName]={n:r.agentName,cc:0,man:0,rc:0,ra:0,tr:{},rr:{}};
+    if(!agents[r.agentName]) agents[r.agentName]={n:r.agentName,cc:0,man:0,cxlCancelled:0,cxlTerminated:0,rc:0,ra:0,tr:{},rr:{}};
     const ag=agents[r.agentName];
     if(_isCxl(r)){
       ag.cc++;
-      if(_cxlStatus(r)==='manual') ag.man++;
-      const k=r.reason||'-'; ag.tr[k]=(ag.tr[k]||0)+1; termR[k]=(termR[k]||0)+1;
+      const st=_cxlStatus(r);
+      if(st==='manual'){ag.man++;ag.cxlTerminated++;}
+      else if(st==='self') ag.cxlCancelled++;
+      const k=r.dcrsn||r.reason||'-'; ag.tr[k]=(ag.tr[k]||0)+1; termR[k]=(termR[k]||0)+1;
     }
     if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){
       ag.rc++; ag.ra+=r.amt;
@@ -275,7 +282,9 @@ function _aggPeriod(rows){
     const pct=ag.cc>0?Math.round(ag.man/ag.cc*1000)/10:null;
     const tt=ag.cc>0?(_topN(ag.tr,1,false)[0]||['-'])[0]:'-';
     const tr=ag.rc>0?(_topN(ag.rr,1,false)[0]||['-'])[0]:'-';
-    return{agent:ag.n,cancellations:ag.cc,manual:ag.man,pct_manual:pct,
+    return{agent:ag.n,cancellations:ag.cc,manual:ag.man,
+      cxlTerminated:ag.cxlTerminated,cxlCancelled:ag.cxlCancelled,
+      pct_manual:pct,
       refunds:ag.rc,refund_amount:Math.round(ag.ra*100)/100,
       top_term_reason:tt,top_refund_reason:tr};
   });
@@ -342,6 +351,7 @@ function parseRefundsSheet(csvText){
       cat:(f[7]||'').trim(),company:(f[8]||'').trim(),
       reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
       amt:_amt(f[12]),issueType:(f[15]||'').trim(),
+      status:(f[18]||'').trim(),dcrsn:(f[19]||'').trim(),
       saveOff:(f[21]||'').trim(),upsellOff:(f[23]||'').trim()
     };
     if(_isRef(row)&&row.amt>FLAG_THRESHOLD){
@@ -701,13 +711,13 @@ function renderAgentTable(view){
     const pctColor = r.pct_manual >= 55 ? PALETTE.red : (r.pct_manual >= 40 ? PALETTE.amber : PALETTE.green);
     return `<tr>
       <td>${r.agent}</td>
-      <td class="num">${r.cancellations}</td>
-      <td class="num">${r.manual}</td>
+      <td class="num" style="font-weight:700">${r.cancellations}</td>
+      <td class="num" style="color:${PALETTE.red};font-weight:600">${r.cxlTerminated||0}</td>
+      <td class="num" style="color:${PALETTE.amber};font-weight:600">${r.cxlCancelled||0}</td>
       <td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.pct_manual/maxPct*100).toFixed(0)}%; background:${pctColor};"></div></div><span style="min-width:42px; font-weight:600;">${r.pct_manual===null?'—':r.pct_manual+'%'}</span></div></td>
       <td class="num">${r.refunds}</td>
       <td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.refund_amount/maxAmt*100).toFixed(0)}%; background:${PALETTE.accent};"></div></div><span style="min-width:70px; font-weight:600;">${fmtMoneyShort(r.refund_amount)}</span></div></td>
       <td>${r.top_term_reason}</td>
-      <td>${r.top_refund_reason}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:16px;">No activity in this period.</td></tr>`;
   document.querySelectorAll('#agentTable th.sortable').forEach(th => {
