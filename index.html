@@ -2880,8 +2880,8 @@ function parseRfndOverview(csvText){
   // 8 completed Mon-Sun weeks; collect last 4 for insights
   var wks=[], last4Rows=[];
   for(var wi=7;wi>=0;wi--){
-    var we=new Date(lastSun); we.setDate(lastSun.getDate()-wi*7);
-    var ws=new Date(we); ws.setDate(we.getDate()-6);
+    var we=new Date(lastSun); we.setDate(lastSun.getDate()-wi*7); we.setHours(23,59,59,999);
+    var ws=new Date(we); ws.setDate(we.getDate()-6); ws.setHours(0,0,0,0);
     var wr=rows.filter(function(r){return r.date>=ws&&r.date<=we;});
     var c2=0,r2=0,cxlCan=0,cxlTerm=0,cxlRef=0,ci2=0;
     wr.forEach(function(r){
