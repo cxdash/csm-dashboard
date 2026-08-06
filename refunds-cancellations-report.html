@@ -434,17 +434,37 @@ function parseRefundsSheet(csvText){
 }
 
 // --- Load from live Google Sheet ---
+const RFND_CACHE_KEY = 'rfnd_dashboard_v1';
+
 async function loadData(){
-  document.getElementById('statusText').textContent='Fetching live data…';
-  document.getElementById('rowCountText').textContent='';
+  // Show cached data instantly if available
   try{
-    const resp=await fetch(SHEET_URL+'&cachebust='+Date.now());
+    const cached = localStorage.getItem(RFND_CACHE_KEY);
+    if(cached){
+      DATA = JSON.parse(cached);
+      document.getElementById('statusText').textContent = 'Cached data — refreshing…';
+      document.getElementById('rowCountText').textContent = '';
+      init();
+    }
+  }catch(e){}
+
+  // Fetch fresh in background
+  try{
+    document.getElementById('statusText').textContent = (DATA ? 'Cached data — refreshing…' : 'Fetching live data…');
+    document.getElementById('rowCountText').textContent = '';
+    const resp = await fetch(SHEET_URL+'&cachebust='+Date.now());
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    DATA=parseRefundsSheet(await resp.text());
-    if(!DATA) throw new Error('No rows parsed — check sheet URL');
+    const fresh = parseRefundsSheet(await resp.text());
+    if(!fresh) throw new Error('No rows parsed — check sheet URL');
+    DATA = fresh;
+    try{ localStorage.setItem(RFND_CACHE_KEY, JSON.stringify(DATA)); }catch(e){}
     init();
   }catch(e){
-    document.getElementById('statusText').textContent='⚠ Error loading data: '+e.message+' — reload to retry';
+    if(!DATA){
+      document.getElementById('statusText').textContent = '⚠ Error loading data: '+e.message+' — reload to retry';
+    } else {
+      document.getElementById('statusText').textContent = '⚠ Could not refresh — showing cached data';
+    }
   }
 }
 const EXCLUDE_AGENTS = new Set(['bianca','johnbaylon','rockwell']);

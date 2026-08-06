@@ -598,6 +598,33 @@ var DEFAULT_DATA = {
       'Goread':       [0.9474, 0.9461, 0.9430, 0.9503, 0.9576, null],
       'Follows':      [0.8369, 0.9056, 0.8627, 0.9155, 0.9485, null]
     }
+  },
+  // Pre-computed refunds & cancellations snapshot (Aug 5 2026) — shown on load before live fetch
+  _rfndSummary: {
+    generatedAt: 'Aug 5, 2026, 12:28 PM',
+    wkData: [
+      {lbl:'Jun 08-Jun 14', total:121, cxls:66, refs:46, manual:26, manPct:39.4},
+      {lbl:'Jun 15-Jun 21', total:168, cxls:116, refs:45, manual:63, manPct:54.3},
+      {lbl:'Jun 22-Jun 28', total:120, cxls:85,  refs:30, manual:46, manPct:54.1},
+      {lbl:'Jun 29-Jul 05', total:128, cxls:84,  refs:36, manual:48, manPct:57.1},
+      {lbl:'Jul 06-Jul 12', total:135, cxls:92,  refs:38, manual:52, manPct:56.5},
+      {lbl:'Jul 13-Jul 19', total:131, cxls:95,  refs:28, manual:47, manPct:49.5},
+      {lbl:'Jul 20-Jul 26', total:178, cxls:124, refs:53, manual:48, manPct:38.7},
+      {lbl:'Jul 27-Aug 02', total:126, cxls:91,  refs:30, manual:48, manPct:52.7}
+    ],
+    topTerm: [['Customer request',285],['Removed from Sub Ending',81],['Escalation',8],['Within 7 days',2],['Resumed to Cancel',1]],
+    topRef: [
+      ['Immediate Cancellation',{c:51,a:19994}],
+      ['Accidentally upgraded/registered - cancelled',{c:50,a:16630}],
+      ['Annual escalation refund',{c:55,a:15965}],
+      ['Immediate Cancellation - Too expensive',{c:43,a:12298}],
+      ['Accidentally upgraded/registered - downgraded',{c:27,a:9875}]
+    ],
+    topPlan: [
+      ['Elite Annual',{c:76,a:27248}],
+      ['Core Annual',{c:92,a:24580}],
+      ['Expert Annual',{c:34,a:19215}]
+    ]
   }
 };
 
@@ -2149,7 +2176,7 @@ async function loadFromSheets(){
 
     // Refunds & Cancellations — resps[10]=PS Daily Processes
     if(_rawRfndText){
-      D._rfndRows = parseRfndOverview(_rawRfndText);
+      D._rfndSummary = parseRfndOverview(_rawRfndText);
     }
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
@@ -2756,16 +2783,14 @@ function renderEscalations(){
 
 // ── REFUNDS & CANCELLATIONS OVERVIEW ──────────────────────────────────────────
 function parseRfndOverview(csvText){
-  // Lightweight parser — extracts only what the overview section needs
-  // Columns: f[0]=Timestamp, f[7]=Category, f[8]=Company, f[10]=Reason, f[11]=Cancelled/Refunded, f[12]=Amount, f[5]=Plan
+  // Parses PS Daily Processes CSV and returns a pre-computed summary for Section 6
   var EXCL = {bianca:1,johnbaylon:1,rockwell:1};
-  var FLAG_THRESH = 3000;
+  var FLAG_T = 3000;
   var rows = [];
   var lines = csvText.split('\n');
   for(var i=1;i<lines.length;i++){
     var line = lines[i].replace(/\r$/,'');
     if(!line.trim()) continue;
-    // Simple CSV split (handles quoted commas)
     var f=[]; var cur=''; var inq=false;
     for(var ci=0;ci<line.length;ci++){
       var c=line[ci];
@@ -2780,101 +2805,86 @@ function parseRfndOverview(csvText){
     var email = (f[1]||'').toLowerCase().split('@')[0].replace(/\./g,'');
     if(EXCL[email]) continue;
     var amtRaw = parseFloat((f[12]||'').replace(/[$,\s]/g,''));
-    rows.push({
-      date: dt,
-      cat:  (f[7]||'').trim(),
-      co:   (f[8]||'').trim(),
-      rsn:  (f[10]||'').trim(),
-      cf:   (f[11]||'').trim(),
-      amt:  isNaN(amtRaw) ? 0 : amtRaw,
-      plan: (f[5]||'').trim()
-    });
+    rows.push({date:dt, cat:(f[7]||'').trim(), rsn:(f[10]||'').trim(), cf:(f[11]||'').trim(), amt:isNaN(amtRaw)?0:amtRaw, plan:(f[5]||'').trim()});
   }
-  return rows;
+
+  // Build 8 completed Mon-Sun weeks
+  var now = new Date(); now.setHours(0,0,0,0);
+  var dow = now.getDay(); var dSinceMon = (dow===0)?6:dow-1;
+  var thisMon = new Date(now); thisMon.setDate(now.getDate()-dSinceMon);
+  var lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate()-1);
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  var wks=[], allWkRows=[];
+  for(var wi=7;wi>=0;wi--){
+    var we=new Date(lastSun); we.setDate(lastSun.getDate()-wi*7);
+    var ws=new Date(we); ws.setDate(we.getDate()-6);
+    var wr=rows.filter(function(r){return r.date>=ws&&r.date<=we;});
+    var cxls=0,refs=0,manual=0;
+    wr.forEach(function(r){
+      if(r.cat==='Dashboard Cancellation'){
+        cxls++;
+        var cf=(r.cf||'').toLowerCase();
+        if(!/self[- ]?serv|complian/i.test(cf)&&!/refund|7[- ]?day/i.test(cf)&&!/sub[- ]?ending|expir/i.test(r.rsn)) manual++;
+      }
+      if(r.cat==='Annual Sub Refunds'&&r.amt<=FLAG_T) refs++;
+    });
+    allWkRows=allWkRows.concat(wr);
+    var lbl=MO[ws.getMonth()]+' '+ws.getDate()+'–'+(we.getMonth()!==ws.getMonth()?MO[we.getMonth()]+' ':'')+we.getDate();
+    wks.push({lbl:lbl,total:wr.length,cxls:cxls,refs:refs,manual:manual,manPct:cxls>0?Math.round(manual/cxls*1000)/10:null});
+  }
+
+  // Insights from combined 8-week window
+  var termR={},refR={},planR={};
+  allWkRows.forEach(function(r){
+    if(r.cat==='Dashboard Cancellation'){ termR[r.rsn||'-']=(termR[r.rsn||'-']||0)+1; }
+    if(r.cat==='Annual Sub Refunds'&&r.amt<=FLAG_T){
+      if(!refR[r.rsn||'-']) refR[r.rsn||'-']={c:0,a:0}; refR[r.rsn||'-'].c++; refR[r.rsn||'-'].a+=r.amt;
+      if(!planR[r.plan||'Unknown']) planR[r.plan||'Unknown']={c:0,a:0}; planR[r.plan||'Unknown'].c++; planR[r.plan||'Unknown'].a+=r.amt;
+    }
+  });
+  function top(map,n,byAmt){
+    return Object.entries(map).filter(function(e){return e[0]&&e[0]!=='-';})
+      .sort(function(a,b){return byAmt?b[1].a-a[1].a:b[1]-a[1];}).slice(0,n);
+  }
+
+  var d=new Date(); var h=d.getHours(); var ap=h>=12?'PM':'AM'; h=h%12||12;
+  var gAt=MO[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()+', '+h+':'+String(d.getMinutes()).padStart(2,'0')+' '+ap;
+
+  return {
+    generatedAt: gAt,
+    wkData: wks,
+    topTerm: top(termR,5,false).map(function(e){return [e[0],e[1]];}),
+    topRef:  top(refR,5,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
+    topPlan: top(planR,3,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];})
+  };
 }
 
 function renderRefunds(){
   var el = document.getElementById('rfndSection');
   if(!el) return;
-  var rows = (D && D._rfndRows) || [];
-  if(!rows.length){
+  var S = D && D._rfndSummary;
+  if(!S || !S.wkData || !S.wkData.length){
     el.innerHTML = '<div class="card" style="padding:14px;text-align:center;color:var(--text3);font-size:13px">No refunds/cancellations data — <a href="refunds-cancellations-report.html" target="_blank" style="color:var(--accent)">View Full Report →</a></div>';
     return;
   }
 
-  // Build 8 completed Mon-Sun weeks
-  var now = new Date(); now.setHours(0,0,0,0);
-  var dow = now.getDay(); var daysSinceMon = (dow===0)?6:dow-1;
-  var thisMon = new Date(now); thisMon.setDate(now.getDate()-daysSinceMon);
-  var lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate()-1);
-  var wks = [];
-  for(var wi=7;wi>=0;wi--){
-    var we = new Date(lastSun); we.setDate(lastSun.getDate()-wi*7);
-    var ws = new Date(we); ws.setDate(we.getDate()-6);
-    wks.push({s:ws, e:we});
-  }
-
-  var MOR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var FLAG_T=3000;
-
-  function inWk(r,b){ return r.date>=b.s && r.date<=b.e; }
-  function isCxl(r){ return r.cat==='Dashboard Cancellation'; }
-  function isRef(r){ return r.cat==='Annual Sub Refunds'; }
-  function cxlManual(r){
-    var cf=(r.cf||'').toLowerCase();
-    if(/self[- ]?serv|complian/i.test(cf)||/sub[- ]?ending|expir/i.test(r.rsn)) return false;
-    if(/refund|7[- ]?day/i.test(cf)) return false;
-    return true;
-  }
-
-  var wkData = wks.map(function(b){
-    var wr = rows.filter(function(r){return inWk(r,b);});
-    var cxls=0,refs=0,manual=0,refAmt=0;
-    wr.forEach(function(r){
-      if(isCxl(r)){cxls++;if(cxlManual(r))manual++;}
-      if(isRef(r)&&r.amt<=FLAG_T){refs++;refAmt+=r.amt;}
-    });
-    var manPct = cxls>0?Math.round(manual/cxls*10)/10:null;
-    var ws=b.s,we=b.e;
-    var lbl=MOR[ws.getMonth()]+' '+ws.getDate()+'–'+(we.getMonth()!==ws.getMonth()?MOR[we.getMonth()]+' ':'')+we.getDate();
-    return {lbl:lbl,total:wr.length,cxls:cxls,refs:refs,manual:manual,manPct:manPct,refAmt:refAmt};
-  });
-
-  // Insights from all 8 weeks combined
-  var allWkRows = rows.filter(function(r){ return r.date>=wks[0].s && r.date<=wks[7].e; });
-  var termRsns={},refRsns={},planMap={};
-  allWkRows.forEach(function(r){
-    if(isCxl(r)){ termRsns[r.rsn||'-']=(termRsns[r.rsn||'-']||0)+1; }
-    if(isRef(r)&&r.amt<=FLAG_T){
-      if(!refRsns[r.rsn||'-']) refRsns[r.rsn||'-']={c:0,a:0};
-      refRsns[r.rsn||'-'].c++; refRsns[r.rsn||'-'].a+=r.amt;
-      if(!planMap[r.plan||'Unknown']) planMap[r.plan||'Unknown']={c:0,a:0};
-      planMap[r.plan||'Unknown'].c++; planMap[r.plan||'Unknown'].a+=r.amt;
-    }
-  });
-  function topEntries(map,n,byAmt){
-    return Object.entries(map).filter(function(e){return e[0]&&e[0]!=='-'&&e[0]!=='';})
-      .sort(function(a,b){return byAmt?b[1].a-a[1].a:b[1]-a[1];}).slice(0,n);
-  }
-  var topTerm = topEntries(termRsns,5,false);
-  var topRef  = topEntries(refRsns,5,true);
-  var topPlan = topEntries(planMap,3,true);
-
   function fmtK(n){ return '$'+(n>=1000?(n/1000).toFixed(1)+'k':Math.round(n).toLocaleString()); }
 
-  // WoW table
-  var wowRows = wkData.map(function(wk,i){
-    var prev = i>0 ? wkData[i-1].total : null;
+  // WoW table from summary
+  var wowRows = S.wkData.map(function(wk,i){
+    var prev = i>0 ? S.wkData[i-1].total : null;
     var delta = prev!==null ? wk.total-prev : null;
     var dStr  = delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
     var dColor= delta===null?'var(--text3)':delta>0?'var(--red)':delta<0?'var(--green)':'var(--text3)';
-    var isLast = i===wkData.length-1;
+    var isLast = i===S.wkData.length-1;
+    var mp = wk.manPct;
     return '<tr style="background:'+(isLast?'#fff7ed':i%2===0?'#fff':'#f8fafc')+'">'
       +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:'+(isLast?'700':'400')+'">'+wk.lbl+'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:700">'+wk.total+'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+wk.cxls+'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+wk.refs+'</td>'
-      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:'+(wk.manPct!==null&&wk.manPct>=55?'var(--red)':wk.manPct!==null&&wk.manPct>=40?'var(--amber)':'var(--text2)')+';">'+(wk.manPct!==null?wk.manPct+'%':'—')+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:'+(mp!=null&&mp>=55?'var(--red)':mp!=null&&mp>=40?'var(--amber)':'var(--text2)')+';">'+(mp!=null?mp+'%':'—')+'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:600;color:'+dColor+'">'+dStr+'</td>'
       +'</tr>';
   }).join('');
@@ -2900,15 +2910,17 @@ function renderRefunds(){
       +lines.map(function(l){
         return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed #eef0f3">'
           +'<span style="color:var(--text2);margin-right:8px">'+l[0]+'</span>'
-          +'<span style="font-weight:600;white-space:nowrap;color:var(--text1)">'+l[1]+'</span>'
+          +'<span style="font-weight:600;white-space:nowrap;color:var(--text)">'+l[1]+'</span>'
           +'</div>';
       }).join('')
       +'</div>';
   }
 
-  var termLines = topTerm.map(function(e){return [e[0],e[1]+' cases'];});
-  var refLines  = topRef.map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
-  var planLines = topPlan.map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
+  var termLines = (S.topTerm||[]).map(function(e){return [e[0],e[1]+' cases'];});
+  var refLines  = (S.topRef||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
+  var planLines = (S.topPlan||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
+
+  var srcLabel = S.generatedAt ? 'Snapshot: '+S.generatedAt : 'From PS Daily Processes tracker · live data';
 
   var insightsHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">'
     +insightBox('Top Reasons — Manual Termination','#ef4444',termLines.length?termLines:[['No data','—']])
@@ -2918,7 +2930,7 @@ function renderRefunds(){
 
   el.innerHTML = '<div class="card" style="margin:0;padding:14px 16px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-    +'<div style="font-size:12px;color:var(--text3)">From PS Daily Processes tracker · live data</div>'
+    +'<div style="font-size:12px;color:var(--text3)">'+srcLabel+'</div>'
     +'<a href="refunds-cancellations-report.html" target="_blank" style="font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
     +'</div>'
     +wowHtml
