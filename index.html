@@ -624,7 +624,8 @@ var DEFAULT_DATA = {
       ['Elite Annual',{c:76,a:27248}],
       ['Core Annual',{c:92,a:24580}],
       ['Expert Annual',{c:34,a:19215}]
-    ]
+    ],
+    currentWk: {refs:0, refAmt:0, cxls:0, manual:0, manPct:null, saves:0, upsells:0}
   }
 };
 
@@ -2783,7 +2784,7 @@ function renderEscalations(){
 
 // ── REFUNDS & CANCELLATIONS OVERVIEW ──────────────────────────────────────────
 function parseRfndOverview(csvText){
-  // Parses PS Daily Processes CSV and returns a pre-computed summary for Section 6
+  // Parses PS Daily Processes CSV → pre-computed summary for Section 6
   var EXCL = {bianca:1,johnbaylon:1,rockwell:1};
   var FLAG_T = 3000;
   var rows = [];
@@ -2805,42 +2806,65 @@ function parseRfndOverview(csvText){
     var email = (f[1]||'').toLowerCase().split('@')[0].replace(/\./g,'');
     if(EXCL[email]) continue;
     var amtRaw = parseFloat((f[12]||'').replace(/[$,\s]/g,''));
-    rows.push({date:dt, cat:(f[7]||'').trim(), rsn:(f[10]||'').trim(), cf:(f[11]||'').trim(), amt:isNaN(amtRaw)?0:amtRaw, plan:(f[5]||'').trim()});
+    rows.push({
+      date:dt, cat:(f[7]||'').trim(), rsn:(f[10]||'').trim(), cf:(f[11]||'').trim(),
+      amt:isNaN(amtRaw)?0:amtRaw, plan:(f[5]||'').trim(),
+      save:(f[21]||'').trim(), upsell:(f[23]||'').trim()
+    });
   }
 
-  // Build 8 completed Mon-Sun weeks
+  // Helpers — use regex so minor naming variations in the sheet still match
+  function isCxl(r){ return /cancell/i.test(r.cat); }
+  function isRef(r){ return /refund/i.test(r.cat); }
+  function isManual(r){
+    var cf=(r.cf||'').toLowerCase();
+    return !(/self[- ]?serv|complian/i.test(cf)||/refund|7[- ]?day/i.test(cf)||/sub[- ]?ending|expir/i.test(r.rsn));
+  }
+  function isSave(r){ return r.save && !/^(no|n\/a|-|)$/i.test(r.save); }
+  function isUpsell(r){ return r.upsell && !/^(no|n\/a|-|)$/i.test(r.upsell); }
+
+  // Date math
   var now = new Date(); now.setHours(0,0,0,0);
   var dow = now.getDay(); var dSinceMon = (dow===0)?6:dow-1;
   var thisMon = new Date(now); thisMon.setDate(now.getDate()-dSinceMon);
   var lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate()-1);
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  var wks=[], allWkRows=[];
+  // Current in-progress week (Mon → today)
+  var curWkRows = rows.filter(function(r){return r.date>=thisMon;});
+  var cw={refs:0,refAmt:0,cxls:0,manual:0,saves:0,upsells:0};
+  curWkRows.forEach(function(r){
+    if(isRef(r)&&r.amt<=FLAG_T){cw.refs++;cw.refAmt+=r.amt;}
+    if(isCxl(r)){cw.cxls++;if(isManual(r))cw.manual++;}
+    if(isSave(r))cw.saves++;
+    if(isUpsell(r))cw.upsells++;
+  });
+  var currentWk={refs:cw.refs,refAmt:Math.round(cw.refAmt),cxls:cw.cxls,manual:cw.manual,
+    manPct:cw.cxls>0?Math.round(cw.manual/cw.cxls*1000)/10:null,saves:cw.saves,upsells:cw.upsells};
+
+  // 8 completed Mon-Sun weeks; collect last 4 for insights
+  var wks=[], last4Rows=[];
   for(var wi=7;wi>=0;wi--){
     var we=new Date(lastSun); we.setDate(lastSun.getDate()-wi*7);
     var ws=new Date(we); ws.setDate(we.getDate()-6);
     var wr=rows.filter(function(r){return r.date>=ws&&r.date<=we;});
-    var cxls=0,refs=0,manual=0;
+    var c2=0,r2=0,m2=0;
     wr.forEach(function(r){
-      if(r.cat==='Dashboard Cancellation'){
-        cxls++;
-        var cf=(r.cf||'').toLowerCase();
-        if(!/self[- ]?serv|complian/i.test(cf)&&!/refund|7[- ]?day/i.test(cf)&&!/sub[- ]?ending|expir/i.test(r.rsn)) manual++;
-      }
-      if(r.cat==='Annual Sub Refunds'&&r.amt<=FLAG_T) refs++;
+      if(isCxl(r)){c2++;if(isManual(r))m2++;}
+      if(isRef(r)&&r.amt<=FLAG_T)r2++;
     });
-    allWkRows=allWkRows.concat(wr);
+    if(wi<=3) last4Rows=last4Rows.concat(wr);
     var lbl=MO[ws.getMonth()]+' '+ws.getDate()+'–'+(we.getMonth()!==ws.getMonth()?MO[we.getMonth()]+' ':'')+we.getDate();
-    wks.push({lbl:lbl,total:wr.length,cxls:cxls,refs:refs,manual:manual,manPct:cxls>0?Math.round(manual/cxls*1000)/10:null});
+    wks.push({lbl:lbl,total:wr.length,cxls:c2,refs:r2,manual:m2,manPct:c2>0?Math.round(m2/c2*1000)/10:null});
   }
 
-  // Insights from combined 8-week window
+  // Insights from last 4 completed weeks
   var termR={},refR={},planR={};
-  allWkRows.forEach(function(r){
-    if(r.cat==='Dashboard Cancellation'){ termR[r.rsn||'-']=(termR[r.rsn||'-']||0)+1; }
-    if(r.cat==='Annual Sub Refunds'&&r.amt<=FLAG_T){
-      if(!refR[r.rsn||'-']) refR[r.rsn||'-']={c:0,a:0}; refR[r.rsn||'-'].c++; refR[r.rsn||'-'].a+=r.amt;
-      if(!planR[r.plan||'Unknown']) planR[r.plan||'Unknown']={c:0,a:0}; planR[r.plan||'Unknown'].c++; planR[r.plan||'Unknown'].a+=r.amt;
+  last4Rows.forEach(function(r){
+    if(isCxl(r)){ termR[r.rsn||'-']=(termR[r.rsn||'-']||0)+1; }
+    if(isRef(r)&&r.amt<=FLAG_T){
+      if(!refR[r.rsn||'-'])refR[r.rsn||'-']={c:0,a:0}; refR[r.rsn||'-'].c++; refR[r.rsn||'-'].a+=r.amt;
+      if(!planR[r.plan||'Unknown'])planR[r.plan||'Unknown']={c:0,a:0}; planR[r.plan||'Unknown'].c++; planR[r.plan||'Unknown'].a+=r.amt;
     }
   });
   function top(map,n,byAmt){
@@ -2854,6 +2878,7 @@ function parseRfndOverview(csvText){
   return {
     generatedAt: gAt,
     wkData: wks,
+    currentWk: currentWk,
     topTerm: top(termR,5,false).map(function(e){return [e[0],e[1]];}),
     topRef:  top(refR,5,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
     topPlan: top(planR,3,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];})
@@ -2870,13 +2895,45 @@ function renderRefunds(){
   }
 
   function fmtK(n){ return '$'+(n>=1000?(n/1000).toFixed(1)+'k':Math.round(n).toLocaleString()); }
+  function fmtAmt(n){ return '$'+Number(n||0).toLocaleString(); }
+  function delta(curr,prev,isAmt){
+    if(prev==null||prev===undefined) return '<span style="color:var(--text3);font-size:11px">— vs prior</span>';
+    var d=curr-prev;
+    var pct=prev>0?Math.round(Math.abs(d)/prev*1000)/10:null;
+    var dStr=(d>0?'▲ +':d<0?'▼ ':'→ ')+(isAmt?fmtAmt(Math.abs(d)):Math.abs(d))+(pct!==null?' ('+pct+'%)':'');
+    var col=d>0?'var(--red)':d<0?'var(--green)':'var(--text3)';
+    return '<span style="color:'+col+';font-size:11px">'+dStr+' vs prior</span>';
+  }
 
-  // WoW table from summary
+  // Current-week metric cards (compare to last completed week)
+  var cw = S.currentWk || {};
+  var pw = S.wkData && S.wkData.length ? S.wkData[S.wkData.length-1] : null;
+  function metricCard(label, value, sub){
+    return '<div style="flex:1;min-width:130px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:11px 14px">'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-bottom:5px">'+label+'</div>'
+      +'<div style="font-size:22px;font-weight:800;line-height:1.1;color:var(--text);margin-bottom:4px">'+value+'</div>'
+      +'<div>'+sub+'</div>'
+      +'</div>';
+  }
+
+  var manPctStr = cw.manPct!=null ? cw.manPct+'%' : (cw.cxls>0 ? Math.round((cw.manual||0)/cw.cxls*100)+'%' : '—');
+  var pwManPct = pw ? (pw.manPct!=null ? pw.manPct : null) : null;
+
+  var cwCards = '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">'
+    +metricCard('Annual Refunds This Week', cw.refs||0, delta(cw.refs, pw?pw.refs:null, false))
+    +metricCard('Refund $ This Week', fmtAmt(cw.refAmt||0), delta(cw.refAmt||0, pw?null:null, true)) // no good prior $ in wkData
+    +metricCard('Dashboard Cancellations', cw.cxls||0, delta(cw.cxls, pw?pw.cxls:null, false))
+    +metricCard('% Manually Terminated', manPctStr, pwManPct!=null?'<span style="color:var(--text3);font-size:11px">'+pwManPct+'% prior week</span>':'<span style="color:var(--text3);font-size:11px">— vs prior</span>')
+    +metricCard('Save Offers Made', cw.saves||0, '<span style="color:var(--text3);font-size:11px">— vs prior</span>')
+    +metricCard('Upsell Attempts', cw.upsells||0, '<span style="color:var(--text3);font-size:11px">— vs prior</span>')
+    +'</div>';
+
+  // WoW table (8 weeks)
   var wowRows = S.wkData.map(function(wk,i){
     var prev = i>0 ? S.wkData[i-1].total : null;
-    var delta = prev!==null ? wk.total-prev : null;
-    var dStr  = delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
-    var dColor= delta===null?'var(--text3)':delta>0?'var(--red)':delta<0?'var(--green)':'var(--text3)';
+    var d2 = prev!==null ? wk.total-prev : null;
+    var dStr  = d2===null?'—':d2>0?'▲ +'+d2:d2<0?'▼ '+d2:'→ 0';
+    var dColor= d2===null?'var(--text3)':d2>0?'var(--red)':d2<0?'var(--green)':'var(--text3)';
     var isLast = i===S.wkData.length-1;
     var mp = wk.manPct;
     return '<tr style="background:'+(isLast?'#fff7ed':i%2===0?'#fff':'#f8fafc')+'">'
@@ -2903,10 +2960,11 @@ function renderRefunds(){
     +'<tbody>'+wowRows+'</tbody>'
     +'</table></div></div>';
 
-  // Insights panel
+  // Insights — last 4 weeks
   function insightBox(title,color,lines){
     return '<div style="flex:1;min-width:200px;background:#fafbfc;border:1px solid var(--border);border-radius:9px;padding:11px 13px">'
-      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:'+color+';margin-bottom:7px">'+title+'</div>'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:'+color+';margin-bottom:3px">'+title+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-bottom:7px">Last 4 weeks</div>'
       +lines.map(function(l){
         return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed #eef0f3">'
           +'<span style="color:var(--text2);margin-right:8px">'+l[0]+'</span>'
@@ -2920,12 +2978,12 @@ function renderRefunds(){
   var refLines  = (S.topRef||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
   var planLines = (S.topPlan||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
 
-  var srcLabel = S.generatedAt ? 'Snapshot: '+S.generatedAt : 'From PS Daily Processes tracker · live data';
+  var srcLabel = S.generatedAt ? 'Snapshot: '+S.generatedAt : 'Live · PS Daily Processes';
 
   var insightsHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">'
-    +insightBox('Top Reasons — Manual Termination','#ef4444',termLines.length?termLines:[['No data','—']])
-    +insightBox('Top Reasons — Annual Refunds','#f97316',refLines.length?refLines:[['No data','—']])
-    +insightBox('Most Affected Plan — Refunds','#8b5cf6',planLines.length?planLines:[['No data','—']])
+    +insightBox('Top Cancellation Reasons','#ef4444',termLines.length?termLines:[['Loading…','—']])
+    +insightBox('Top Refund Reasons','#f97316',refLines.length?refLines:[['Loading…','—']])
+    +insightBox('Most Affected Plan — Refunds','#8b5cf6',planLines.length?planLines:[['Loading…','—']])
     +'</div>';
 
   el.innerHTML = '<div class="card" style="margin:0;padding:14px 16px">'
@@ -2933,6 +2991,7 @@ function renderRefunds(){
     +'<div style="font-size:12px;color:var(--text3)">'+srcLabel+'</div>'
     +'<a href="refunds-cancellations-report.html" target="_blank" style="font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
     +'</div>'
+    +cwCards
     +wowHtml
     +insightsHtml
     +'</div>';
