@@ -257,6 +257,7 @@ function _aggBucket(rows){
   }
   return {cc,rc,ra:Math.round(ra*100)/100,ct,cm,
     cpct:ct>0?Math.round(cm/ct*1000)/10:null,
+    cpct_ref:ct>0?Math.round(cref/ct*1000)/10:null,
     cref,css,ic,uc,sc,cp,cci};
 }
 
@@ -432,7 +433,7 @@ function parseRefundsSheet(csvText){
       _CATS.forEach(c=>res.category_counts[c].push(a.cc[c]||0));
       res.refund_count.push(a.rc);res.refund_amount.push(a.ra);
       res.cancel_total.push(a.ct);res.cancel_manual.push(a.cm);
-      res.cancel_manual_pct.push(a.cpct);res.cancel_refunded.push(a.cref);
+      res.cancel_manual_pct.push(a.cpct);res.cancel_refund_pct=(res.cancel_refund_pct||[]);res.cancel_refund_pct.push(a.cpct_ref);res.cancel_refunded.push(a.cref);
       res.cancel_selfserve.push(a.css);res.issue_count.push(a.ic);
       res.upsell_count.push(a.uc);res.save_count.push(a.sc);
       res.company_path.push(a.cp);res.company_crowd.push(a.cci);
@@ -588,14 +589,15 @@ function renderKPIs(view){
   const [refC, refCp] = last2(d.refund_count);
   const [refA, refAp] = last2(d.refund_amount);
   const [cxTot, cxTotP] = last2(d.cancel_total);
-  const [mPct, mPctP] = last2(d.cancel_manual_pct);
   const [saveC, saveCp] = last2(d.save_count);
   const [upC, upCp] = last2(d.upsell_count);
+  const refPctSeries = d.cancel_refund_pct || d.cancel_manual_pct;
+  const [rPct, rPctP] = last2(refPctSeries);
   const kpis = [
     { label: `Annual Refunds ${periodLabel}`, value: fmtNum(refC), delta: deltaSpan(pctDelta(refC, refCp), 'down') },
     { label: `Refund $ ${periodLabel}`, value: fmtMoney(refA), delta: deltaSpan(pctDelta(refA, refAp), 'down') },
     { label: `Dashboard Cancellations`, value: fmtNum(cxTot), delta: deltaSpan(pctDelta(cxTot, cxTotP), 'down') },
-    { label: `% Manually Terminated`, value: (mPct===null?'—':mPct+'%'), delta: (mPct!==null&&mPctP!==null)?deltaSpan(mPct - mPctP, 'down'):'<span class="delta flat">—</span>' },
+    { label: `% Refund Rate (Cxl)`, value: (rPct===null?'—':rPct+'%'), delta: (rPct!==null&&rPctP!==null)?deltaSpan(rPct - rPctP, 'down'):'<span class="delta flat">—</span>' },
     { label: `Save Offers Made`, value: fmtNum(saveC), delta: deltaSpan(pctDelta(saveC, saveCp), 'up') },
     { label: `Upsell Attempts`, value: fmtNum(upC), delta: deltaSpan(pctDelta(upC, upCp), 'up') },
   ];
