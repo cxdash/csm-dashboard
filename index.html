@@ -625,7 +625,8 @@ var DEFAULT_DATA = {
       ['Core Annual',{c:92,a:24580}],
       ['Expert Annual',{c:34,a:19215}]
     ],
-    currentWk: {refs:0, refAmt:0, cxls:0, manual:0, manPct:null, saves:0, upsells:0}
+    currentWk: {refs:0, refAmt:0, cxls:0, manual:0, manPct:null, saves:0, upsells:0},
+    topAgents: []
   }
 };
 
@@ -2787,6 +2788,25 @@ function parseRfndOverview(csvText){
   // Parses PS Daily Processes CSV → pre-computed summary for Section 6
   var EXCL = {bianca:1,johnbaylon:1,rockwell:1};
   var FLAG_T = 3000;
+
+  // Approximate USD conversion rates (updated Aug 2026)
+  var FX = {'$':1,'US$':1,'USD':1,'£':1.27,'GBP':1.27,'€':1.09,'EUR':1.09,
+             'A$':0.65,'AUD':0.65,'CA$':0.73,'CAD':0.73,'NZ$':0.60,'NZD':0.60,
+             '₱':0.017,'PHP':0.017,'S$':0.74,'SGD':0.74,'HK$':0.13,'HKD':0.13,
+             'MXN':0.050,'MXN$':0.050,'R$':0.18,'BRL':0.18,'₹':0.012,'INR':0.012};
+  function toUSD(amtStr){
+    var s=(amtStr||'').trim();
+    // Try prefix symbol (e.g. £500, €100, A$200)
+    var m=s.match(/^(US\$|A\$|CA\$|NZ\$|MX[N]?\$|HK\$|S\$|R\$|[£€₱₹\$]|[A-Z]{2,3}\$?)\s*([\d,\.]+)/i);
+    if(m){var rate=FX[m[1]]||FX[m[1].toUpperCase()]||1; return parseFloat(m[2].replace(/,/g,''))*rate;}
+    // Try suffix code (e.g. 500 GBP)
+    m=s.match(/([\d,\.]+)\s*([A-Z]{2,3})$/i);
+    if(m){var rate2=FX[m[2].toUpperCase()]||1; return parseFloat(m[1].replace(/,/g,''))*rate2;}
+    // Plain number
+    var n=parseFloat(s.replace(/[^0-9.]/g,''));
+    return isNaN(n)?0:n;
+  }
+
   var rows = [];
   var lines = csvText.split('\n');
   for(var i=1;i<lines.length;i++){
@@ -2805,17 +2825,26 @@ function parseRfndOverview(csvText){
     if(isNaN(dt.getTime())) continue;
     var email = (f[1]||'').toLowerCase().split('@')[0].replace(/\./g,'');
     if(EXCL[email]) continue;
-    var amtRaw = parseFloat((f[12]||'').replace(/[$,\s]/g,''));
+    // Agent display name: use handle (f[4]) if set, else format email local part
+    var handle = (f[4]||'').trim();
+    if(!handle){ var ep=(f[1]||'').split('@')[0]; handle=ep.replace(/[._]/g,' ').replace(/\b\w/g,function(x){return x.toUpperCase();}); }
+    var amtUSD = toUSD(f[12]||'');
     rows.push({
       date:dt, cat:(f[7]||'').trim(), rsn:(f[10]||'').trim(), cf:(f[11]||'').trim(),
-      amt:isNaN(amtRaw)?0:amtRaw, plan:(f[5]||'').trim(),
-      save:(f[21]||'').trim(), upsell:(f[23]||'').trim()
+      amt:amtUSD, plan:(f[5]||'').trim(),
+      save:(f[21]||'').trim(), upsell:(f[23]||'').trim(),
+      agent:handle
     });
   }
 
-  // Helpers — use regex so minor naming variations in the sheet still match
-  function isCxl(r){ return /cancell/i.test(r.cat); }
-  function isRef(r){ return /refund/i.test(r.cat); }
+  // Row-type helpers — broad matching to survive sheet naming variations
+  // A row is a cancellation if category OR cf column suggests it (not a refund)
+  function isCxl(r){
+    return /cancel/i.test(r.cat) || (/cancel|terminat/i.test(r.cf) && !/refund|7[- ]?day/i.test(r.cf));
+  }
+  function isRef(r){
+    return /refund/i.test(r.cat) || /refund|7[- ]?day/i.test(r.cf);
+  }
   function isManual(r){
     var cf=(r.cf||'').toLowerCase();
     return !(/self[- ]?serv|complian/i.test(cf)||/refund|7[- ]?day/i.test(cf)||/sub[- ]?ending|expir/i.test(r.rsn));
@@ -2859,18 +2888,28 @@ function parseRfndOverview(csvText){
   }
 
   // Insights from last 4 completed weeks
-  var termR={},refR={},planR={};
+  var termR={},refR={},planR={},agentR={};
   last4Rows.forEach(function(r){
-    if(isCxl(r)){ termR[r.rsn||'-']=(termR[r.rsn||'-']||0)+1; }
+    if(isCxl(r)){
+      termR[r.rsn||'-']=(termR[r.rsn||'-']||0)+1;
+      if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0};
+      agentR[r.agent].cxls++;
+    }
     if(isRef(r)&&r.amt<=FLAG_T){
       if(!refR[r.rsn||'-'])refR[r.rsn||'-']={c:0,a:0}; refR[r.rsn||'-'].c++; refR[r.rsn||'-'].a+=r.amt;
       if(!planR[r.plan||'Unknown'])planR[r.plan||'Unknown']={c:0,a:0}; planR[r.plan||'Unknown'].c++; planR[r.plan||'Unknown'].a+=r.amt;
+      if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0};
+      agentR[r.agent].refs++;
     }
   });
   function top(map,n,byAmt){
     return Object.entries(map).filter(function(e){return e[0]&&e[0]!=='-';})
       .sort(function(a,b){return byAmt?b[1].a-a[1].a:b[1]-a[1];}).slice(0,n);
   }
+  var topAgentsArr = Object.entries(agentR)
+    .filter(function(e){return e[0]&&e[0]!=='-';})
+    .map(function(e){return [e[0],e[1].cxls+e[1].refs,e[1].cxls,e[1].refs];})
+    .sort(function(a,b){return b[1]-a[1];}).slice(0,5);
 
   var d=new Date(); var h=d.getHours(); var ap=h>=12?'PM':'AM'; h=h%12||12;
   var gAt=MO[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()+', '+h+':'+String(d.getMinutes()).padStart(2,'0')+' '+ap;
@@ -2881,7 +2920,8 @@ function parseRfndOverview(csvText){
     currentWk: currentWk,
     topTerm: top(termR,5,false).map(function(e){return [e[0],e[1]];}),
     topRef:  top(refR,5,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
-    topPlan: top(planR,3,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];})
+    topPlan: top(planR,3,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
+    topAgents: topAgentsArr
   };
 }
 
@@ -2974,16 +3014,21 @@ function renderRefunds(){
       +'</div>';
   }
 
-  var termLines = (S.topTerm||[]).map(function(e){return [e[0],e[1]+' cases'];});
+  function pl(n,w){ return n+' '+(n===1?w:w+'s'); }
+  var termLines = (S.topTerm||[]).map(function(e){return [e[0],pl(e[1],'case')];});
   var refLines  = (S.topRef||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
   var planLines = (S.topPlan||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
+  var agentLines= (S.topAgents||[]).map(function(e){
+    return [e[0], e[2]+' cxl / '+e[3]+' ref'];
+  });
 
   var srcLabel = S.generatedAt ? 'Snapshot: '+S.generatedAt : 'Live · PS Daily Processes';
 
   var insightsHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">'
-    +insightBox('Top Cancellation Reasons','#ef4444',termLines.length?termLines:[['Loading…','—']])
-    +insightBox('Top Refund Reasons','#f97316',refLines.length?refLines:[['Loading…','—']])
-    +insightBox('Most Affected Plan — Refunds','#8b5cf6',planLines.length?planLines:[['Loading…','—']])
+    +insightBox('Top Cancellation Reasons','#ef4444',termLines.length?termLines:[['Fetching live data…','—']])
+    +insightBox('Top Refund Reasons','#f97316',refLines.length?refLines:[['Fetching live data…','—']])
+    +insightBox('Most Affected Plan — Refunds','#8b5cf6',planLines.length?planLines:[['Fetching live data…','—']])
+    +insightBox('Most Active — Cancellations &amp; Refunds','#0891b2',agentLines.length?agentLines:[['Fetching live data…','—']])
     +'</div>';
 
   el.innerHTML = '<div class="card" style="margin:0;padding:14px 16px">'
