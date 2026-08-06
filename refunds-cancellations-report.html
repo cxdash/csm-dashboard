@@ -313,21 +313,30 @@ function _ydayStats(rows,now){
   const label=days[yd.getDay()]+', '+_MO[yd.getMonth()]+' '+yd.getDate();
   function ds(rs){
     let tot=0,rc=0,ra=0,ct=0,cm=0,css=0,cref=0,cp=0,cci=0;
-    const tr={},rr={};
+    // Separate reason maps per cancellation status type
+    const trTerminated={}, trCancelled={}, trRefundedCxl={}, rr={};
     for(const r of rs){
-      tot++;
+      tot++; // ALL rows regardless of status
       if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){rc++;ra+=r.amt;const k=r.reason||'-';rr[k]=(rr[k]||0)+1;}
-      if(_isCxl(r)){ct++;const s=_cxlStatus(r);if(s==='manual')cm++;else if(s==='ref')cref++;else css++;const k=r.dcrsn||r.reason||'-';tr[k]=(tr[k]||0)+1;}
+      if(_isCxl(r)){
+        ct++;
+        const s=_cxlStatus(r);
+        const k=r.dcrsn||r.reason||'-';
+        if(s==='manual'){cm++;trTerminated[k]=(trTerminated[k]||0)+1;}
+        else if(s==='ref'){cref++;trRefundedCxl[k]=(trRefundedCxl[k]||0)+1;}
+        else{css++;trCancelled[k]=(trCancelled[k]||0)+1;}
+      }
       if(_isPS(r))cp++;if(_isCI(r))cci++;
     }
     const pct=ct>0?Math.round(cm/ct*1000)/10:null;
-    const tt=(_topN(tr,1,false)[0]||['-'])[0];
-    const tref=(_topN(rr,1,false)[0]||['-'])[0];
+    function top1(map){return(_topN(map,1,false)[0]||[null])[0]||null;}
     return{total:tot,refund_count:rc,refund_amount:Math.round(ra*100)/100,
-      cancel_total:ct,cancel_manual:cm,cancel_manual_pct:pct,
-      cancel_selfserve:css,cancel_refunded:cref,
-      company_path:cp,company_crowd:cci,
-      top_term_reason:tt,top_refund_reason:tref};
+      cancel_total:ct,cancel_manual:cm,cancel_cancelled:css,cancel_refunded_cxl:cref,
+      cancel_manual_pct:pct,company_path:cp,company_crowd:cci,
+      top_terminated_reason:top1(trTerminated),
+      top_cancelled_reason:top1(trCancelled),
+      top_refunded_cxl_reason:top1(trRefundedCxl),
+      top_refund_reason:top1(rr)};
   }
   if(!ydR.length&&!dbyR.length) return{label:'-'};
   return{label,y:ds(ydR),dby:ds(dbyR)};
@@ -509,23 +518,35 @@ function renderYesterday(){
   const card = document.getElementById('ydayCard');
   if (!yd || yd.label === '-') { card.style.display = 'none'; return; }
   card.style.display = 'block';
+  const y=yd.y, db=yd.dby;
   const stats = [
-    { label:'Total Logged', value: fmtNum(yd.y.total), delta: deltaSpan(pctDelta(yd.y.total, yd.dby.total), 'up') },
-    { label:'Annual Refunds', value: fmtNum(yd.y.refund_count), delta: deltaSpan(pctDelta(yd.y.refund_count, yd.dby.refund_count), 'down') },
-    { label:'Refund $ (clean)', value: fmtMoney(yd.y.refund_amount), delta: deltaSpan(pctDelta(yd.y.refund_amount, yd.dby.refund_amount), 'down') },
-    { label:'Dashboard Cancellations', value: fmtNum(yd.y.cancel_total), delta: deltaSpan(pctDelta(yd.y.cancel_total, yd.dby.cancel_total), 'down') },
-    { label:'% Manually Terminated', value: yd.y.cancel_manual_pct===null?'—':yd.y.cancel_manual_pct+'%', delta: (yd.y.cancel_manual_pct!==null && yd.dby.cancel_manual_pct!==null) ? deltaSpan(yd.y.cancel_manual_pct - yd.dby.cancel_manual_pct, 'down') : '<span class="delta flat">—</span>' },
-    { label:'Path / Crowd Split', value: `${yd.y.company_path} / ${yd.y.company_crowd}`, delta: '' },
+    { label:'Total Logged', value: fmtNum(y.total), delta: deltaSpan(pctDelta(y.total, db.total), 'up') },
+    { label:'Annual Refunds', value: fmtNum(y.refund_count), delta: deltaSpan(pctDelta(y.refund_count, db.refund_count), 'down') },
+    { label:'Refund $ (clean)', value: fmtMoney(y.refund_amount), delta: deltaSpan(pctDelta(y.refund_amount, db.refund_amount), 'down') },
+    { label:'Dashboard Cancellations', value: fmtNum(y.cancel_total), delta: deltaSpan(pctDelta(y.cancel_total, db.cancel_total), 'down') },
+    { label:'% Manually Terminated', value: y.cancel_manual_pct===null?'—':y.cancel_manual_pct+'%', delta: (y.cancel_manual_pct!==null&&db.cancel_manual_pct!==null)?deltaSpan(y.cancel_manual_pct-db.cancel_manual_pct,'down'):'<span class="delta flat">—</span>' },
+    { label:'Path / Crowd Split', value: `${y.company_path} / ${y.company_crowd}`, delta: '' },
   ];
+  function reasonBox(label, count, color, reason, sub){
+    return `<div class="yday-reason-box">
+      <h4 style="color:${color}">${label} <span style="font-weight:400;font-size:11px;color:rgba(255,255,255,.6)">(${count||0})</span></h4>
+      <div class="yday-reason-line" style="margin-top:4px">
+        <span style="font-weight:600">${reason||'—'}</span>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px">${sub}</div>
+    </div>`;
+  }
   card.innerHTML = `
     <h2>Yesterday — ${yd.label}</h2>
-    <p class="sub">Deltas compare to the day before. Numbers reflect all categories logged for the full calendar day.</p>
+    <p class="sub">Deltas compare to the day before. Total logged = all rows regardless of status.</p>
     <div class="yday-grid">
       ${stats.map(s => `<div class="yday-stat"><div class="label">${s.label}</div><div class="value">${s.value}</div><div class="delta">${s.delta}</div></div>`).join('')}
     </div>
-    <div class="yday-reasons">
-      <div class="yday-reason-box"><h4>Top Cancellation Reason</h4><div class="yday-reason-line"><span>${yd.y.top_term_reason&&yd.y.top_term_reason!=='-'?yd.y.top_term_reason:'—'}</span></div></div>
-      <div class="yday-reason-box"><h4>Annual Sub Refund Reason</h4><div class="yday-reason-line"><span>${yd.y.top_refund_reason&&yd.y.top_refund_reason!=='-'?yd.y.top_refund_reason:'—'}</span></div></div>
+    <div class="yday-reasons" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
+      ${reasonBox('Terminated',''+y.cancel_manual,'#ef9a9a',y.top_terminated_reason,'Expires immediately, no refund')}
+      ${reasonBox('Cancelled',''+y.cancel_cancelled,'#ffe082',y.top_cancelled_reason,'Expires end of paid cycle')}
+      ${reasonBox('Refunded (Cxl)',''+y.cancel_refunded_cxl,'#80cbc4',y.top_refunded_cxl_reason,'Terminated + refund issued')}
+      ${reasonBox('Annual Sub Refund',''+y.refund_count,'#90caf9',y.top_refund_reason,'Annual Sub Refunds category')}
     </div>
   `;
 }
