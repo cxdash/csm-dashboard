@@ -359,6 +359,15 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     </div>
   </div>
 
+  <!-- ══ 6 — REFUNDS & CANCELLATIONS ══ -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:#f97316"></div>
+    <div class="sec-label">6 — Refunds &amp; Cancellations</div>
+  </div>
+  <div id="rfndSection">
+    <div class="card" style="padding:16px;text-align:center;color:var(--text3);font-size:13px">Loading refunds &amp; cancellations data…</div>
+  </div>
+
   <!-- ══ 7 — ACTION ITEMS ══ -->
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#64748b"></div>
@@ -429,6 +438,7 @@ var SHEETS_QA3_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeQRp3
 var SHEETS_CONTACT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7wbJzVLWlpGx56p7c3k6BKf25hBLXWxq2h_zbrBNdb0iGeCoKFQsS-6SSez7OaNbFiNVolDaGI/pub?gid=763263392&single=true&output=csv';  // ContactExport — f[3]=Channel, f[11]=Queued-to-Fulfilled(sec), f[15]=Month-Year
 var SHEETS_ESC_PS_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSqCVNRgfLzFCjTNv5ADwkdPxY9GYawEKGmUWbs0Lru0Uv7eahb86rVoqqzl665QRMNt5gFXXYQmSbK/pub?gid=1155672077&single=true&output=csv';  // Path Social escalations: f[0]=MonthName f[1]=Date f[3]=Agent f[4]=Company f[7]=Reason f[10]=Specialist f[11]=Priority f[12]=Status f[14]=Category
 var SHEETS_ESC_CI_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS8wiWEgBmssCoYYSmGQnst46C9CG5Jeekjx81XfCvTnQdFBxONfzMVjGg6deddFoZkn-2N2w4vdLm1/pub?gid=670231814&single=true&output=csv';  // Crowd Ignite escalations: f[0]=Date f[1]=Category f[2]=RootCause f[6]=Plan f[11]=Agent
+var SHEETS_RFND_URL    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvIuq_6wUTzcbNm-ZXwQJKzbMsEniRxYEi6d-FlrIbhlF4g3Eek97QM8M1UDYUKxCU34eoMzcXhQKI/pub?gid=1093050961&single=true&output=csv';  // PS Daily Processes: f[0]=Timestamp f[1]=AgentEmail f[5]=Plan f[7]=Category f[8]=Company f[10]=Reason f[11]=Cancelled/Refunded f[12]=Amount
 
 // ── EMBEDDED DEFAULT DATA (June 2026 — sourced from ContactExport & AgentReporting CSVs) ───
 var DEFAULT_DATA = {
@@ -1959,7 +1969,8 @@ async function loadFromSheets(){
       safeFetch(SHEETS_QA3_URL),
       safeFetch(SHEETS_CONTACT_URL),
       safeFetch(SHEETS_ESC_PS_URL),
-      safeFetch(SHEETS_ESC_CI_URL)
+      safeFetch(SHEETS_ESC_CI_URL),
+      safeFetch(SHEETS_RFND_URL)
     ]);
 
     // Read all response texts upfront (each Response body can only be read once)
@@ -1973,6 +1984,7 @@ async function loadFromSheets(){
     var _rawContText   = (resps[7]&&resps[7].ok) ? await resps[7].text() : null;
     var _rawEscPSText  = (resps[8]&&resps[8].ok) ? await resps[8].text() : null;
     var _rawEscCIText  = (resps[9]&&resps[9].ok) ? await resps[9].text() : null;
+    var _rawRfndText   = (resps[10]&&resps[10].ok) ? await resps[10].text() : null;
     // Store raw texts for month-picker re-parsing
     if(_rawAgentText)  RAW_TEXTS.agent   = _rawAgentText;
     if(_rawFCRText)    RAW_TEXTS.fcr     = _rawFCRText;
@@ -2135,8 +2147,13 @@ async function loadFromSheets(){
       if(escResult && escResult.length) D.escalations = escResult;
     }
 
+    // Refunds & Cancellations — resps[10]=PS Daily Processes
+    if(_rawRfndText){
+      D._rfndRows = parseRfndOverview(_rawRfndText);
+    }
+
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    var anyLive = [_rawAgentText,_rawVolText,_rawSLAText,_rawFCRText,_rawQAText,_rawContText,_rawEscPSText,_rawEscCIText].some(function(t){return !!t;});
+    var anyLive = [_rawAgentText,_rawVolText,_rawSLAText,_rawFCRText,_rawQAText,_rawContText,_rawEscPSText,_rawEscCIText,_rawRfndText].some(function(t){return !!t;});
     // Cache live data to localStorage so next load shows last known good data
     if(anyLive){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(D)); localStorage.setItem(STORAGE_KEY+'_ts', new Date().toISOString()); }catch(e){} }
     setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data');
@@ -2147,7 +2164,7 @@ async function loadFromSheets(){
 }
 
 function loadData(){
-  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL || SHEETS_CONTACT_URL || SHEETS_ESC_PS_URL || SHEETS_ESC_CI_URL){ loadFromSheets(); } else { loadFromStorage(); }
+  if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL || SHEETS_CONTACT_URL || SHEETS_ESC_PS_URL || SHEETS_ESC_CI_URL || SHEETS_RFND_URL){ loadFromSheets(); } else { loadFromStorage(); }
 }
 
 function clearData(){
@@ -2175,6 +2192,7 @@ function render(){
   renderCharts();
   renderAgents();
   renderEscalations();
+  renderRefunds();
   renderFlags();
   var _now=new Date();
   var _dynPeriod=MONTH_NAMES[_now.getMonth()]+' '+_now.getFullYear();
@@ -2734,6 +2752,178 @@ function renderEscalations(){
     +'</div>';
 
   escTableEl.outerHTML = summaryHtml;
+}
+
+// ── REFUNDS & CANCELLATIONS OVERVIEW ──────────────────────────────────────────
+function parseRfndOverview(csvText){
+  // Lightweight parser — extracts only what the overview section needs
+  // Columns: f[0]=Timestamp, f[7]=Category, f[8]=Company, f[10]=Reason, f[11]=Cancelled/Refunded, f[12]=Amount, f[5]=Plan
+  var EXCL = {bianca:1,johnbaylon:1,rockwell:1};
+  var FLAG_THRESH = 3000;
+  var rows = [];
+  var lines = csvText.split('\n');
+  for(var i=1;i<lines.length;i++){
+    var line = lines[i].replace(/\r$/,'');
+    if(!line.trim()) continue;
+    // Simple CSV split (handles quoted commas)
+    var f=[]; var cur=''; var inq=false;
+    for(var ci=0;ci<line.length;ci++){
+      var c=line[ci];
+      if(c==='"'){if(inq&&line[ci+1]==='"'){cur+='"';ci++;}else inq=!inq;}
+      else if(c===','&&!inq){f.push(cur);cur='';}
+      else cur+=c;
+    }
+    f.push(cur);
+    if(!(f[0]||'').trim()) continue;
+    var dt = new Date(f[0].trim());
+    if(isNaN(dt.getTime())) continue;
+    var email = (f[1]||'').toLowerCase().split('@')[0].replace(/\./g,'');
+    if(EXCL[email]) continue;
+    var amtRaw = parseFloat((f[12]||'').replace(/[$,\s]/g,''));
+    rows.push({
+      date: dt,
+      cat:  (f[7]||'').trim(),
+      co:   (f[8]||'').trim(),
+      rsn:  (f[10]||'').trim(),
+      cf:   (f[11]||'').trim(),
+      amt:  isNaN(amtRaw) ? 0 : amtRaw,
+      plan: (f[5]||'').trim()
+    });
+  }
+  return rows;
+}
+
+function renderRefunds(){
+  var el = document.getElementById('rfndSection');
+  if(!el) return;
+  var rows = (D && D._rfndRows) || [];
+  if(!rows.length){
+    el.innerHTML = '<div class="card" style="padding:14px;text-align:center;color:var(--text3);font-size:13px">No refunds/cancellations data — <a href="refunds-cancellations-report.html" target="_blank" style="color:var(--accent)">View Full Report →</a></div>';
+    return;
+  }
+
+  // Build 8 completed Mon-Sun weeks
+  var now = new Date(); now.setHours(0,0,0,0);
+  var dow = now.getDay(); var daysSinceMon = (dow===0)?6:dow-1;
+  var thisMon = new Date(now); thisMon.setDate(now.getDate()-daysSinceMon);
+  var lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate()-1);
+  var wks = [];
+  for(var wi=7;wi>=0;wi--){
+    var we = new Date(lastSun); we.setDate(lastSun.getDate()-wi*7);
+    var ws = new Date(we); ws.setDate(we.getDate()-6);
+    wks.push({s:ws, e:we});
+  }
+
+  var MOR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var FLAG_T=3000;
+
+  function inWk(r,b){ return r.date>=b.s && r.date<=b.e; }
+  function isCxl(r){ return r.cat==='Dashboard Cancellation'; }
+  function isRef(r){ return r.cat==='Annual Sub Refunds'; }
+  function cxlManual(r){
+    var cf=(r.cf||'').toLowerCase();
+    if(/self[- ]?serv|complian/i.test(cf)||/sub[- ]?ending|expir/i.test(r.rsn)) return false;
+    if(/refund|7[- ]?day/i.test(cf)) return false;
+    return true;
+  }
+
+  var wkData = wks.map(function(b){
+    var wr = rows.filter(function(r){return inWk(r,b);});
+    var cxls=0,refs=0,manual=0,refAmt=0;
+    wr.forEach(function(r){
+      if(isCxl(r)){cxls++;if(cxlManual(r))manual++;}
+      if(isRef(r)&&r.amt<=FLAG_T){refs++;refAmt+=r.amt;}
+    });
+    var manPct = cxls>0?Math.round(manual/cxls*10)/10:null;
+    var ws=b.s,we=b.e;
+    var lbl=MOR[ws.getMonth()]+' '+ws.getDate()+'–'+(we.getMonth()!==ws.getMonth()?MOR[we.getMonth()]+' ':'')+we.getDate();
+    return {lbl:lbl,total:wr.length,cxls:cxls,refs:refs,manual:manual,manPct:manPct,refAmt:refAmt};
+  });
+
+  // Insights from all 8 weeks combined
+  var allWkRows = rows.filter(function(r){ return r.date>=wks[0].s && r.date<=wks[7].e; });
+  var termRsns={},refRsns={},planMap={};
+  allWkRows.forEach(function(r){
+    if(isCxl(r)){ termRsns[r.rsn||'-']=(termRsns[r.rsn||'-']||0)+1; }
+    if(isRef(r)&&r.amt<=FLAG_T){
+      if(!refRsns[r.rsn||'-']) refRsns[r.rsn||'-']={c:0,a:0};
+      refRsns[r.rsn||'-'].c++; refRsns[r.rsn||'-'].a+=r.amt;
+      if(!planMap[r.plan||'Unknown']) planMap[r.plan||'Unknown']={c:0,a:0};
+      planMap[r.plan||'Unknown'].c++; planMap[r.plan||'Unknown'].a+=r.amt;
+    }
+  });
+  function topEntries(map,n,byAmt){
+    return Object.entries(map).filter(function(e){return e[0]&&e[0]!=='-'&&e[0]!=='';})
+      .sort(function(a,b){return byAmt?b[1].a-a[1].a:b[1]-a[1];}).slice(0,n);
+  }
+  var topTerm = topEntries(termRsns,5,false);
+  var topRef  = topEntries(refRsns,5,true);
+  var topPlan = topEntries(planMap,3,true);
+
+  function fmtK(n){ return '$'+(n>=1000?(n/1000).toFixed(1)+'k':Math.round(n).toLocaleString()); }
+
+  // WoW table
+  var wowRows = wkData.map(function(wk,i){
+    var prev = i>0 ? wkData[i-1].total : null;
+    var delta = prev!==null ? wk.total-prev : null;
+    var dStr  = delta===null?'—':delta>0?'▲ +'+delta:delta<0?'▼ '+delta:'→ 0';
+    var dColor= delta===null?'var(--text3)':delta>0?'var(--red)':delta<0?'var(--green)':'var(--text3)';
+    var isLast = i===wkData.length-1;
+    return '<tr style="background:'+(isLast?'#fff7ed':i%2===0?'#fff':'#f8fafc')+'">'
+      +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:'+(isLast?'700':'400')+'">'+wk.lbl+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:700">'+wk.total+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+wk.cxls+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+wk.refs+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:'+(wk.manPct!==null&&wk.manPct>=55?'var(--red)':wk.manPct!==null&&wk.manPct>=40?'var(--amber)':'var(--text2)')+';">'+(wk.manPct!==null?wk.manPct+'%':'—')+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:600;color:'+dColor+'">'+dStr+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var wowHtml = '<div style="margin-bottom:14px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Week-over-Week · Last 8 Completed Weeks</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr>'
+    +'<th style="text-align:left;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Week</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Total</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Cancellations</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Refunds</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">% Manual Term</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">WoW Δ</th>'
+    +'</tr></thead>'
+    +'<tbody>'+wowRows+'</tbody>'
+    +'</table></div></div>';
+
+  // Insights panel
+  function insightBox(title,color,lines){
+    return '<div style="flex:1;min-width:200px;background:#fafbfc;border:1px solid var(--border);border-radius:9px;padding:11px 13px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:'+color+';margin-bottom:7px">'+title+'</div>'
+      +lines.map(function(l){
+        return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed #eef0f3">'
+          +'<span style="color:var(--text2);margin-right:8px">'+l[0]+'</span>'
+          +'<span style="font-weight:600;white-space:nowrap;color:var(--text1)">'+l[1]+'</span>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }
+
+  var termLines = topTerm.map(function(e){return [e[0],e[1]+' cases'];});
+  var refLines  = topRef.map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
+  var planLines = topPlan.map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
+
+  var insightsHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">'
+    +insightBox('Top Reasons — Manual Termination','#ef4444',termLines.length?termLines:[['No data','—']])
+    +insightBox('Top Reasons — Annual Refunds','#f97316',refLines.length?refLines:[['No data','—']])
+    +insightBox('Most Affected Plan — Refunds','#8b5cf6',planLines.length?planLines:[['No data','—']])
+    +'</div>';
+
+  el.innerHTML = '<div class="card" style="margin:0;padding:14px 16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    +'<div style="font-size:12px;color:var(--text3)">From PS Daily Processes tracker · live data</div>'
+    +'<a href="refunds-cancellations-report.html" target="_blank" style="font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
+    +'</div>'
+    +wowHtml
+    +insightsHtml
+    +'</div>';
 }
 
 function renderStaffing(){

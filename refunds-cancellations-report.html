@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Refunds and Cancellation Live Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #1F3864; --accent: #4472C4; --amber: #E8A33D; --red: #C0504D;
+    --green: #4F8A5B; --teal: #2E8B8B; --purple: #7A5EA8;
+    --grey-bg: #F5F6F8; --card-bg: #FFFFFF; --border: #E1E4E8;
+    --text: #22292F; --text-muted: #6B7280;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: var(--grey-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+  }
+  .header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+  h1 { font-size: 22px; margin: 0 0 4px 0; color: var(--navy); }
+  .subtitle { font-size: 13px; color: var(--text-muted); margin:0; }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .toggle { display:flex; background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .toggle button { border:none; background:transparent; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; color: var(--text-muted); transition: all .15s; }
+  .toggle button.active { background: var(--navy); color:#fff; }
+  select#periodSelect {
+    padding:9px 14px; border-radius:10px; border:1px solid var(--border); background:#fff;
+    font-size:13px; font-weight:600; color: var(--navy); cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .status-bar { display:flex; align-items:center; gap:14px; font-size:12px; color: var(--text-muted); margin-bottom:18px; flex-wrap:wrap; }
+  .status-dot { width:8px; height:8px; border-radius:50%; background: var(--green); display:inline-block; margin-right:5px; }
+  .yday-card { background: linear-gradient(135deg, var(--navy), #2E5395); border-radius:14px; padding:18px 22px; margin-bottom:20px; color:#fff; }
+  .yday-card h2 { margin:0 0 2px 0; font-size:15px; }
+  .yday-card .sub { font-size:12px; opacity:.85; margin:0 0 14px 0; }
+  .yday-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:12px; }
+  .yday-stat { background: rgba(255,255,255,0.12); border-radius:10px; padding:10px 12px; }
+  .yday-stat .label { font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; opacity:.85; margin-bottom:4px; }
+  .yday-stat .value { font-size:19px; font-weight:700; }
+  .yday-stat .delta { font-size:11.5px; margin-top:3px; opacity:.9; }
+  .yday-reasons { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px; }
+  .yday-reason-box { background: rgba(255,255,255,0.1); border-radius:10px; padding:10px 12px; font-size:12px; }
+  .yday-reason-box h4 { margin:0 0 6px 0; font-size:11px; text-transform:uppercase; letter-spacing:.03em; opacity:.85; }
+  .yday-reason-line { display:flex; justify-content:space-between; padding:2px 0; }
+  .kpi-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap:14px; margin-bottom:22px; }
+  .kpi { background: var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .kpi .label { font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color: var(--text-muted); margin-bottom:6px; }
+  .kpi .value { font-size:22px; font-weight:700; color: var(--navy); }
+  .kpi .delta { font-size:12.5px; font-weight:600; margin-top:4px; }
+  .delta.up-bad { color: var(--red); } .delta.up-good { color: var(--green); }
+  .delta.down-bad { color: var(--red); } .delta.down-good { color: var(--green); } .delta.flat { color: var(--text-muted); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(430px,1fr)); gap:16px; margin-bottom:16px; }
+  .card { background: var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .card h2 { font-size:14px; margin:0 0 2px 0; color: var(--navy); }
+  .card .desc { font-size:11.5px; color: var(--text-muted); margin:0 0 10px 0; }
+  .chart-wrap { position:relative; height:230px; }
+  table { width:100%; border-collapse: collapse; font-size:12.5px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--border); }
+  th { color: var(--text-muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .bar-cell { display:flex; align-items:center; gap:8px; }
+  .bar-track { flex:1; background:#EEF0F3; border-radius:4px; height:8px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; }
+  .footer { font-size:11px; color: var(--text-muted); margin-top:8px; text-align:center; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color: var(--navy); }
+  th.sortable .arrow { font-size:9px; margin-left:4px; opacity:.5; }
+  th.sortable.active .arrow { opacity:1; color: var(--navy); }
+  th.num, td.num { text-align:right; }
+  .insight-row { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; margin-bottom:16px; }
+  .insight-highlight { background:#F4F8FD; border:1px solid #D8E6F7; border-radius:8px; padding:9px 10px; margin-bottom:8px; }
+  .insight-highlight .plan-name { font-weight:700; color:var(--navy); font-size:13px; }
+  .insight-highlight .plan-stat { color:var(--text-muted); font-size:11.5px; margin-top:2px; }
+  @media (max-width: 900px) { .insight-row { grid-template-columns: 1fr; } }
+  .insight-box { background:#FAFBFC; border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .insight-box h3 { font-size:12px; margin:0 0 8px 0; color: var(--navy); text-transform:uppercase; letter-spacing:.03em; }
+  .insight-line { display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:4px 0; border-bottom:1px dashed #EEF0F3; }
+  .insight-line:last-child { border-bottom:none; }
+  .insight-line .stat { color: var(--text-muted); font-weight:600; white-space:nowrap; margin-left:10px; }
+  .period-note { font-size:11.5px; color: var(--accent); font-weight:600; margin-bottom:10px; }
+  .dq-card { border:1px solid var(--amber); background:#FFFBF2; }
+  .dq-card h2 { color:#8A5A00; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Refunds and Cancellation Live Dashboard - Path Social &amp; Crowd Ignite</h1>
+    <p class="subtitle">From the PS Daily Processes tracker (published Google Sheet). Weeks run Monday-Sunday.</p>
+  </div>
+  <div class="controls">
+    <div class="toggle" id="viewToggle">
+      <button data-view="week" class="active">WoW · Last 8 Weeks</button>
+      <button data-view="month">MoM · Last 6 Months</button>
+    </div>
+    <select id="periodSelect"></select>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot"></span><span id="statusText">Loading…</span></span>
+  <span id="rowCountText"></span>
+</div>
+
+<div class="yday-card" id="ydayCard" style="display:none;"></div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Volume by Category</h2>
+    <p class="desc">Count of logged actions per period, by process type. Selected period outlined.</p>
+    <div class="chart-wrap"><canvas id="chartCategory"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Annual Sub Refunds — Count &amp; Dollars</h2>
+    <p class="desc">Bars = case count (left axis). Line = $ refunded (right axis), excludes flagged outliers below. Non-USD entries (GBP, EUR, ARS, MXN, INR, and others) are converted to USD using the historical FX rate on each transaction's own date.</p>
+    <div class="chart-wrap"><canvas id="chartRefund"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Dashboard Cancellation — Status Mix &amp; Manual-Term Rate</h2>
+    <p class="desc">Stacked bars = outcome mix. Line = % manually terminated by an agent.</p>
+    <div class="chart-wrap"><canvas id="chartCancel"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Line of Business Split</h2>
+    <p class="desc">Total logged actions per period, Path Social vs. Crowd Ignite.</p>
+    <div class="chart-wrap"><canvas id="chartLOB"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Retention Saves &amp; Upsell Offers</h2>
+    <p class="desc">Volume of save offers and upsell attempts logged per period (low base volume — directional only).</p>
+    <div class="chart-wrap"><canvas id="chartSaveUpsell"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Issue Reporting — By Type (full history)</h2>
+    <p class="desc">Cumulative count by issue type across all data loaded.</p>
+    <div class="chart-wrap"><canvas id="chartIssue"></canvas></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 id="agentCardTitle">Agent Termination &amp; Refund Activity</h2>
+  <p class="desc">Manual terminations and Annual refunds processed per agent. Use the dropdown above to isolate a single week or month. Click a column header to sort.</p>
+  <div class="period-note" id="periodNote"></div>
+  <div class="insight-row" id="insightRow"></div>
+  <div style="overflow-x:auto;">
+  <table id="agentTable">
+    <thead><tr>
+      <th data-sort="agent" class="sortable">Agent</th>
+      <th data-sort="cancellations" class="sortable num">Cancellations</th>
+      <th data-sort="manual" class="sortable num">Manually Terminated</th>
+      <th data-sort="pct_manual" class="sortable num" style="width:150px;">% Manual</th>
+      <th data-sort="refunds" class="sortable num">Refunds Processed</th>
+      <th data-sort="refund_amount" class="sortable num">Refund $</th>
+      <th>Top Termination Reason</th>
+      <th>Top Refund Reason</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card dq-card" id="dqCard" style="margin-bottom:16px;">
+  <h2>⚠ Data Quality — Flagged Refund Amounts</h2>
+  <p class="desc">Annual Sub Refund entries over $3,000 — well above a typical annual refund (~$300-700). Likely data-entry errors. Excluded from all $ totals and charts above; verify against Recurly/Finance.</p>
+  <table id="dqTable"><thead><tr><th>Date</th><th>Agent</th><th>Reason</th><th class="num">Amount Entered</th></tr></thead><tbody></tbody></table>
+</div>
+
+<p class="footer" id="footerNote">Source: published Google Sheet export (PS Daily Processes tracker). Refreshed automatically on a schedule — see "Data as of" above for the last refresh time. Non-USD entries are converted using the historical FX rate on each transaction's own date (not a single blanket rate), so totals reflect what the amount was actually worth in USD at the time.</p>
+
+<script>
+// === LIVE SHEET CONFIG & PARSER ===
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvIuq_6wUTzcbNm-ZXwQJKzbMsEniRxYEi6d-FlrIbhlF4g3Eek97QM8M1UDYUKxCU34eoMzcXhQKI/pub?gid=1093050961&single=true&output=csv';
+const FLAG_THRESHOLD = 3000;
+
+// --- CSV parser (handles quoted fields) ---
+function _csvRow(line){
+  const fields=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+    else if(c===','&&!inQ){fields.push(cur);cur='';}
+    else cur+=c;
+  }
+  fields.push(cur); return fields;
+}
+function _parseCSV(text){
+  return text.split('\n').map(l=>l.replace(/\r$/,'')).filter(l=>l.trim()).map(_csvRow);
+}
+
+// --- Date helpers ---
+function _monStart(d){
+  const day=d.getDay(); const diff=day===0?-6:1-day;
+  const m=new Date(d); m.setDate(m.getDate()+diff); m.setHours(0,0,0,0); return m;
+}
+const _MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function _fmtRange(s,e){
+  return _MO[s.getMonth()]+' '+String(s.getDate()).padStart(2,'0')+'-'+_MO[e.getMonth()]+' '+String(e.getDate()).padStart(2,'0');
+}
+function _fmtMon(d){ return _MO[d.getMonth()]+' '+d.getFullYear(); }
+
+// --- Row helpers ---
+// Column mapping: f[0]=Timestamp, f[1]=Agent Email, f[5]=Plan, f[6]=Country, f[7]=Category,
+// f[8]=Company, f[10]=Reason, f[11]=Cancelled/Refunded, f[12]=Amount,
+// f[15]=Issue Type, f[21]=Save offered, f[23]=Upsell Offered
+function _agent(email){ return (email||'').split('@')[0].toLowerCase().replace(/\./g,''); }
+function _amt(s){ const n=parseFloat((s||'').replace(/[$,\s]/g,'')); return isNaN(n)?0:n; }
+function _isCxl(r){ return r.cat==='Dashboard Cancellation'; }
+function _isRef(r){ return r.cat==='Annual Sub Refunds'; }
+function _isPS(r){ return /path/i.test(r.company); }
+function _isCI(r){ return /crowd/i.test(r.company); }
+
+// Classify cancellation as manual / refunded(7-day) / selfserve
+// Uses f[11] (Cancelled/Refunded) text and reason as signals
+function _cxlStatus(r){
+  const cf=(r.cf||'').toLowerCase();
+  if(/self[- ]?serv|complian/i.test(cf)) return 'self';
+  if(/refund|7[- ]?day/i.test(cf)) return 'ref';
+  if(/manual|terminat/i.test(cf)) return 'manual';
+  // Fallback on reason
+  if(/sub[- ]?ending|expir|auto[- ]?cancel/i.test(r.reason)) return 'self';
+  return 'manual';
+}
+
+function _topN(map,n,byAmt){
+  return Object.entries(map)
+    .filter(([k])=>k&&k!=='-'&&k!=='')
+    .sort((a,b)=>byAmt?b[1].amount-a[1].amount:b[1]-a[1])
+    .slice(0,n);
+}
+
+// --- Aggregate a bucket into time-series metrics ---
+const _CATS=['Dashboard Cancellation','Annual Sub Refunds','Retention (Save Offer)','Issue Reporting/Monitoring','Upsell'];
+function _aggBucket(rows){
+  const cc={}; _CATS.forEach(c=>cc[c]=0);
+  let rc=0,ra=0,ct=0,cm=0,cref=0,css=0,ic=0,uc=0,sc=0,cp=0,cci=0;
+  for(const r of rows){
+    if(cc.hasOwnProperty(r.cat)) cc[r.cat]++;
+    if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){rc++;ra+=r.amt;}
+    if(_isCxl(r)){
+      ct++;
+      const s=_cxlStatus(r);
+      if(s==='manual')cm++; else if(s==='ref')cref++; else css++;
+    }
+    if(r.cat==='Issue Reporting/Monitoring')ic++;
+    if(r.cat==='Upsell')uc++;
+    if(r.cat==='Retention (Save Offer)')sc++;
+    if(_isPS(r))cp++; if(_isCI(r))cci++;
+  }
+  return {cc,rc,ra:Math.round(ra*100)/100,ct,cm,
+    cpct:ct>0?Math.round(cm/ct*1000)/10:null,
+    cref,css,ic,uc,sc,cp,cci};
+}
+
+// --- Aggregate period detail (agents, reasons, plans) ---
+function _aggPeriod(rows){
+  const agents={},termR={},refR={},planR={};
+  for(const r of rows){
+    if(!agents[r.agentName]) agents[r.agentName]={n:r.agentName,cc:0,man:0,rc:0,ra:0,tr:{},rr:{}};
+    const ag=agents[r.agentName];
+    if(_isCxl(r)){
+      ag.cc++;
+      if(_cxlStatus(r)==='manual') ag.man++;
+      const k=r.reason||'-'; ag.tr[k]=(ag.tr[k]||0)+1; termR[k]=(termR[k]||0)+1;
+    }
+    if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){
+      ag.rc++; ag.ra+=r.amt;
+      const k=r.reason||'-'; ag.rr[k]=(ag.rr[k]||0)+1;
+      if(!refR[k]) refR[k]={count:0,amount:0}; refR[k].count++; refR[k].amount+=r.amt;
+      const p=r.plan||'Unknown'; if(!planR[p]) planR[p]={count:0,amount:0}; planR[p].count++; planR[p].amount+=r.amt;
+    }
+  }
+  const agArr=Object.values(agents).map(ag=>{
+    const pct=ag.cc>0?Math.round(ag.man/ag.cc*1000)/10:null;
+    const tt=ag.cc>0?(_topN(ag.tr,1,false)[0]||['-'])[0]:'-';
+    const tr=ag.rc>0?(_topN(ag.rr,1,false)[0]||['-'])[0]:'-';
+    return{agent:ag.n,cancellations:ag.cc,manual:ag.man,pct_manual:pct,
+      refunds:ag.rc,refund_amount:Math.round(ag.ra*100)/100,
+      top_term_reason:tt,top_refund_reason:tr};
+  });
+  const normRef=Object.fromEntries(Object.entries(refR).map(([k,v])=>[k,{count:v.count,amount:Math.round(v.amount*100)/100}]));
+  const normPlan=Object.fromEntries(Object.entries(planR).map(([k,v])=>[k,{count:v.count,amount:Math.round(v.amount*100)/100}]));
+  return{
+    agents:agArr,
+    term_reasons:_topN(termR,10,false).map(([k,v])=>[k,v]),
+    refund_reasons:_topN(normRef,6,true).map(([k,v])=>[k,v]),
+    plan_breakdown:_topN(normPlan,5,true).map(([k,v])=>[k,v])
+  };
+}
+
+// --- Yesterday vs day-before-yesterday stats ---
+function _ydayStats(rows,now){
+  const today=new Date(now);today.setHours(0,0,0,0);
+  const yd=new Date(today);yd.setDate(yd.getDate()-1);
+  const dby=new Date(yd);dby.setDate(dby.getDate()-1);
+  const ydEnd=new Date(yd);ydEnd.setHours(23,59,59,999);
+  const dbyEnd=new Date(dby);dbyEnd.setHours(23,59,59,999);
+  const ydR=rows.filter(r=>r.date>=yd&&r.date<=ydEnd);
+  const dbyR=rows.filter(r=>r.date>=dby&&r.date<=dbyEnd);
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const label=days[yd.getDay()]+', '+_MO[yd.getMonth()]+' '+yd.getDate();
+  function ds(rs){
+    let tot=0,rc=0,ra=0,ct=0,cm=0,css=0,cref=0,cp=0,cci=0;
+    const tr={},rr={};
+    for(const r of rs){
+      tot++;
+      if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){rc++;ra+=r.amt;const k=r.reason||'-';rr[k]=(rr[k]||0)+1;}
+      if(_isCxl(r)){ct++;const s=_cxlStatus(r);if(s==='manual')cm++;else if(s==='ref')cref++;else css++;const k=r.reason||'-';tr[k]=(tr[k]||0)+1;}
+      if(_isPS(r))cp++;if(_isCI(r))cci++;
+    }
+    const pct=ct>0?Math.round(cm/ct*1000)/10:null;
+    const tt=(_topN(tr,1,false)[0]||['-'])[0];
+    const tref=(_topN(rr,1,false)[0]||['-'])[0];
+    return{total:tot,refund_count:rc,refund_amount:Math.round(ra*100)/100,
+      cancel_total:ct,cancel_manual:cm,cancel_manual_pct:pct,
+      cancel_selfserve:css,cancel_refunded:cref,
+      company_path:cp,company_crowd:cci,
+      top_term_reason:tt,top_refund_reason:tref};
+  }
+  if(!ydR.length&&!dbyR.length) return{label:'-'};
+  return{label,y:ds(ydR),dby:ds(dbyR)};
+}
+
+// --- Main parser: CSV text → DATA structure ---
+function parseRefundsSheet(csvText){
+  const all=_parseCSV(csvText);
+  if(all.length<2) return null;
+  const now=new Date();
+  const rows=[],flagged=[];
+
+  for(let i=1;i<all.length;i++){
+    const f=all[i];
+    if(!(f[0]||'').trim()) continue;
+    const date=new Date(f[0].trim());
+    if(isNaN(date.getTime())) continue;
+    const an=_agent(f[1]||'');
+    if(EXCLUDE_AGENTS.has(an)) continue;
+    const row={
+      date,agentName:an||'unknown',
+      plan:(f[5]||'').trim(),country:(f[6]||'').trim(),
+      cat:(f[7]||'').trim(),company:(f[8]||'').trim(),
+      reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
+      amt:_amt(f[12]),issueType:(f[15]||'').trim(),
+      saveOff:(f[21]||'').trim(),upsellOff:(f[23]||'').trim()
+    };
+    if(_isRef(row)&&row.amt>FLAG_THRESHOLD){
+      flagged.push({date:_MO[date.getMonth()]+' '+date.getDate()+', '+date.getFullYear(),
+        agent:an,reason:row.reason,amount:row.amt});
+    }
+    rows.push(row);
+  }
+
+  // 8 completed Monday-Sunday weeks (most recent first → index 7)
+  const today=new Date(now);today.setHours(0,0,0,0);
+  const wStart=_monStart(today);
+  const wBuckets=[];
+  for(let i=7;i>=0;i--){
+    const s=new Date(wStart);s.setDate(s.getDate()-i*7);
+    const eD=new Date(s);eD.setDate(eD.getDate()+6);
+    const e=new Date(eD);e.setHours(23,59,59,999);
+    wBuckets.push({start:s,end:e,label:_fmtRange(s,eD),rows:[]});
+  }
+
+  // 6 months (current MTD + 5 prior)
+  const mBuckets=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now);d.setDate(1);d.setMonth(d.getMonth()-i);d.setHours(0,0,0,0);
+    const e=new Date(d);e.setMonth(e.getMonth()+1);e.setDate(0);e.setHours(23,59,59,999);
+    mBuckets.push({start:new Date(d),end:e,label:_fmtMon(d),rows:[]});
+  }
+
+  // Assign rows to buckets
+  for(const r of rows){
+    for(const b of wBuckets) if(r.date>=b.start&&r.date<=b.end){b.rows.push(r);break;}
+    for(const b of mBuckets) if(r.date>=b.start&&r.date<=b.end){b.rows.push(r);break;}
+  }
+
+  // Build time-series for week / month
+  function buildSeries(buckets){
+    const res={labels:[],category_counts:Object.fromEntries(_CATS.map(c=>[c,[]])),
+      refund_count:[],refund_amount:[],cancel_total:[],cancel_manual:[],
+      cancel_manual_pct:[],cancel_refunded:[],cancel_selfserve:[],
+      issue_count:[],upsell_count:[],save_count:[],company_path:[],company_crowd:[]};
+    for(const b of buckets){
+      res.labels.push(b.label);
+      const a=_aggBucket(b.rows);
+      _CATS.forEach(c=>res.category_counts[c].push(a.cc[c]||0));
+      res.refund_count.push(a.rc);res.refund_amount.push(a.ra);
+      res.cancel_total.push(a.ct);res.cancel_manual.push(a.cm);
+      res.cancel_manual_pct.push(a.cpct);res.cancel_refunded.push(a.cref);
+      res.cancel_selfserve.push(a.css);res.issue_count.push(a.ic);
+      res.upsell_count.push(a.uc);res.save_count.push(a.sc);
+      res.company_path.push(a.cp);res.company_crowd.push(a.cci);
+    }
+    return res;
+  }
+
+  // Period selectors
+  const wPeriods=[{key:'all',label:'All 8 Weeks (combined)'}].concat(wBuckets.map((b,i)=>({key:'p'+i,label:b.label})));
+  const mPeriods=[{key:'all',label:'All 6 Months (combined)'}].concat(mBuckets.map((b,i)=>({key:'p'+i,label:b.label})));
+
+  // Period detail data
+  const allW=wBuckets.flatMap(b=>b.rows);
+  const allM=mBuckets.flatMap(b=>b.rows);
+  const wPD={all:_aggPeriod(allW)};
+  wBuckets.forEach((b,i)=>{ wPD['p'+i]=_aggPeriod(b.rows); });
+  const mPD={all:_aggPeriod(allM)};
+  mBuckets.forEach((b,i)=>{ mPD['p'+i]=_aggPeriod(b.rows); });
+
+  // Issue types — cumulative all history
+  const issueMap={};
+  for(const r of rows) if(r.issueType) issueMap[r.issueType]=(issueMap[r.issueType]||0)+1;
+  const issue_types_arr=_topN(issueMap,20,false).map(([k,v])=>[k,v]);
+
+  // Generated-at timestamp
+  let h=now.getHours(); const ampm=h>=12?'PM':'AM'; h=h%12||12;
+  const min=String(now.getMinutes()).padStart(2,'0');
+  const generatedAt=_MO[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear()+', '+h+':'+min+' '+ampm;
+
+  return{
+    generated_at:generatedAt,
+    row_count:rows.length,
+    week:buildSeries(wBuckets),
+    month:buildSeries(mBuckets),
+    week_periods:wPeriods,
+    week_period_data:wPD,
+    month_periods:mPeriods,
+    month_period_data:mPD,
+    yesterday:_ydayStats(rows,now),
+    flagged,
+    issue_types_arr
+  };
+}
+
+// --- Load from live Google Sheet ---
+async function loadData(){
+  document.getElementById('statusText').textContent='Fetching live data…';
+  document.getElementById('rowCountText').textContent='';
+  try{
+    const resp=await fetch(SHEET_URL+'&cachebust='+Date.now());
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    DATA=parseRefundsSheet(await resp.text());
+    if(!DATA) throw new Error('No rows parsed — check sheet URL');
+    init();
+  }catch(e){
+    document.getElementById('statusText').textContent='⚠ Error loading data: '+e.message+' — reload to retry';
+  }
+}
+const EXCLUDE_AGENTS = new Set(['bianca','johnbaylon','rockwell']);
+const PALETTE = { navy:'#1F3864', accent:'#4472C4', amber:'#E8A33D', red:'#C0504D', green:'#4F8A5B', teal:'#2E8B8B', purple:'#7A5EA8' };
+
+let DATA = null;
+let charts = {};
+let currentView = 'week';
+let selectedPeriodKey = 'all';
+let agentSort = { key: 'pct_manual', dir: 'desc' };
+
+function fmtMoney(n){ return '$' + Math.round(n).toLocaleString(); }
+function fmtMoneyShort(n){ if (n===null||n===undefined) return '—'; return '$'+Math.round(n).toLocaleString(); }
+function fmtNum(n){ return Math.round(n).toLocaleString(); }
+function last2(arr){ return [arr[arr.length-1], arr[arr.length-2]]; }
+function pctDelta(cur, prev){ if (prev === 0 || prev === null || prev === undefined) return null; return ((cur - prev) / prev) * 100; }
+function deltaSpan(delta, goodDirection){
+  if (delta === null || isNaN(delta)) return '<span class="delta flat">—</span>';
+  const arrow = delta > 0 ? '▲' : (delta < 0 ? '▼' : '—');
+  const isGood = (goodDirection === 'down' && delta < 0) || (goodDirection === 'up' && delta > 0);
+  const isBad = (goodDirection === 'down' && delta > 0) || (goodDirection === 'up' && delta < 0);
+  let cls = 'flat';
+  if (isGood) cls = delta > 0 ? 'up-good' : 'down-good';
+  if (isBad) cls = delta > 0 ? 'up-bad' : 'down-bad';
+  return `<span class="delta ${cls}">${arrow} ${Math.abs(delta).toFixed(1)}% vs prior</span>`;
+}
+
+function renderYesterday(){
+  const yd = DATA.yesterday;
+  const card = document.getElementById('ydayCard');
+  if (!yd || yd.label === '-') { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const stats = [
+    { label:'Total Logged', value: fmtNum(yd.y.total), delta: deltaSpan(pctDelta(yd.y.total, yd.dby.total), 'up') },
+    { label:'Annual Refunds', value: fmtNum(yd.y.refund_count), delta: deltaSpan(pctDelta(yd.y.refund_count, yd.dby.refund_count), 'down') },
+    { label:'Refund $ (clean)', value: fmtMoney(yd.y.refund_amount), delta: deltaSpan(pctDelta(yd.y.refund_amount, yd.dby.refund_amount), 'down') },
+    { label:'Dashboard Cancellations', value: fmtNum(yd.y.cancel_total), delta: deltaSpan(pctDelta(yd.y.cancel_total, yd.dby.cancel_total), 'down') },
+    { label:'% Manually Terminated', value: yd.y.cancel_manual_pct===null?'—':yd.y.cancel_manual_pct+'%', delta: (yd.y.cancel_manual_pct!==null && yd.dby.cancel_manual_pct!==null) ? deltaSpan(yd.y.cancel_manual_pct - yd.dby.cancel_manual_pct, 'down') : '<span class="delta flat">—</span>' },
+    { label:'Path / Crowd Split', value: `${yd.y.company_path} / ${yd.y.company_crowd}`, delta: '' },
+  ];
+  card.innerHTML = `
+    <h2>Yesterday — ${yd.label}</h2>
+    <p class="sub">Deltas compare to the day before. Numbers reflect all categories logged for the full calendar day.</p>
+    <div class="yday-grid">
+      ${stats.map(s => `<div class="yday-stat"><div class="label">${s.label}</div><div class="value">${s.value}</div><div class="delta">${s.delta}</div></div>`).join('')}
+    </div>
+    <div class="yday-reasons">
+      <div class="yday-reason-box"><h4>Top Termination Reason</h4><div class="yday-reason-line"><span>${yd.y.top_term_reason}</span></div></div>
+      <div class="yday-reason-box"><h4>Top Refund Reason</h4><div class="yday-reason-line"><span>${yd.y.top_refund_reason}</span></div></div>
+    </div>
+  `;
+}
+
+function renderDataQuality(){
+  const tbody = document.querySelector('#dqTable tbody');
+  const rows = DATA.flagged;
+  document.getElementById('dqCard').style.display = rows.length ? 'block' : 'none';
+  tbody.innerHTML = rows.map(r => `<tr><td>${r.date}</td><td>${r.agent}</td><td>${r.reason}</td><td class="num" style="color:var(--red); font-weight:700;">${fmtMoney(r.amount)}</td></tr>`).join('');
+}
+
+function renderKPIs(view){
+  const d = DATA[view];
+  const periodLabel = view === 'week' ? 'this week' : 'this month';
+  const [refC, refCp] = last2(d.refund_count);
+  const [refA, refAp] = last2(d.refund_amount);
+  const [cxTot, cxTotP] = last2(d.cancel_total);
+  const [mPct, mPctP] = last2(d.cancel_manual_pct);
+  const [saveC, saveCp] = last2(d.save_count);
+  const [upC, upCp] = last2(d.upsell_count);
+  const kpis = [
+    { label: `Annual Refunds ${periodLabel}`, value: fmtNum(refC), delta: deltaSpan(pctDelta(refC, refCp), 'down') },
+    { label: `Refund $ ${periodLabel}`, value: fmtMoney(refA), delta: deltaSpan(pctDelta(refA, refAp), 'down') },
+    { label: `Dashboard Cancellations`, value: fmtNum(cxTot), delta: deltaSpan(pctDelta(cxTot, cxTotP), 'down') },
+    { label: `% Manually Terminated`, value: (mPct===null?'—':mPct+'%'), delta: (mPct!==null&&mPctP!==null)?deltaSpan(mPct - mPctP, 'down'):'<span class="delta flat">—</span>' },
+    { label: `Save Offers Made`, value: fmtNum(saveC), delta: deltaSpan(pctDelta(saveC, saveCp), 'up') },
+    { label: `Upsell Attempts`, value: fmtNum(upC), delta: deltaSpan(pctDelta(upC, upCp), 'up') },
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(k => `
+    <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="delta">${k.delta}</div></div>
+  `).join('');
+}
+
+function destroyCharts(){ Object.values(charts).forEach(c => c.destroy()); charts = {}; }
+function selectedIndex(){ if (selectedPeriodKey === 'all') return -1; const idx = parseInt(selectedPeriodKey.replace('p',''),10); return isNaN(idx)?-1:idx; }
+function barColors(view, baseColor){
+  const idx = selectedIndex(); const n = DATA[view].labels.length; const cols = [];
+  for (let i=0;i<n;i++) cols.push(idx === -1 || idx === i ? baseColor : baseColor + '33');
+  return cols;
+}
+
+function renderCategoryChart(view){
+  const d = DATA[view]; const cats = Object.keys(d.category_counts);
+  const colors = [PALETTE.navy, PALETTE.red, PALETTE.green, PALETTE.amber, PALETTE.purple];
+  charts.category = new Chart(document.getElementById('chartCategory'), {
+    type: 'bar',
+    data: { labels: d.labels, datasets: cats.map((c,i) => ({ label:c, data:d.category_counts[c], backgroundColor: barColors(view, colors[i%colors.length]), stack:'s' })) },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ x:{ stacked:true, ticks:{font:{size:10}} }, y:{ stacked:true, ticks:{font:{size:10}} } } }
+  });
+}
+function renderRefundChart(view){
+  const d = DATA[view];
+  charts.refund = new Chart(document.getElementById('chartRefund'), {
+    type:'bar',
+    data: { labels: d.labels, datasets: [
+      { type:'bar', label:'Refund Cases', data:d.refund_count, backgroundColor: barColors(view, PALETTE.accent), yAxisID:'y' },
+      { type:'line', label:'$ Refunded (clean)', data:d.refund_amount, borderColor: PALETTE.red, backgroundColor: PALETTE.red, yAxisID:'y1', tension:.3, pointRadius:3 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ y:{ position:'left', ticks:{font:{size:10}}, title:{display:true,text:'cases',font:{size:10}} },
+        y1:{ position:'right', grid:{drawOnChartArea:false}, ticks:{font:{size:10}, callback:v=>'$'+(v/1000)+'k'} },
+        x:{ ticks:{font:{size:10}} } } }
+  });
+}
+function renderCancelChart(view){
+  const d = DATA[view];
+  charts.cancel = new Chart(document.getElementById('chartCancel'), {
+    type:'bar',
+    data: { labels: d.labels, datasets: [
+      { type:'bar', label:'Manually Terminated', data:d.cancel_manual, backgroundColor: barColors(view, PALETTE.red), stack:'s', yAxisID:'y' },
+      { type:'bar', label:'Refunded (7-day/escalation)', data:d.cancel_refunded, backgroundColor: barColors(view, PALETTE.amber), stack:'s', yAxisID:'y' },
+      { type:'bar', label:'Self-Serve (compliant)', data:d.cancel_selfserve, backgroundColor: barColors(view, PALETTE.green), stack:'s', yAxisID:'y' },
+      { type:'line', label:'% Manually Terminated', data:d.cancel_manual_pct, borderColor: PALETTE.navy, backgroundColor: PALETTE.navy, yAxisID:'y1', tension:.3, pointRadius:3 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ y:{ stacked:true, position:'left', ticks:{font:{size:10}} },
+        y1:{ position:'right', grid:{drawOnChartArea:false}, min:0, max:100, ticks:{font:{size:10}, callback:v=>v+'%'} },
+        x:{ stacked:true, ticks:{font:{size:10}} } } }
+  });
+}
+function renderLOBChart(view){
+  const d = DATA[view];
+  charts.lob = new Chart(document.getElementById('chartLOB'), {
+    type:'bar',
+    data: { labels: d.labels, datasets: [
+      { label:'Path Social', data:d.company_path, backgroundColor: barColors(view, PALETTE.navy), stack:'s' },
+      { label:'Crowd Ignite', data:d.company_crowd, backgroundColor: barColors(view, PALETTE.teal), stack:'s' }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ x:{ stacked:true, ticks:{font:{size:10}} }, y:{ stacked:true, ticks:{font:{size:10}} } } }
+  });
+}
+function renderSaveUpsellChart(view){
+  const d = DATA[view];
+  charts.saveUpsell = new Chart(document.getElementById('chartSaveUpsell'), {
+    type:'line',
+    data: { labels: d.labels, datasets: [
+      { label:'Save Offers Made', data:d.save_count, borderColor: PALETTE.green, backgroundColor: PALETTE.green, tension:.3, pointRadius:3 },
+      { label:'Upsell Attempts', data:d.upsell_count, borderColor: PALETTE.purple, backgroundColor: PALETTE.purple, tension:.3, pointRadius:3 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10}}, beginAtZero:true } } }
+  });
+}
+function renderIssueChart(){
+  const entries = DATA.issue_types_arr || [];
+  const types = entries.map(e=>e[0]); const vals = entries.map(e=>e[1]);
+  charts.issue = new Chart(document.getElementById('chartIssue'), {
+    type:'bar',
+    data: { labels: types.length?types:['No issues logged'], datasets: [{ label:'Reports', data: vals.length?vals:[0], backgroundColor: PALETTE.amber }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10.5}} } } }
+  });
+}
+
+function currentPeriodData(view){
+  const key = view === 'week' ? 'week_period_data' : 'month_period_data';
+  return DATA[key][selectedPeriodKey] || DATA[key]['all'];
+}
+function renderInsights(view){
+  const pd = currentPeriodData(view);
+  const box = document.getElementById('insightRow');
+  // term_reasons is already sorted by case count desc; refund_reasons already sorted by $ amount desc;
+  // both are embedded as [key, value] entry-arrays (not plain objects) so order is preserved reliably.
+  const termEntries = pd.term_reasons || [];
+  const refEntries = pd.refund_reasons || [];
+  const planEntries = pd.plan_breakdown || [];
+  const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
+  const label = periods.find(p => p.key === selectedPeriodKey)?.label || 'All';
+  const termHtml = termEntries.map(([reason,count]) => `<div class="insight-line"><span>${reason}</span><span class="stat">${count} cases</span></div>`).join('');
+  const refHtml = refEntries.map(([reason,v]) => `<div class="insight-line"><span>${reason}</span><span class="stat">${v.count} · ${fmtMoneyShort(v.amount)}</span></div>`).join('');
+  let planHtml;
+  if (planEntries.length) {
+    const [topPlan, topV] = planEntries[0];
+    const runnerUps = planEntries.slice(1).map(([plan,v]) => `<div class="insight-line"><span>${plan}</span><span class="stat">${v.count} · ${fmtMoneyShort(v.amount)}</span></div>`).join('');
+    planHtml = `
+      <div class="insight-highlight">
+        <div class="plan-name">${topPlan}</div>
+        <div class="plan-stat">Most affected plan — ${topV.count} refunds · ${fmtMoneyShort(topV.amount)}</div>
+      </div>
+      ${runnerUps}
+    `;
+  } else {
+    planHtml = '<div class="insight-line"><span>No refunds in window</span></div>';
+  }
+  box.innerHTML = `
+    <div class="insight-box"><h3>Top Reasons — Manual Termination (${label})</h3>${termHtml || '<div class="insight-line"><span>No manual terminations in window</span></div>'}</div>
+    <div class="insight-box"><h3>Top Reasons — Annual Refunds (${label})</h3>${refHtml || '<div class="insight-line"><span>No refunds in window</span></div>'}</div>
+    <div class="insight-box"><h3>Most Affected Plan — Annual Refunds (${label})</h3>${planHtml}</div>
+  `;
+}
+function sortRows(rows){
+  const { key, dir } = agentSort;
+  return [...rows].sort((a,b) => {
+    let av = a[key], bv = b[key];
+    if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if (av === null || av === undefined) av = -Infinity;
+    if (bv === null || bv === undefined) bv = -Infinity;
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+function renderAgentTable(view){
+  const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
+  const label = periods.find(p => p.key === selectedPeriodKey)?.label || 'All';
+  document.getElementById('agentCardTitle').textContent = `Agent Termination & Refund Activity — ${label}`;
+  document.getElementById('periodNote').textContent = selectedPeriodKey === 'all'
+    ? `Showing combined totals across the ${view === 'week' ? '8 weeks' : '6 months'}. Pick a single period from the dropdown to isolate it.`
+    : `Isolated to ${label} only.`;
+  renderInsights(view);
+  const pd = currentPeriodData(view);
+  const rows = sortRows(pd.agents);
+  const maxPct = Math.max(...rows.map(r=>r.pct_manual||0), 1);
+  const maxAmt = Math.max(...rows.map(r=>r.refund_amount||0), 1);
+  const tbody = document.querySelector('#agentTable tbody');
+  tbody.innerHTML = rows.length ? rows.map(r => {
+    const pctColor = r.pct_manual >= 55 ? PALETTE.red : (r.pct_manual >= 40 ? PALETTE.amber : PALETTE.green);
+    return `<tr>
+      <td>${r.agent}</td>
+      <td class="num">${r.cancellations}</td>
+      <td class="num">${r.manual}</td>
+      <td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.pct_manual/maxPct*100).toFixed(0)}%; background:${pctColor};"></div></div><span style="min-width:42px; font-weight:600;">${r.pct_manual===null?'—':r.pct_manual+'%'}</span></div></td>
+      <td class="num">${r.refunds}</td>
+      <td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.refund_amount/maxAmt*100).toFixed(0)}%; background:${PALETTE.accent};"></div></div><span style="min-width:70px; font-weight:600;">${fmtMoneyShort(r.refund_amount)}</span></div></td>
+      <td>${r.top_term_reason}</td>
+      <td>${r.top_refund_reason}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:16px;">No activity in this period.</td></tr>`;
+  document.querySelectorAll('#agentTable th.sortable').forEach(th => {
+    th.classList.toggle('active', th.dataset.sort === agentSort.key);
+    th.querySelector('.arrow')?.remove();
+    if (th.dataset.sort === agentSort.key) th.insertAdjacentHTML('beforeend', ` <span class="arrow">${agentSort.dir === 'asc' ? '▲' : '▼'}</span>`);
+  });
+}
+document.querySelectorAll('#agentTable th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (agentSort.key === key) agentSort.dir = agentSort.dir === 'asc' ? 'desc' : 'asc';
+    else agentSort = { key, dir: (key === 'agent' ? 'asc' : 'desc') };
+    renderAgentTable(currentView);
+  });
+});
+
+function populatePeriodSelect(view){
+  const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
+  const sel = document.getElementById('periodSelect');
+  sel.innerHTML = periods.map(p => `<option value="${p.key}">${p.label}</option>`).join('');
+  selectedPeriodKey = 'all'; sel.value = 'all';
+}
+
+function renderAll(view){
+  currentView = view;
+  destroyCharts();
+  populatePeriodSelect(view);
+  renderKPIs(view);
+  renderCategoryChart(view);
+  renderRefundChart(view);
+  renderCancelChart(view);
+  renderLOBChart(view);
+  renderSaveUpsellChart(view);
+  renderIssueChart();
+  renderAgentTable(view);
+}
+
+document.getElementById('viewToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#viewToggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll(btn.dataset.view);
+});
+document.getElementById('periodSelect').addEventListener('change', (e) => {
+  selectedPeriodKey = e.target.value;
+  destroyCharts();
+  renderCategoryChart(currentView); renderRefundChart(currentView); renderCancelChart(currentView);
+  renderLOBChart(currentView); renderSaveUpsellChart(currentView); renderIssueChart();
+  renderAgentTable(currentView);
+});
+
+function init(){
+  document.getElementById('rowCountText').textContent = `${DATA.row_count.toLocaleString()} rows loaded`;
+  document.getElementById('statusText').textContent = `Data as of ${DATA.generated_at}`;
+  renderYesterday();
+  renderDataQuality();
+  renderAll('week');
+}
+loadData();
+</script>
+</body>
+</html>
