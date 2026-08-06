@@ -2836,10 +2836,10 @@ function parseRfndOverview(csvText){
     });
   }
 
-  // Row-type helpers — broad matching to survive sheet naming variations
-  // A row is a cancellation if category OR cf column suggests it (not a refund)
+  // Row-type helpers — exact match first (matches full report), regex as safety net
   function isCxl(r){
-    return /cancel/i.test(r.cat) || (/cancel|terminat/i.test(r.cf) && !/refund|7[- ]?day/i.test(r.cf));
+    return r.cat==='Dashboard Cancellation' || /cancel/i.test(r.cat) ||
+           (/cancel|terminat/i.test(r.cf) && !/refund|7[- ]?day/i.test(r.cf));
   }
   function isRef(r){
     return /refund/i.test(r.cat) || /refund|7[- ]?day/i.test(r.cf);
@@ -2890,7 +2890,7 @@ function parseRfndOverview(csvText){
   var termR={},refR={},planR={},agentR={};
   last4Rows.forEach(function(r){
     if(isCxl(r)){
-      termR[r.rsn||'-']=(termR[r.rsn||'-']||0)+1;
+      var tk = r.rsn||r.cf||'Other'; termR[tk]=(termR[tk]||0)+1;
       if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0};
       agentR[r.agent].cxls++;
     }
@@ -2902,7 +2902,7 @@ function parseRfndOverview(csvText){
     }
   });
   function top(map,n,byAmt){
-    return Object.entries(map).filter(function(e){return e[0]&&e[0]!=='-';})
+    return Object.entries(map).filter(function(e){return e[0]&&e[0].trim();})
       .sort(function(a,b){return byAmt?b[1].a-a[1].a:b[1]-a[1];}).slice(0,n);
   }
   var topAgentsArr = Object.entries(agentR)
