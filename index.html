@@ -2830,7 +2830,7 @@ function parseRfndOverview(csvText){
     var amtUSD = toUSD(f[12]||'');
     rows.push({
       date:dt, cat:(f[7]||'').trim(), rsn:(f[10]||'').trim(), cf:(f[11]||'').trim(),
-      amt:amtUSD, plan:(f[5]||'').trim(),
+      amt:amtUSD, plan:(f[5]||'').trim(), company:(f[8]||'').trim(),
       status:(f[18]||'').trim(), dcrsn:(f[19]||'').trim(),
       save:(f[21]||'').trim(), upsell:(f[23]||'').trim(),
       agent:handle
@@ -2883,14 +2883,23 @@ function parseRfndOverview(csvText){
     var we=new Date(lastSun); we.setDate(lastSun.getDate()-wi*7);
     var ws=new Date(we); ws.setDate(we.getDate()-6);
     var wr=rows.filter(function(r){return r.date>=ws&&r.date<=we;});
-    var c2=0,r2=0,m2=0;
+    var c2=0,r2=0,cxlCan=0,cxlTerm=0,cxlRef=0,ci2=0;
     wr.forEach(function(r){
-      if(isCxl(r)){c2++;if(isManual(r))m2++;}
+      if(isCxl(r)){
+        c2++;
+        var st=(r.status||'').toLowerCase();
+        if(/^terminat/.test(st))cxlTerm++;
+        else if(/^refund/.test(st)){cxlRef++;}
+        else if(/^cancel/.test(st))cxlCan++;
+        if(/crowd/i.test(r.company||''))ci2++;
+      }
       if(isRef(r)&&r.amt<=FLAG_T)r2++;
     });
     if(wi<=3) last4Rows=last4Rows.concat(wr);
     var lbl=MO[ws.getMonth()]+' '+ws.getDate()+'–'+(we.getMonth()!==ws.getMonth()?MO[we.getMonth()]+' ':'')+we.getDate();
-    wks.push({lbl:lbl,total:wr.length,cxls:c2,refs:r2,manual:m2,manPct:c2>0?Math.round(m2/c2*1000)/10:null});
+    wks.push({lbl:lbl,total:c2,cxls:c2,refs:r2,
+      cancelled:cxlCan,terminated:cxlTerm,refunded:cxlRef,
+      refPct:c2>0?Math.round(cxlRef/c2*1000)/10:null,ci:ci2});
   }
 
   // Insights from last 4 completed weeks
@@ -2981,13 +2990,21 @@ function renderRefunds(){
     var dStr  = d2===null?'—':d2>0?'▲ +'+d2:d2<0?'▼ '+d2:'→ 0';
     var dColor= d2===null?'var(--text3)':d2>0?'var(--red)':d2<0?'var(--green)':'var(--text3)';
     var isLast = i===S.wkData.length-1;
-    var mp = wk.manPct;
+    var rp = wk.refPct!=null?wk.refPct:null;
+    var ciNote = wk.ci!=null&&wk.ci>0?' <span style="font-size:10px;color:var(--text3)">(CI-'+wk.ci+')</span>':'';
+    // Fallback for old snapshot rows that only have cxls
+    var tot = wk.total!=null?wk.total:(wk.cxls||'—');
+    var can = wk.cancelled!=null?wk.cancelled:'—';
+    var ter = wk.terminated!=null?wk.terminated:'—';
+    var ref = wk.refunded!=null?wk.refunded:'—';
     return '<tr style="background:'+(isLast?'#fff7ed':i%2===0?'#fff':'#f8fafc')+'">'
       +'<td style="padding:5px 8px;border:1px solid var(--border);font-weight:'+(isLast?'700':'400')+'">'+wk.lbl+'</td>'
-      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:700">'+wk.total+'</td>'
-      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+wk.cxls+'</td>'
-      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+wk.refs+'</td>'
-      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:'+(mp!=null&&mp>=55?'var(--red)':mp!=null&&mp>=40?'var(--amber)':'var(--text2)')+';">'+(mp!=null?mp+'%':'—')+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:700">'+tot+ciNote+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+can+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+ter+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+ref+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);color:'+(rp!=null&&rp>=40?'var(--red)':rp!=null&&rp>=25?'var(--amber)':'var(--text2)')+';">'+(rp!=null?rp+'%':'—')+'</td>'
+      +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border)">'+(wk.refs!=null?wk.refs:'—')+'</td>'
       +'<td style="text-align:center;padding:5px 8px;border:1px solid var(--border);font-weight:600;color:'+dColor+'">'+dStr+'</td>'
       +'</tr>';
   }).join('');
@@ -2997,10 +3014,12 @@ function renderRefunds(){
     +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
     +'<thead><tr>'
     +'<th style="text-align:left;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Week</th>'
-    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Total</th>'
-    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Cancellations</th>'
-    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Refunds</th>'
-    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">% Manual Term</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Total Cxls</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Cancelled</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Terminated</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Refunded</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Refund Rate</th>'
+    +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">Annual Refs</th>'
     +'<th style="text-align:center;padding:5px 8px;background:#f1f4f9;border:1px solid var(--border);color:var(--text2)">WoW Δ</th>'
     +'</tr></thead>'
     +'<tbody>'+wowRows+'</tbody>'
