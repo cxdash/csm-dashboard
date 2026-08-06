@@ -54,7 +54,8 @@
   .card h2 { font-size:14px; margin:0 0 2px 0; color: var(--navy); }
   .card .desc { font-size:11.5px; color: var(--text-muted); margin:0 0 10px 0; }
   .chart-wrap { position:relative; height:230px; }
-  table { width:100%; border-collapse: collapse; font-size:12.5px; }
+  table { width:100%; border-collapse: collapse; font-size:12.5px; table-layout:fixed; }
+  #agentTable td, #agentTable th { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--border); }
   th { color: var(--text-muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
   .bar-cell { display:flex; align-items:center; gap:8px; }
@@ -147,14 +148,15 @@
   <div style="overflow-x:auto;">
   <table id="agentTable">
     <thead><tr>
-      <th data-sort="agent" class="sortable">Agent</th>
-      <th data-sort="cancellations" class="sortable num">Total Cxls</th>
-      <th data-sort="cxlTerminated" class="sortable num" title="Status = Terminate (expired)">Terminated</th>
-      <th data-sort="cxlCancelled" class="sortable num" title="Status = Cancelled (cancelled state)">Cancelled</th>
-      <th data-sort="pct_manual" class="sortable num" style="width:150px;">% Manually Term</th>
-      <th data-sort="refunds" class="sortable num">Refunds</th>
-      <th data-sort="refund_amount" class="sortable num">Refund $</th>
-      <th>Top Termination Reason</th>
+      <th data-sort="agent" class="sortable" style="width:10%">Agent</th>
+      <th data-sort="cancellations" class="sortable num" style="width:7%">Total Cxls</th>
+      <th data-sort="cxlTerminated" class="sortable num" style="width:8%" title="Status = Terminate">Terminated</th>
+      <th data-sort="cxlCancelled" class="sortable num" style="width:8%" title="Status = Cancelled">Cancelled</th>
+      <th data-sort="pct_manual" class="sortable num" style="width:12%">% Manually Term</th>
+      <th data-sort="refunds" class="sortable num" style="width:7%">Refunds</th>
+      <th data-sort="refund_amount" class="sortable num" style="width:9%">Refund $</th>
+      <th style="width:20%">Top Cancellation Reason</th>
+      <th style="width:19%">Top Refund Reason</th>
     </tr></thead>
     <tbody></tbody>
   </table>
@@ -315,7 +317,7 @@ function _ydayStats(rows,now){
     for(const r of rs){
       tot++;
       if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){rc++;ra+=r.amt;const k=r.reason||'-';rr[k]=(rr[k]||0)+1;}
-      if(_isCxl(r)){ct++;const s=_cxlStatus(r);if(s==='manual')cm++;else if(s==='ref')cref++;else css++;const k=r.reason||'-';tr[k]=(tr[k]||0)+1;}
+      if(_isCxl(r)){ct++;const s=_cxlStatus(r);if(s==='manual')cm++;else if(s==='ref')cref++;else css++;const k=r.dcrsn||r.reason||'-';tr[k]=(tr[k]||0)+1;}
       if(_isPS(r))cp++;if(_isCI(r))cci++;
     }
     const pct=ct>0?Math.round(cm/ct*1000)/10:null;
@@ -522,8 +524,8 @@ function renderYesterday(){
       ${stats.map(s => `<div class="yday-stat"><div class="label">${s.label}</div><div class="value">${s.value}</div><div class="delta">${s.delta}</div></div>`).join('')}
     </div>
     <div class="yday-reasons">
-      <div class="yday-reason-box"><h4>Top Termination Reason</h4><div class="yday-reason-line"><span>${yd.y.top_term_reason}</span></div></div>
-      <div class="yday-reason-box"><h4>Top Refund Reason</h4><div class="yday-reason-line"><span>${yd.y.top_refund_reason}</span></div></div>
+      <div class="yday-reason-box"><h4>Top Cancellation Reason</h4><div class="yday-reason-line"><span>${yd.y.top_term_reason&&yd.y.top_term_reason!=='-'?yd.y.top_term_reason:'—'}</span></div></div>
+      <div class="yday-reason-box"><h4>Annual Sub Refund Reason</h4><div class="yday-reason-line"><span>${yd.y.top_refund_reason&&yd.y.top_refund_reason!=='-'?yd.y.top_refund_reason:'—'}</span></div></div>
     </div>
   `;
 }
@@ -717,7 +719,8 @@ function renderAgentTable(view){
       <td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.pct_manual/maxPct*100).toFixed(0)}%; background:${pctColor};"></div></div><span style="min-width:42px; font-weight:600;">${r.pct_manual===null?'—':r.pct_manual+'%'}</span></div></td>
       <td class="num">${r.refunds}</td>
       <td class="num"><div class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${(r.refund_amount/maxAmt*100).toFixed(0)}%; background:${PALETTE.accent};"></div></div><span style="min-width:70px; font-weight:600;">${fmtMoneyShort(r.refund_amount)}</span></div></td>
-      <td>${r.top_term_reason}</td>
+      <td style="font-size:11px">${r.top_term_reason||'—'}</td>
+      <td style="font-size:11px">${r.top_refund_reason||'—'}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:16px;">No activity in this period.</td></tr>`;
   document.querySelectorAll('#agentTable th.sortable').forEach(th => {
