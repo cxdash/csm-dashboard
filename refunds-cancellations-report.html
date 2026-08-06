@@ -315,6 +315,7 @@ function _ydayStats(rows,now){
     let tot=0,rc=0,ra=0,ct=0,cm=0,css=0,cref=0,cp=0,cci=0;
     // Separate reason maps per cancellation status type
     const trTerminated={}, trCancelled={}, trRefundedCxl={}, rr={};
+    const refundedNotes=[];
     for(const r of rs){
       tot++; // ALL rows regardless of status
       if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){rc++;ra+=r.amt;const k=r.reason||'-';rr[k]=(rr[k]||0)+1;}
@@ -323,20 +324,41 @@ function _ydayStats(rows,now){
         const s=_cxlStatus(r);
         const k=r.dcrsn||r.reason||'-';
         if(s==='manual'){cm++;trTerminated[k]=(trTerminated[k]||0)+1;}
-        else if(s==='ref'){cref++;trRefundedCxl[k]=(trRefundedCxl[k]||0)+1;}
+        else if(s==='ref'){cref++;trRefundedCxl[k]=(trRefundedCxl[k]||0)+1;if(r.notes)refundedNotes.push(r.notes);}
         else{css++;trCancelled[k]=(trCancelled[k]||0)+1;}
       }
       if(_isPS(r))cp++;if(_isCI(r))cci++;
     }
     const pct=ct>0?Math.round(cm/ct*1000)/10:null;
+    const refPct=ct>0?Math.round(cref/ct*1000)/10:null;
     function top1(map){return(_topN(map,1,false)[0]||[null])[0]||null;}
+    // Notes insight for Refunded (Cxl) rows
+    const refNotes=refundedNotes.map(n=>n.toLowerCase());
+    function _notesTheme(notes){
+      if(!notes.length) return null;
+      const themes=[
+        {k:['within 7','7 day','7-day','7days'],lbl:'Requests within 7-day window'},
+        {k:['quality','poor','not working','bug','broken','issue'],lbl:'Quality/service issues'},
+        {k:['expensive','too much','price','cost','afford','cheap'],lbl:'Price sensitivity'},
+        {k:['accident','accidentally','mistaken','wrong','error'],lbl:'Accidental sign-ups'},
+        {k:['billing','charged','charge','double','duplicate'],lbl:'Billing disputes'},
+        {k:['cancel','no longer','don\'t need','not using','unused'],lbl:'No longer needed'},
+        {k:['escalat','manager','supervisor'],lbl:'Escalated cases'},
+        {k:['annual','yearly','year'],lbl:'Annual plan refund requests'},
+      ];
+      const counts=themes.map(t=>({lbl:t.lbl,n:notes.filter(n=>t.k.some(k=>n.includes(k))).length}));
+      counts.sort((a,b)=>b.n-a.n);
+      const top=counts.find(c=>c.n>0);
+      return top?top.lbl+' ('+top.n+' noted)':null;
+    }
     return{total:tot,refund_count:rc,refund_amount:Math.round(ra*100)/100,
       cancel_total:ct,cancel_manual:cm,cancel_cancelled:css,cancel_refunded_cxl:cref,
-      cancel_manual_pct:pct,company_path:cp,company_crowd:cci,
+      cancel_manual_pct:pct,refund_rate:refPct,company_path:cp,company_crowd:cci,
       top_terminated_reason:top1(trTerminated),
       top_cancelled_reason:top1(trCancelled),
       top_refunded_cxl_reason:top1(trRefundedCxl),
-      top_refund_reason:top1(rr)};
+      top_refund_reason:top1(rr),
+      refunded_cxl_insight:_notesTheme(refNotes)};
   }
   if(!ydR.length&&!dbyR.length) return{label:'-'};
   return{label,y:ds(ydR),dby:ds(dbyR)};
@@ -363,6 +385,7 @@ function parseRefundsSheet(csvText){
       reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
       amt:_amt(f[12]),issueType:(f[15]||'').trim(),
       status:(f[18]||'').trim(),dcrsn:(f[19]||'').trim(),
+      notes:(f[20]||'').trim(),
       saveOff:(f[21]||'').trim(),upsellOff:(f[23]||'').trim()
     };
     if(_isRef(row)&&row.amt>FLAG_THRESHOLD){
@@ -524,16 +547,17 @@ function renderYesterday(){
     { label:'Annual Refunds', value: fmtNum(y.refund_count), delta: deltaSpan(pctDelta(y.refund_count, db.refund_count), 'down') },
     { label:'Refund $ (clean)', value: fmtMoney(y.refund_amount), delta: deltaSpan(pctDelta(y.refund_amount, db.refund_amount), 'down') },
     { label:'Dashboard Cancellations', value: fmtNum(y.cancel_total), delta: deltaSpan(pctDelta(y.cancel_total, db.cancel_total), 'down') },
-    { label:'% Manually Terminated', value: y.cancel_manual_pct===null?'—':y.cancel_manual_pct+'%', delta: (y.cancel_manual_pct!==null&&db.cancel_manual_pct!==null)?deltaSpan(y.cancel_manual_pct-db.cancel_manual_pct,'down'):'<span class="delta flat">—</span>' },
+    { label:'Refund Rate (Cxl)', value: y.refund_rate===null?'—':y.refund_rate+'%', delta: (y.refund_rate!==null&&db.refund_rate!==null)?deltaSpan(y.refund_rate-db.refund_rate,'down'):'<span class="delta flat">—</span>' },
     { label:'Path / Crowd Split', value: `${y.company_path} / ${y.company_crowd}`, delta: '' },
   ];
-  function reasonBox(label, count, color, reason, sub){
+  function reasonBox(label, count, color, reason, sub, insight){
     return `<div class="yday-reason-box">
       <h4 style="color:${color}">${label} <span style="font-weight:400;font-size:11px;color:rgba(255,255,255,.6)">(${count||0})</span></h4>
       <div class="yday-reason-line" style="margin-top:4px">
         <span style="font-weight:600">${reason||'—'}</span>
       </div>
       <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:2px">${sub}</div>
+      ${insight?`<div style="font-size:10px;color:#80cbc4;margin-top:5px;font-style:italic">💡 ${insight}</div>`:''}
     </div>`;
   }
   card.innerHTML = `
@@ -545,7 +569,7 @@ function renderYesterday(){
     <div class="yday-reasons" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
       ${reasonBox('Terminated',''+y.cancel_manual,'#ef9a9a',y.top_terminated_reason,'Expires immediately, no refund')}
       ${reasonBox('Cancelled',''+y.cancel_cancelled,'#ffe082',y.top_cancelled_reason,'Expires end of paid cycle')}
-      ${reasonBox('Refunded (Cxl)',''+y.cancel_refunded_cxl,'#80cbc4',y.top_refunded_cxl_reason,'Terminated + refund issued')}
+      ${reasonBox('Refunded (Cxl)',''+y.cancel_refunded_cxl,'#80cbc4',y.top_refunded_cxl_reason,'Terminated + refund issued',y.refunded_cxl_insight)}
       ${reasonBox('Annual Sub Refund',''+y.refund_count,'#90caf9',y.top_refund_reason,'Annual Sub Refunds category')}
     </div>
   `;
