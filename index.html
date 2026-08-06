@@ -2852,6 +2852,7 @@ function parseRfndOverview(csvText){
     var cf=(r.cf||'').toLowerCase();
     return !(/self[- ]?serv|complian/i.test(cf)||/refund|7[- ]?day/i.test(cf)||/sub[- ]?ending|expir/i.test(r.rsn));
   }
+  function isRefundedCxl(r){ return isCxl(r) && /^refund/i.test(r.status||''); }
   function isSave(r){ return r.save && !/^(no|n\/a|-|)$/i.test(r.save); }
   function isUpsell(r){ return r.upsell && !/^(no|n\/a|-|)$/i.test(r.upsell); }
 
@@ -2864,15 +2865,17 @@ function parseRfndOverview(csvText){
 
   // Current in-progress week (Mon → today)
   var curWkRows = rows.filter(function(r){return r.date>=thisMon;});
-  var cw={refs:0,refAmt:0,cxls:0,manual:0,saves:0,upsells:0};
+  var cw={refs:0,refAmt:0,cxls:0,manual:0,refundedCxl:0,saves:0,upsells:0};
   curWkRows.forEach(function(r){
     if(isRef(r)&&r.amt<=FLAG_T){cw.refs++;cw.refAmt+=r.amt;}
-    if(isCxl(r)){cw.cxls++;if(isManual(r))cw.manual++;}
+    if(isCxl(r)){cw.cxls++;if(isManual(r))cw.manual++;if(isRefundedCxl(r))cw.refundedCxl++;}
     if(isSave(r))cw.saves++;
     if(isUpsell(r))cw.upsells++;
   });
   var currentWk={refs:cw.refs,refAmt:Math.round(cw.refAmt),cxls:cw.cxls,manual:cw.manual,
-    manPct:cw.cxls>0?Math.round(cw.manual/cw.cxls*1000)/10:null,saves:cw.saves,upsells:cw.upsells};
+    manPct:cw.cxls>0?Math.round(cw.manual/cw.cxls*1000)/10:null,
+    refPct:cw.cxls>0?Math.round(cw.refundedCxl/cw.cxls*1000)/10:null,
+    saves:cw.saves,upsells:cw.upsells};
 
   // 8 completed Mon-Sun weeks; collect last 4 for insights
   var wks=[], last4Rows=[];
@@ -2959,14 +2962,14 @@ function renderRefunds(){
       +'</div>';
   }
 
-  var manPctStr = cw.manPct!=null ? cw.manPct+'%' : (cw.cxls>0 ? Math.round((cw.manual||0)/cw.cxls*100)+'%' : '—');
-  var pwManPct = pw ? (pw.manPct!=null ? pw.manPct : null) : null;
+  var refPctStr = cw.refPct!=null ? cw.refPct+'%' : '—';
+  var pwRefPct = pw ? (pw.refPct!=null ? pw.refPct : null) : null;
 
   var cwCards = '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">'
     +metricCard('Annual Refunds This Week', cw.refs||0, delta(cw.refs, pw?pw.refs:null, false))
-    +metricCard('Refund $ This Week', fmtAmt(cw.refAmt||0), delta(cw.refAmt||0, pw?null:null, true)) // no good prior $ in wkData
+    +metricCard('Refund $ This Week', fmtAmt(cw.refAmt||0), delta(cw.refAmt||0, pw?null:null, true))
     +metricCard('Dashboard Cancellations', cw.cxls||0, delta(cw.cxls, pw?pw.cxls:null, false))
-    +metricCard('% Manually Terminated', manPctStr, pwManPct!=null?'<span style="color:var(--text3);font-size:11px">'+pwManPct+'% prior week</span>':'<span style="color:var(--text3);font-size:11px">— vs prior</span>')
+    +metricCard('% Refund Rate (Cxl)', refPctStr, pwRefPct!=null?'<span style="color:var(--text3);font-size:11px">'+pwRefPct+'% prior week</span>':'<span style="color:var(--text3);font-size:11px">— vs prior</span>')
     +metricCard('Save Offers Made', cw.saves||0, '<span style="color:var(--text3);font-size:11px">— vs prior</span>')
     +metricCard('Upsell Attempts', cw.upsells||0, '<span style="color:var(--text3);font-size:11px">— vs prior</span>')
     +'</div>';
