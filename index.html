@@ -2931,14 +2931,15 @@ function parseRfndOverview(csvText){
   last4Rows.forEach(function(r){
     if(isCxl(r)){
       var tk = r.dcrsn||r.rsn||'Other'; termR[tk]=(termR[tk]||0)+1;
-      if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0};
+      if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0,refAmt:0};
       agentR[r.agent].cxls++;
     }
     if(isRef(r)&&r.amt<=FLAG_T){
       if(!refR[r.rsn||'-'])refR[r.rsn||'-']={c:0,a:0}; refR[r.rsn||'-'].c++; refR[r.rsn||'-'].a+=r.amt;
       if(!planR[r.plan||'Unknown'])planR[r.plan||'Unknown']={c:0,a:0}; planR[r.plan||'Unknown'].c++; planR[r.plan||'Unknown'].a+=r.amt;
-      if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0};
+      if(!agentR[r.agent])agentR[r.agent]={cxls:0,refs:0,refAmt:0};
       agentR[r.agent].refs++;
+      agentR[r.agent].refAmt+=(r.amt||0);
     }
   });
   function top(map,n,byAmt){
@@ -2947,7 +2948,7 @@ function parseRfndOverview(csvText){
   }
   var topAgentsArr = Object.entries(agentR)
     .filter(function(e){return e[0]&&e[0]!=='-';})
-    .map(function(e){return [e[0],e[1].cxls+e[1].refs,e[1].cxls,e[1].refs];})
+    .map(function(e){return [e[0],e[1].cxls+e[1].refs,e[1].cxls,e[1].refs,Math.round(e[1].refAmt||0)];})
     .sort(function(a,b){return b[1]-a[1];}).slice(0,5);
 
   var d=new Date(); var h=d.getHours(); var ap=h>=12?'PM':'AM'; h=h%12||12;
@@ -3068,7 +3069,7 @@ function renderRefunds(){
   var refLines  = (S.topRef||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
   var planLines = (S.topPlan||[]).map(function(e){return [e[0],e[1].c+' · '+fmtK(e[1].a)];});
   var agentLines= (S.topAgents||[]).map(function(e){
-    return [e[0], e[2]+' cxl / '+e[3]+' ref'];
+    return [e[0], e[2]+' cxl / '+e[3]+' ref / '+fmtK(e[4]||0)];
   });
 
   var srcLabel = S.generatedAt ? 'Snapshot: '+S.generatedAt : 'Live · PS Daily Processes';
