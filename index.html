@@ -2880,6 +2880,36 @@ function parseRfndOverview(csvText){
     refPct:cw.cxls>0?Math.round(cw.refundedCxl/cw.cxls*1000)/10:null,
     saves:cw.saves,upsells:cw.upsells};
 
+  // MTD — current month vs prior month same-day range
+  var pmYear=now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
+  var pmMo=now.getMonth()===0?11:now.getMonth()-1;
+  var mtdStart=new Date(now.getFullYear(),now.getMonth(),1);
+  var pmStart=new Date(pmYear,pmMo,1);
+  var pmEnd=new Date(pmYear,pmMo,now.getDate()); pmEnd.setHours(23,59,59,999);
+  var mtdEnd=new Date(now); mtdEnd.setHours(23,59,59,999);
+  function aggMTD(rws){
+    var o={cxls:0,cancelled:0,terminated:0,refunded:0,refs:0,refAmt:0,saves:0,upsells:0};
+    rws.forEach(function(r){
+      if(isCxl(r)){
+        o.cxls++;
+        var st=(r.status||'').toLowerCase();
+        if(/^terminat/.test(st))o.terminated++;
+        else if(/^refund/.test(st))o.refunded++;
+        else if(/^cancel/.test(st))o.cancelled++;
+      }
+      if(isRef(r)&&r.amt<=FLAG_T){o.refs++;o.refAmt+=r.amt;}
+      if(isSave(r))o.saves++;
+      if(isUpsell(r))o.upsells++;
+    });
+    o.refPct=o.cxls>0?Math.round(o.refunded/o.cxls*1000)/10:null;
+    o.refAmt=Math.round(o.refAmt);
+    return o;
+  }
+  var mtdData=aggMTD(rows.filter(function(r){return r.date>=mtdStart&&r.date<=mtdEnd;}));
+  var priorMtdData=aggMTD(rows.filter(function(r){return r.date>=pmStart&&r.date<=pmEnd;}));
+  var mtdLabel=MO[now.getMonth()]+' 1–'+now.getDate();
+  var priorLabel=MO[pmMo]+' 1–'+now.getDate();
+
   // 8 completed Mon-Sun weeks; collect last 4 for insights
   var wks=[], last4Rows=[];
   for(var wi=7;wi>=0;wi--){
@@ -2961,7 +2991,11 @@ function parseRfndOverview(csvText){
     topTerm: top(termR,5,false).map(function(e){return [e[0],e[1]];}),
     topRef:  top(refR,5,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
     topPlan: top(planR,3,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
-    topAgents: topAgentsArr
+    topAgents: topAgentsArr,
+    mtd: mtdData,
+    priorMtd: priorMtdData,
+    mtdLabel: mtdLabel,
+    priorLabel: priorLabel
   };
 }
 
@@ -2998,6 +3032,27 @@ function renderRefunds(){
 
   var refPctStr = cw.refPct!=null ? cw.refPct+'%' : '—';
   var pwRefPct = pw ? (pw.refPct!=null ? pw.refPct : null) : null;
+
+  // MTD overview
+  var mtd = S.mtd || null;
+  var pm  = S.priorMtd || null;
+  var mtdLbl = S.mtdLabel || 'This Month';
+  var pmLbl  = S.priorLabel || 'Prior Month';
+  var mtdHtml = '';
+  if(mtd){
+    var bdStr = '<span style="font-size:10px;color:var(--text3)">C:'+mtd.cancelled+' T:'+mtd.terminated+' R:'+mtd.refunded+'</span>';
+    mtdHtml = '<div style="margin-bottom:14px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#f97316;margin-bottom:6px">MTD Overview — '+mtdLbl+' vs '+pmLbl+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:10px">'
+      +metricCard('Dashboard Cancellations', mtd.cxls||0, bdStr+'<br>'+delta(mtd.cxls, pm?pm.cxls:null, false))
+      +metricCard('Refund Rate (Cxl)', mtd.refPct!=null?mtd.refPct+'%':'—', pm&&pm.refPct!=null?'<span style="color:var(--text3);font-size:11px">'+pm.refPct+'% prior period</span>':'<span style="color:var(--text3);font-size:11px">— vs prior</span>')
+      +metricCard('Annual Refunds', mtd.refs||0, delta(mtd.refs, pm?pm.refs:null, false))
+      +metricCard('Refund $ Amount', fmtAmt(mtd.refAmt||0), delta(mtd.refAmt||0, pm?pm.refAmt:null, true))
+      +metricCard('Saves Made', mtd.saves||0, delta(mtd.saves, pm?pm.saves:null, false))
+      +'</div></div>';
+  } else {
+    mtdHtml = '<div style="margin-bottom:14px;padding:8px 0;font-size:12px;color:var(--text3)">MTD data available from live sheet…</div>';
+  }
 
   var cwCards = '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">'
     +metricCard('Annual Refunds This Week', cw.refs||0, delta(cw.refs, pw?pw.refs:null, false))
@@ -3086,6 +3141,7 @@ function renderRefunds(){
     +'<div style="font-size:12px;color:var(--text3)">'+srcLabel+'</div>'
     +'<a href="refunds-cancellations-report.html" target="_blank" style="font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap">View Full Report →</a>'
     +'</div>'
+    +mtdHtml
     +cwCards
     +wowHtml
     +insightsHtml
