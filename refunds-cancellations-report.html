@@ -165,8 +165,8 @@
 
 <div class="card dq-card" id="dqCard" style="margin-bottom:16px;">
   <h2>⚠ Data Quality — Flagged Refund Amounts</h2>
-  <p class="desc">Annual Sub Refund entries over $3,000 — well above a typical annual refund (~$300-700). Likely data-entry errors. Excluded from all $ totals and charts above; verify against Recurly/Finance.</p>
-  <table id="dqTable"><thead><tr><th>Date</th><th>Agent</th><th>Reason</th><th class="num">Amount Entered</th></tr></thead><tbody></tbody></table>
+  <p class="desc">Annual Sub Refund entries whose USD-equivalent exceeds $3,000 — well above a typical annual refund (~$300–700). Note: amounts are entered in the agent's local currency (GBP, EUR, PHP, ARS, etc.) and converted to USD for comparison — a large raw number does not always mean a data error, but all flagged entries should be verified against Recurly/Finance before actioning.</p>
+  <table id="dqTable"><thead><tr><th>Date</th><th>Agent</th><th>Reason</th><th class="num">As Entered</th><th class="num">USD Equivalent</th></tr></thead><tbody></tbody></table>
 </div>
 
 <p class="footer" id="footerNote">Source: published Google Sheet export (PS Daily Processes tracker). Refreshed automatically on a schedule — see "Data as of" above for the last refresh time. Non-USD entries are converted using the historical FX rate on each transaction's own date (not a single blanket rate), so totals reflect what the amount was actually worth in USD at the time.</p>
@@ -403,7 +403,7 @@ function parseRefundsSheet(csvText){
     };
     if(_isRef(row)&&row.amt>FLAG_THRESHOLD){
       flagged.push({date:_MO[date.getMonth()]+' '+date.getDate()+', '+date.getFullYear(),
-        agent:an,reason:row.reason,amount:row.amt});
+        agent:an,reason:row.reason,rawAmt:(f[12]||'').trim(),amount:row.amt});
     }
     rows.push(row);
   }
@@ -597,7 +597,7 @@ function renderDataQuality(){
   const tbody = document.querySelector('#dqTable tbody');
   const rows = DATA.flagged;
   document.getElementById('dqCard').style.display = rows.length ? 'block' : 'none';
-  tbody.innerHTML = rows.map(r => `<tr><td>${r.date}</td><td>${r.agent}</td><td>${r.reason}</td><td class="num" style="color:var(--red); font-weight:700;">${fmtMoney(r.amount)}</td></tr>`).join('');
+  tbody.innerHTML = rows.map(r => `<tr><td>${r.date}</td><td>${r.agent}</td><td>${r.reason}</td><td class="num" style="color:var(--text-muted)">${r.rawAmt||'—'}</td><td class="num" style="color:var(--red);font-weight:700;">${fmtMoney(r.amount)} USD</td></tr>`).join('');
 }
 
 function renderKPIs(view){
