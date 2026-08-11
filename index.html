@@ -2988,17 +2988,23 @@ function parseRfndOverview(csvText){
   var pwRows=rows.filter(function(r){return r.date>=pwStart2&&r.date<=pwEnd2;});
   var pwLbl2=MO[pwStart2.getMonth()]+' '+pwStart2.getDate()+'–'+(pwEnd2.getMonth()!==pwStart2.getMonth()?MO[pwEnd2.getMonth()]+' ':'')+pwEnd2.getDate();
   function aggLOB2(rws,isCrowd){
-    var o={cxls:0,refs:0,refNotes:[],dcrsns:{},refRsns:{},rebills:0};
+    var o={cxls:0,cancelled:0,terminated:0,refunded:0,refs:0,refAmt:0,saves:0,refNotes:[],dcrsns:{},refRsns:{},rebills:0};
     rws.forEach(function(r){
       var ci=/crowd/i.test(r.company||'');
       if(isCrowd!==ci) return;
       if(isCxl(r)){
         o.cxls++;
+        var st=(r.status||'').toLowerCase();
+        if(/^terminat/.test(st))o.terminated++;
+        else if(/^refund/.test(st))o.refunded++;
+        else if(/^cancel/.test(st))o.cancelled++;
         var dk=r.dcrsn||r.rsn||'—';
         o.dcrsns[dk]=(o.dcrsns[dk]||0)+1;
+        if(isSave(r))o.saves++;
       }
       if(isRef(r)&&r.amt<=FLAG_T){
         o.refs++;
+        o.refAmt+=r.amt;
         if(r.notes) o.refNotes.push(r.notes);
         var rk=r.rsn||'—';
         o.refRsns[rk]=(o.refRsns[rk]||0)+1;
@@ -3006,6 +3012,7 @@ function parseRfndOverview(csvText){
       }
     });
     o.total=o.cxls+o.refs;
+    o.refAmt=Math.round(o.refAmt);
     return o;
   }
   var prevWkInsight={
@@ -3167,38 +3174,91 @@ function renderRefunds(){
   var pwi = S.prevWkInsight || null;
   var prevWkHtml = '';
   if(pwi && (pwi.ci.total>0 || pwi.ps.total>0)){
+    // Analyze notes → root causes + actions taken
+    function analyzeNotes(notes){
+      var rootCauses=[
+        {k:['within 7','7 day','7-day','7days'],lbl:'Within 7-day window'},
+        {k:['quality','poor quality','not working','doesn\'t work','dissatisf','bad service','terrible','slow result','not satisfied'],lbl:'Quality/service dissatisfaction'},
+        {k:['accident','accidental','mistaken','wrong plan','didn\'t mean','didn\'t intend','wrong subscription','unintentional'],lbl:'Accidental sign-up'},
+        {k:['rebill','re-bill','re bill','charged again','billed again','unexpected charge'],lbl:'Unexpected rebill'},
+        {k:['billing','double charged','duplicate','charged twice','overcharged'],lbl:'Billing dispute'},
+        {k:['expensive','too much','price','cost','afford','not worth'],lbl:'Price sensitivity'},
+        {k:['no longer','don\'t need','not using','unused','not needed','no need'],lbl:'No longer needed'},
+        {k:['escalat','manager','supervisor','legal'],lbl:'Escalated case'},
+        {k:['annual','yearly','year plan'],lbl:'Annual plan complaint'},
+      ];
+      var actions=[
+        {k:['terminat'],lbl:'Account terminated'},
+        {k:['50%','partial refund','half refund','pro-rata','prorated'],lbl:'Partial refund issued'},
+        {k:['full refund','100%','full amount'],lbl:'Full refund issued'},
+        {k:['downgrad','monthly','downsize','lower plan'],lbl:'Downgraded to monthly'},
+        {k:['saved','retained','kept subscription','agreed to stay'],lbl:'Customer saved/retained'},
+        {k:['escalat'],lbl:'Escalated to senior'},
+        {k:['rebill','re-bill'],lbl:'Rebill involved'},
+      ];
+      var rcs=rootCauses.map(function(t){
+        var n=notes.filter(function(nt){return t.k.some(function(k){return nt.toLowerCase().indexOf(k)>=0;});}).length;
+        return {lbl:t.lbl,n:n};
+      }).filter(function(x){return x.n>0;}).sort(function(a,b){return b.n-a.n;});
+      var acts=actions.map(function(t){
+        var n=notes.filter(function(nt){return t.k.some(function(k){return nt.toLowerCase().indexOf(k)>=0;});}).length;
+        return {lbl:t.lbl,n:n};
+      }).filter(function(x){return x.n>0;}).sort(function(a,b){return b.n-a.n;});
+      return {rootCauses:rcs,actions:acts};
+    }
+
     function lobPanel(name, color, data){
-      // Top cancellation reason
+      // Cxl status breakdown
+      var cxlBreakdown = data.cxls>0
+        ? ' <span style="font-size:10px;color:var(--text3)">(C:'+data.cancelled+' T:'+data.terminated+' R:'+data.refunded+')</span>' : '';
+      // Top cxl reasons (up to 3)
       var topDcrsn = Object.entries(data.dcrsns||{})
         .sort(function(a,b){return b[1]-a[1];}).slice(0,3)
-        .map(function(e){return e[0]+' ('+e[1]+')';}).join(', ') || '—';
-      // Top Annual Sub Refund driver
-      var topRefRsn = Object.entries(data.refRsns||{})
-        .sort(function(a,b){return b[1]-a[1];}).slice(0,1)
-        .map(function(e){return e[0]+' ('+e[1]+')';}).join('') || '—';
+        .map(function(e){return '<span style="background:#f1f5f9;border-radius:3px;padding:1px 5px">'+e[0]+' <b>'+e[1]+'</b></span>';}).join(' ') || '—';
+      // Top Annual Sub Refund drivers (up to 3)
+      var topRefRsns = Object.entries(data.refRsns||{})
+        .sort(function(a,b){return b[1]-a[1];}).slice(0,3)
+        .map(function(e){return '<span style="background:#f1f5f9;border-radius:3px;padding:1px 5px">'+e[0]+' <b>'+e[1]+'</b></span>';}).join(' ') || '—';
       // Rebill tag
       var rebillTag = data.rebills>0
-        ? ' <span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">'+data.rebills+' Rebill'+(data.rebills>1?'s':'')+'</span>' : '';
-      // Notes list (cap at 8 for CI, 5 for PS)
-      var notesCap = name==='Crowd Ignite'?8:5;
-      var notesList = data.refNotes.slice(0,notesCap).map(function(n){
-        return '<li style="margin-bottom:3px;color:var(--text2)">'+n+'</li>';
+        ? ' <span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">⚠ '+data.rebills+' Rebill'+(data.rebills>1?'s':'')+'</span>' : '';
+      // Note analysis
+      var na = analyzeNotes(data.refNotes);
+      var rcHtml = na.rootCauses.slice(0,4).map(function(x){
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #eef0f3;font-size:11px">'
+          +'<span style="color:var(--text2)">'+x.lbl+'</span>'
+          +'<span style="font-weight:700;color:var(--text)">'+x.n+'</span></div>';
       }).join('');
-      var notesMore = data.refNotes.length>notesCap
-        ? '<li style="color:var(--text3);font-style:italic">+'+(data.refNotes.length-notesCap)+' more…</li>' : '';
-      return '<div style="flex:1;min-width:240px;background:#fafbfc;border:1px solid var(--border);border-radius:9px;padding:12px 14px">'
+      var actHtml = na.actions.slice(0,4).map(function(x){
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #eef0f3;font-size:11px">'
+          +'<span style="color:var(--text2)">'+x.lbl+'</span>'
+          +'<span style="font-weight:700;color:var(--text)">'+x.n+'</span></div>';
+      }).join('');
+
+      return '<div style="flex:1;min-width:260px;background:#fafbfc;border:1px solid var(--border);border-radius:9px;padding:12px 14px">'
+        // Header
         +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:'+color+';margin-bottom:8px">'+name+'</div>'
-        +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
-        +'<div><div style="font-size:10px;color:var(--text3)">Dashboard Cxls</div><div style="font-size:20px;font-weight:800">'+data.cxls+'</div></div>'
-        +'<div><div style="font-size:10px;color:var(--text3)">Annual Sub Refs</div><div style="font-size:20px;font-weight:800">'+data.refs+rebillTag+'</div></div>'
-        +'<div style="border-left:2px solid var(--border);padding-left:16px"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:20px;font-weight:800;color:'+color+'">'+data.total+'</div></div>'
+        // Count strip
+        +'<div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end">'
+        +'<div><div style="font-size:10px;color:var(--text3)">Dashboard Cxls</div>'
+          +'<div style="font-size:22px;font-weight:800;line-height:1">'+data.cxls+'</div>'
+          +'<div style="font-size:10px;color:var(--text3)">C:'+data.cancelled+' T:'+data.terminated+' R:'+data.refunded+'</div></div>'
+        +'<div><div style="font-size:10px;color:var(--text3)">Annual Sub Refs</div>'
+          +'<div style="font-size:22px;font-weight:800;line-height:1">'+data.refs+rebillTag+'</div>'
+          +'<div style="font-size:10px;color:var(--text3)">'+fmtK(data.refAmt||0)+'</div></div>'
+        +(data.saves>0?'<div><div style="font-size:10px;color:var(--text3)">Saves</div><div style="font-size:22px;font-weight:800;line-height:1;color:var(--green)">'+data.saves+'</div></div>':'')
+        +'<div style="border-left:2px solid var(--border);padding-left:14px"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:22px;font-weight:800;line-height:1;color:'+color+'">'+data.total+'</div></div>'
         +'</div>'
-        +(data.cxls>0?'<div style="font-size:11px;margin-bottom:5px"><span style="color:var(--text3);font-weight:600">Top Cxl Reason: </span>'+topDcrsn+'</div>':'')
-        +(data.refs>0?'<div style="font-size:11px;margin-bottom:6px"><span style="color:var(--text3);font-weight:600">Top Ref Driver: </span>'+topRefRsn+'</div>':'')
-        +(data.refNotes.length>0
-          ?'<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px">Annual Ref Notes:</div>'
-           +'<ul style="padding-left:14px;font-size:11px;margin:0">'+notesList+notesMore+'</ul>'
-          :'<div style="font-size:11px;color:var(--text3);font-style:italic">No refund notes logged.</div>')
+        // Cxl reasons
+        +(data.cxls>0?'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Top Cxl Reasons</div>'
+          +'<div style="margin-bottom:8px;font-size:11px">'+topDcrsn+'</div>':'')
+        // Ref drivers
+        +(data.refs>0?'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Annual Ref Drivers</div>'
+          +'<div style="margin-bottom:8px;font-size:11px">'+topRefRsns+'</div>':'')
+        // Root causes from notes
+        +(rcHtml?'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Why Customers Cancelled</div>'+rcHtml+'<div style="margin-bottom:8px"></div>':'')
+        // Actions taken from notes
+        +(actHtml?'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin:6px 0 3px">Actions Taken</div>'+actHtml:'')
         +'</div>';
     }
     prevWkHtml = '<div style="margin-bottom:14px">'
