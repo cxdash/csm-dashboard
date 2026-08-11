@@ -165,7 +165,7 @@
 
 <div class="card dq-card" id="dqCard" style="margin-bottom:16px;">
   <h2>⚠ Data Quality — Flagged Refund Amounts</h2>
-  <p class="desc">Annual Sub Refund entries whose USD-equivalent exceeds $3,000 — well above a typical annual refund (~$300–700). Note: amounts are entered in the agent's local currency (GBP, EUR, PHP, ARS, etc.) and converted to USD for comparison — a large raw number does not always mean a data error, but all flagged entries should be verified against Recurly/Finance before actioning.</p>
+  <p class="desc">Annual Sub Refund entries whose USD-equivalent exceeds $3,000. Amounts are entered in local currency (GBP, EUR, PHP, ARS, etc.) and converted using approximate FX rates — a high raw number may not be a data error once converted. Some entries contain multiple amounts (e.g. "$718, $132, $102") which are summed automatically. All flagged entries should be verified against Recurly/Finance before actioning.</p>
   <table id="dqTable"><thead><tr><th>Date</th><th>Agent</th><th>Reason</th><th class="num">As Entered</th><th class="num">USD Equivalent</th></tr></thead><tbody></tbody></table>
 </div>
 
@@ -207,7 +207,47 @@ function _fmtMon(d){ return _MO[d.getMonth()]+' '+d.getFullYear(); }
 // f[8]=Company, f[10]=Reason, f[11]=Cancelled/Refunded, f[12]=Amount,
 // f[15]=Issue Type, f[21]=Save offered, f[23]=Upsell Offered
 function _agent(email){ return (email||'').split('@')[0].toLowerCase().replace(/\./g,''); }
-function _amt(s){ const n=parseFloat((s||'').replace(/[$,\s]/g,'')); return isNaN(n)?0:n; }
+// FX rates → USD (approximate; updated Aug 2026)
+const _FX={
+  '$':1,'USD':1,'US$':1,
+  '£':1.27,'GBP':1.27,
+  '€':1.09,'EUR':1.09,
+  'A$':0.65,'AUD':0.65,
+  'CA$':0.73,'CAD':0.73,
+  'NZ$':0.60,'NZD':0.60,
+  '₱':0.017,'PHP':0.017,
+  'S$':0.74,'SGD':0.74,
+  'HK$':0.13,'HKD':0.13,
+  'MXN':0.050,'MXN$':0.050,
+  'R$':0.18,'BRL':0.18,
+  '₹':0.012,'INR':0.012,
+  'ARS':0.001,'AR$':0.001
+};
+// Parse a single currency amount → USD
+function _parseSingle(s){
+  s=(s||'').trim(); if(!s||s==='-') return 0;
+  // Prefix symbol: £500, €100, A$200, $500
+  let m=s.match(/^(US\$|A\$|CA\$|NZ\$|HK\$|S\$|R\$|AR\$|MXN?\$?|[£€₱₹\$])\s*([\d,\.]+)/i);
+  if(m){const r=_FX[m[1]]||_FX[m[1].toUpperCase()]||1;return parseFloat(m[2].replace(/,/g,''))*r;}
+  // Suffix code: 500 GBP, 1000 EUR
+  m=s.match(/^([\d,\.]+)\s+([A-Z]{2,3})$/i);
+  if(m){const r=_FX[m[2].toUpperCase()]||1;return parseFloat(m[1].replace(/,/g,''))*r;}
+  // Plain number → assume USD
+  const n=parseFloat(s.replace(/[^0-9.]/g,''));
+  return isNaN(n)?0:n;
+}
+// Handle multi-amount entries (e.g. "$718, $132, $102") + FX conversion
+function _amt(raw){
+  const s=(raw||'').trim(); if(!s||s==='-') return 0;
+  // If multiple currency symbols present, treat as a list of amounts to sum
+  const symCount=(s.match(/[£€₱₹\$]/g)||[]).length;
+  if(symCount>1){
+    // Split only on commas/semicolons followed by a currency symbol (not thousand-sep commas)
+    const parts=s.split(/[,;]\s*(?=[£€₱₹\$])/);
+    return parts.reduce((t,p)=>t+_parseSingle(p),0);
+  }
+  return _parseSingle(s);
+}
 function _isCxl(r){
   if(r.cat==='Dashboard Cancellation'||/^dashboard.cancel/i.test(r.cat)) return true;
   // Status "Cancelled/Terminate/Refunded" only appears on Dashboard Cancellation rows
@@ -401,7 +441,7 @@ function parseRefundsSheet(csvText){
       notes:(f[20]||'').trim(),
       saveOff:(f[21]||'').trim(),upsellOff:(f[23]||'').trim()
     };
-    if(_isRef(row)&&row.amt>FLAG_THRESHOLD){
+    if(_isRef(row)&&row.amt>FLAG_THRESHOLD&&date.getFullYear()===2026){
       flagged.push({date:_MO[date.getMonth()]+' '+date.getDate()+', '+date.getFullYear(),
         agent:an,reason:row.reason,rawAmt:(f[12]||'').trim(),amount:row.amt});
     }
