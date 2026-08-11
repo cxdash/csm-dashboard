@@ -114,8 +114,8 @@
     <div class="chart-wrap"><canvas id="chartCategory"></canvas></div>
   </div>
   <div class="card">
-    <h2>Annual Sub Refunds — Count &amp; Dollars</h2>
-    <p class="desc">Bars = case count (left axis). Line = $ refunded (right axis), excludes flagged outliers below. Non-USD entries (GBP, EUR, ARS, MXN, INR, and others) are converted to USD using the historical FX rate on each transaction's own date.</p>
+    <h2>Annual Sub Refunds — Count &amp; Dollars (by LOB)</h2>
+    <p class="desc">Grouped bars = case count by LOB (left axis). Lines = $ refunded per LOB (right axis), excludes flagged outliers. Non-USD amounts converted to USD using historical FX rates.</p>
     <div class="chart-wrap"><canvas id="chartRefund"></canvas></div>
   </div>
   <div class="card">
@@ -208,7 +208,12 @@ function _fmtMon(d){ return _MO[d.getMonth()]+' '+d.getFullYear(); }
 // f[15]=Issue Type, f[21]=Save offered, f[23]=Upsell Offered
 function _agent(email){ return (email||'').split('@')[0].toLowerCase().replace(/\./g,''); }
 function _amt(s){ const n=parseFloat((s||'').replace(/[$,\s]/g,'')); return isNaN(n)?0:n; }
-function _isCxl(r){ return r.cat==='Dashboard Cancellation'; }
+function _isCxl(r){
+  if(r.cat==='Dashboard Cancellation'||/^dashboard.cancel/i.test(r.cat)) return true;
+  // Status "Cancelled/Terminate/Refunded" only appears on Dashboard Cancellation rows
+  const st=(r.status||'').toLowerCase();
+  return /^(cancel|terminat|refund)/.test(st) && r.cat!=='Annual Sub Refunds';
+}
 function _isRef(r){ return r.cat==='Annual Sub Refunds'; }
 function _isPS(r){ return /path/i.test(r.company); }
 function _isCI(r){ return /crowd/i.test(r.company); }
@@ -241,10 +246,14 @@ function _topN(map,n,byAmt){
 const _CATS=['Dashboard Cancellation','Annual Sub Refunds','Retention (Save Offer)','Issue Reporting/Monitoring','Upsell'];
 function _aggBucket(rows){
   const cc={}; _CATS.forEach(c=>cc[c]=0);
-  let rc=0,ra=0,ct=0,cm=0,cref=0,css=0,ic=0,uc=0,sc=0,cp=0,cci=0;
+  let rc=0,ra=0,rc_ps=0,ra_ps=0,rc_ci=0,ra_ci=0,ct=0,cm=0,cref=0,css=0,ic=0,uc=0,sc=0,cp=0,cci=0;
   for(const r of rows){
     if(cc.hasOwnProperty(r.cat)) cc[r.cat]++;
-    if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){rc++;ra+=r.amt;}
+    if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){
+      rc++;ra+=r.amt;
+      if(_isPS(r)){rc_ps++;ra_ps+=r.amt;}
+      else if(_isCI(r)){rc_ci++;ra_ci+=r.amt;}
+    }
     if(_isCxl(r)){
       ct++;
       const s=_cxlStatus(r);
@@ -255,7 +264,10 @@ function _aggBucket(rows){
     if(r.cat==='Retention (Save Offer)')sc++;
     if(_isPS(r))cp++; if(_isCI(r))cci++;
   }
-  return {cc,rc,ra:Math.round(ra*100)/100,ct,cm,
+  return {cc,rc,ra:Math.round(ra*100)/100,
+    rc_ps,ra_ps:Math.round(ra_ps*100)/100,
+    rc_ci,ra_ci:Math.round(ra_ci*100)/100,
+    ct,cm,
     cpct:ct>0?Math.round(cm/ct*1000)/10:null,
     cpct_ref:ct>0?Math.round(cref/ct*1000)/10:null,
     cref,css,ic,uc,sc,cp,cci};
@@ -424,7 +436,10 @@ function parseRefundsSheet(csvText){
   // Build time-series for week / month
   function buildSeries(buckets){
     const res={labels:[],category_counts:Object.fromEntries(_CATS.map(c=>[c,[]])),
-      refund_count:[],refund_amount:[],cancel_total:[],cancel_manual:[],
+      refund_count:[],refund_amount:[],
+      refund_count_ps:[],refund_amount_ps:[],
+      refund_count_ci:[],refund_amount_ci:[],
+      cancel_total:[],cancel_manual:[],
       cancel_manual_pct:[],cancel_refunded:[],cancel_selfserve:[],
       issue_count:[],upsell_count:[],save_count:[],company_path:[],company_crowd:[]};
     for(const b of buckets){
@@ -432,6 +447,8 @@ function parseRefundsSheet(csvText){
       const a=_aggBucket(b.rows);
       _CATS.forEach(c=>res.category_counts[c].push(a.cc[c]||0));
       res.refund_count.push(a.rc);res.refund_amount.push(a.ra);
+      res.refund_count_ps.push(a.rc_ps);res.refund_amount_ps.push(a.ra_ps);
+      res.refund_count_ci.push(a.rc_ci);res.refund_amount_ci.push(a.ra_ci);
       res.cancel_total.push(a.ct);res.cancel_manual.push(a.cm);
       res.cancel_manual_pct.push(a.cpct);res.cancel_refund_pct=(res.cancel_refund_pct||[]);res.cancel_refund_pct.push(a.cpct_ref);res.cancel_refunded.push(a.cref);
       res.cancel_selfserve.push(a.css);res.issue_count.push(a.ic);
@@ -630,13 +647,16 @@ function renderRefundChart(view){
   charts.refund = new Chart(document.getElementById('chartRefund'), {
     type:'bar',
     data: { labels: d.labels, datasets: [
-      { type:'bar', label:'Refund Cases', data:d.refund_count, backgroundColor: barColors(view, PALETTE.accent), yAxisID:'y' },
-      { type:'line', label:'$ Refunded (clean)', data:d.refund_amount, borderColor: PALETTE.red, backgroundColor: PALETTE.red, yAxisID:'y1', tension:.3, pointRadius:3 }
+      { type:'bar', label:'Path Social — Cases', data:d.refund_count_ps, backgroundColor:'rgba(68,114,196,0.75)', yAxisID:'y' },
+      { type:'bar', label:'Crowd Ignite — Cases', data:d.refund_count_ci, backgroundColor:'rgba(46,139,139,0.75)', yAxisID:'y' },
+      { type:'line', label:'Path Social — $ Refunded', data:d.refund_amount_ps, borderColor:PALETTE.navy, backgroundColor:PALETTE.navy, yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2 },
+      { type:'line', label:'Crowd Ignite — $ Refunded', data:d.refund_amount_ci, borderColor:PALETTE.teal, backgroundColor:PALETTE.teal, yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2, borderDash:[4,3] }
     ]},
     options: { responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
-      scales:{ y:{ position:'left', ticks:{font:{size:10}}, title:{display:true,text:'cases',font:{size:10}} },
-        y1:{ position:'right', grid:{drawOnChartArea:false}, ticks:{font:{size:10}, callback:v=>'$'+(v/1000)+'k'} },
+      scales:{
+        y:{ position:'left', ticks:{font:{size:10}}, title:{display:true,text:'cases',font:{size:10}} },
+        y1:{ position:'right', grid:{drawOnChartArea:false}, ticks:{font:{size:10}, callback:v=>'$'+(v/1000).toFixed(1)+'k'} },
         x:{ ticks:{font:{size:10}} } } }
   });
 }
