@@ -2832,6 +2832,7 @@ function parseRfndOverview(csvText){
       date:dt, cat:(f[7]||'').trim(), rsn:(f[10]||'').trim(), cf:(f[11]||'').trim(),
       amt:amtUSD, plan:(f[5]||'').trim(), company:(f[8]||'').trim(),
       status:(f[18]||'').trim(), dcrsn:(f[19]||'').trim(),
+      notes:(f[20]||'').trim(),
       save:(f[21]||'').trim(), upsell:(f[23]||'').trim(),
       agent:handle
     });
@@ -2981,6 +2982,35 @@ function parseRfndOverview(csvText){
     .map(function(e){return [e[0],e[1].cxls+e[1].refs,e[1].cxls,e[1].refs,Math.round(e[1].refAmt||0)];})
     .sort(function(a,b){return b[1]-a[1];}).slice(0,5);
 
+  // Previous week per-LOB insight (last completed Mon-Sun)
+  var pwEnd2=new Date(lastSun); pwEnd2.setHours(23,59,59,999);
+  var pwStart2=new Date(lastSun); pwStart2.setDate(lastSun.getDate()-6); pwStart2.setHours(0,0,0,0);
+  var pwRows=rows.filter(function(r){return r.date>=pwStart2&&r.date<=pwEnd2;});
+  var pwLbl2=MO[pwStart2.getMonth()]+' '+pwStart2.getDate()+'–'+(pwEnd2.getMonth()!==pwStart2.getMonth()?MO[pwEnd2.getMonth()]+' ':'')+pwEnd2.getDate();
+  function aggLOB2(rws,isCrowd){
+    var o={cxls:0,refs:0,refNotes:[],dcrsns:{}};
+    rws.forEach(function(r){
+      var ci=/crowd/i.test(r.company||'');
+      if(isCrowd!==ci) return;
+      if(isCxl(r)){
+        o.cxls++;
+        var dk=r.dcrsn||r.rsn||'—';
+        o.dcrsns[dk]=(o.dcrsns[dk]||0)+1;
+      }
+      if(isRef(r)&&r.amt<=FLAG_T){
+        o.refs++;
+        if(r.notes) o.refNotes.push(r.notes);
+      }
+    });
+    o.total=o.cxls+o.refs;
+    return o;
+  }
+  var prevWkInsight={
+    label:pwLbl2,
+    ci:aggLOB2(pwRows,true),
+    ps:aggLOB2(pwRows,false)
+  };
+
   var d=new Date(); var h=d.getHours(); var ap=h>=12?'PM':'AM'; h=h%12||12;
   var gAt=MO[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()+', '+h+':'+String(d.getMinutes()).padStart(2,'0')+' '+ap;
 
@@ -2992,6 +3022,7 @@ function parseRfndOverview(csvText){
     topRef:  top(refR,5,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
     topPlan: top(planR,3,true).map(function(e){return [e[0],{c:e[1].c,a:Math.round(e[1].a)}];}),
     topAgents: topAgentsArr,
+    prevWkInsight: prevWkInsight,
     mtd: mtdData,
     priorMtd: priorMtdData,
     mtdLabel: mtdLabel,
@@ -3129,6 +3160,44 @@ function renderRefunds(){
 
   var srcLabel = S.generatedAt ? 'Snapshot: '+S.generatedAt : 'Live · PS Daily Processes';
 
+  // Previous week per-LOB insights
+  var pwi = S.prevWkInsight || null;
+  var prevWkHtml = '';
+  if(pwi && (pwi.ci.total>0 || pwi.ps.total>0)){
+    function lobPanel(name, color, data){
+      // Top cancellation reasons
+      var topDcrsn = Object.entries(data.dcrsns||{})
+        .sort(function(a,b){return b[1]-a[1];}).slice(0,3)
+        .map(function(e){return e[0]+' ('+e[1]+')';}).join(', ') || '—';
+      // Notes list (cap at 8 for CI, 5 for PS)
+      var notesCap = name==='Crowd Ignite'?8:5;
+      var notesList = data.refNotes.slice(0,notesCap).map(function(n){
+        return '<li style="margin-bottom:3px;color:var(--text2)">'+n+'</li>';
+      }).join('');
+      var notesMore = data.refNotes.length>notesCap
+        ? '<li style="color:var(--text3);font-style:italic">+'+( data.refNotes.length-notesCap)+' more…</li>' : '';
+      return '<div style="flex:1;min-width:240px;background:#fafbfc;border:1px solid var(--border);border-radius:9px;padding:12px 14px">'
+        +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:'+color+';margin-bottom:8px">'+name+'</div>'
+        +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
+        +'<div><div style="font-size:10px;color:var(--text3)">Dashboard Cxls</div><div style="font-size:20px;font-weight:800">'+data.cxls+'</div></div>'
+        +'<div><div style="font-size:10px;color:var(--text3)">Annual Sub Refs</div><div style="font-size:20px;font-weight:800">'+data.refs+'</div></div>'
+        +'<div style="border-left:2px solid var(--border);padding-left:16px"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:20px;font-weight:800;color:'+color+'">'+data.total+'</div></div>'
+        +'</div>'
+        +(data.cxls>0?'<div style="font-size:11px;margin-bottom:6px"><span style="color:var(--text3);font-weight:600">Top Cxl Reasons: </span>'+topDcrsn+'</div>':'')
+        +(data.refNotes.length>0
+          ?'<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px">Annual Ref Notes:</div>'
+           +'<ul style="padding-left:14px;font-size:11px;margin:0">'+notesList+notesMore+'</ul>'
+          :'<div style="font-size:11px;color:var(--text3);font-style:italic">No refund notes logged.</div>')
+        +'</div>';
+    }
+    prevWkHtml = '<div style="margin-bottom:14px">'
+      +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Previous Week Key Insights — '+pwi.label+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:12px">'
+      +lobPanel('Crowd Ignite','#8b5cf6',pwi.ci)
+      +lobPanel('Path Social','#0891b2',pwi.ps)
+      +'</div></div>';
+  }
+
   var insightsHtml = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">'
     +insightBox('Top Cancellation Reasons','#ef4444',termLines.length?termLines:[['Fetching live data…','—']])
     +insightBox('Top Refund Reasons','#f97316',refLines.length?refLines:[['Fetching live data…','—']])
@@ -3144,6 +3213,7 @@ function renderRefunds(){
     +mtdHtml
     +cwCards
     +wowHtml
+    +prevWkHtml
     +insightsHtml
     +'</div>';
 }
