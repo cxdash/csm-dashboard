@@ -2988,7 +2988,7 @@ function parseRfndOverview(csvText){
   var pwRows=rows.filter(function(r){return r.date>=pwStart2&&r.date<=pwEnd2;});
   var pwLbl2=MO[pwStart2.getMonth()]+' '+pwStart2.getDate()+'–'+(pwEnd2.getMonth()!==pwStart2.getMonth()?MO[pwEnd2.getMonth()]+' ':'')+pwEnd2.getDate();
   function aggLOB2(rws,isCrowd){
-    var o={cxls:0,refs:0,refNotes:[],dcrsns:{}};
+    var o={cxls:0,refs:0,refNotes:[],dcrsns:{},refRsns:{},rebills:0};
     rws.forEach(function(r){
       var ci=/crowd/i.test(r.company||'');
       if(isCrowd!==ci) return;
@@ -3000,6 +3000,9 @@ function parseRfndOverview(csvText){
       if(isRef(r)&&r.amt<=FLAG_T){
         o.refs++;
         if(r.notes) o.refNotes.push(r.notes);
+        var rk=r.rsn||'—';
+        o.refRsns[rk]=(o.refRsns[rk]||0)+1;
+        if(/rebill|re-bill|re\s+bill/i.test(r.notes||'')||/rebill/i.test(r.rsn||'')) o.rebills++;
       }
     });
     o.total=o.cxls+o.refs;
@@ -3165,25 +3168,33 @@ function renderRefunds(){
   var prevWkHtml = '';
   if(pwi && (pwi.ci.total>0 || pwi.ps.total>0)){
     function lobPanel(name, color, data){
-      // Top cancellation reasons
+      // Top cancellation reason
       var topDcrsn = Object.entries(data.dcrsns||{})
         .sort(function(a,b){return b[1]-a[1];}).slice(0,3)
         .map(function(e){return e[0]+' ('+e[1]+')';}).join(', ') || '—';
+      // Top Annual Sub Refund driver
+      var topRefRsn = Object.entries(data.refRsns||{})
+        .sort(function(a,b){return b[1]-a[1];}).slice(0,1)
+        .map(function(e){return e[0]+' ('+e[1]+')';}).join('') || '—';
+      // Rebill tag
+      var rebillTag = data.rebills>0
+        ? ' <span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">'+data.rebills+' Rebill'+(data.rebills>1?'s':'')+'</span>' : '';
       // Notes list (cap at 8 for CI, 5 for PS)
       var notesCap = name==='Crowd Ignite'?8:5;
       var notesList = data.refNotes.slice(0,notesCap).map(function(n){
         return '<li style="margin-bottom:3px;color:var(--text2)">'+n+'</li>';
       }).join('');
       var notesMore = data.refNotes.length>notesCap
-        ? '<li style="color:var(--text3);font-style:italic">+'+( data.refNotes.length-notesCap)+' more…</li>' : '';
+        ? '<li style="color:var(--text3);font-style:italic">+'+(data.refNotes.length-notesCap)+' more…</li>' : '';
       return '<div style="flex:1;min-width:240px;background:#fafbfc;border:1px solid var(--border);border-radius:9px;padding:12px 14px">'
         +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:'+color+';margin-bottom:8px">'+name+'</div>'
         +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
         +'<div><div style="font-size:10px;color:var(--text3)">Dashboard Cxls</div><div style="font-size:20px;font-weight:800">'+data.cxls+'</div></div>'
-        +'<div><div style="font-size:10px;color:var(--text3)">Annual Sub Refs</div><div style="font-size:20px;font-weight:800">'+data.refs+'</div></div>'
+        +'<div><div style="font-size:10px;color:var(--text3)">Annual Sub Refs</div><div style="font-size:20px;font-weight:800">'+data.refs+rebillTag+'</div></div>'
         +'<div style="border-left:2px solid var(--border);padding-left:16px"><div style="font-size:10px;color:var(--text3)">Total</div><div style="font-size:20px;font-weight:800;color:'+color+'">'+data.total+'</div></div>'
         +'</div>'
-        +(data.cxls>0?'<div style="font-size:11px;margin-bottom:6px"><span style="color:var(--text3);font-weight:600">Top Cxl Reasons: </span>'+topDcrsn+'</div>':'')
+        +(data.cxls>0?'<div style="font-size:11px;margin-bottom:5px"><span style="color:var(--text3);font-weight:600">Top Cxl Reason: </span>'+topDcrsn+'</div>':'')
+        +(data.refs>0?'<div style="font-size:11px;margin-bottom:6px"><span style="color:var(--text3);font-weight:600">Top Ref Driver: </span>'+topRefRsn+'</div>':'')
         +(data.refNotes.length>0
           ?'<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px">Annual Ref Notes:</div>'
            +'<ul style="padding-left:14px;font-size:11px;margin:0">'+notesList+notesMore+'</ul>'
