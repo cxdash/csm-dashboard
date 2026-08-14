@@ -90,6 +90,11 @@
     <p class="subtitle">From the PS Daily Processes tracker (published Google Sheet). Weeks run Monday-Sunday.</p>
   </div>
   <div class="controls">
+    <div class="toggle" id="companyToggle">
+      <button data-company="all" class="active">All Companies</button>
+      <button data-company="ps">Path Social</button>
+      <button data-company="ci">Crowd Ignite</button>
+    </div>
     <div class="toggle" id="viewToggle">
       <button data-view="week" class="active">WoW · Last 8 Weeks</button>
       <button data-view="month">MoM · Last 6 Months</button>
@@ -221,13 +226,32 @@ const _FX={
   'MXN':0.057,'MXN$':0.057,'MX$':0.057,
   'R$':0.18,'BRL':0.18,
   '₹':0.012,'INR':0.012,
-  'ARS':0.001,'AR$':0.001
+  'ARS':0.00067,'AR$':0.00067,
+  'CLP':0.0011,
+  'CRC':0.0022,'₡':0.0022,
+  'COP':0.00032,
+  'NOK':0.105,'SEK':0.095,'DKK':0.14
 };
+// Currency codes that show up in this sheet as bare 3-letter codes (in any position,
+// e.g. "CLP:$79932", "ARS 571,417.50", "$4408303 COP") rather than as a symbol prefix.
+// Fixed 2026-08-14: these previously fell through to the plain-number branch below and
+// got treated as raw USD (e.g. "CLP:$79932" was being read as $79,932 instead of ~$88),
+// which wrongly tripped the $3,000 outlier flag and silently dropped the case from counts.
+const _CODE_RE = /(USD|GBP|EUR|AUD|CAD|NZD|PHP|SGD|HKD|MXN|BRL|INR|ARS|CLP|CRC|COP)/i;
 // Parse a single currency amount → USD
 function _parseSingle(s){
   s=(s||'').trim(); if(!s||s==='-') return 0;
-  // Prefix symbol: £500, €100, A$200, $500
-  let m=s.match(/^(US\$|A\$|CA\$|NZ\$|HK\$|S\$|R\$|AR\$|MXN?\$?|[£€₱₹\$])\s*([\d,\.]+)/i);
+  // Recognized 3-letter code anywhere in the string, regardless of $ sign/colon placement
+  let cm=s.match(_CODE_RE);
+  if(cm){
+    const nm=s.match(/([\d,]+\.?\d*)/);
+    if(nm){ const r=_FX[cm[1].toUpperCase()]||1; return parseFloat(nm[1].replace(/,/g,''))*r; }
+  }
+  // Krona ("kr123" / "123kr") — country column disambiguates as NOK in observed data
+  let k=s.match(/^kr\s*([\d,\.]+)/i)||s.match(/^([\d,\.]+)\s*kr$/i);
+  if(k){ return parseFloat(k[1].replace(/,/g,''))*(_FX['NOK']); }
+  // Prefix symbol: £500, €100, A$200, $500, ₡500
+  let m=s.match(/^(US\$|A\$|CA\$|NZ\$|HK\$|S\$|R\$|AR\$|MXN?\$?|[£€₱₹₡\$])\s*([\d,\.]+)/i);
   if(m){const r=_FX[m[1]]||_FX[m[1].toUpperCase()]||1;return parseFloat(m[2].replace(/,/g,''))*r;}
   // Suffix code: 500 GBP, 1000 EUR
   m=s.match(/^([\d,\.]+)\s+([A-Z]{2,3})$/i);
@@ -417,11 +441,10 @@ function _ydayStats(rows,now){
   return{label,y:ds(ydR),dby:ds(dbyR)};
 }
 
-// --- Main parser: CSV text → DATA structure ---
-function parseRefundsSheet(csvText){
+// --- Row parser: CSV text → raw rows + flagged list (company-agnostic, run once per fetch) ---
+function parseRowsFromCSV(csvText){
   const all=_parseCSV(csvText);
   if(all.length<2) return null;
-  const now=new Date();
   const rows=[],flagged=[];
 
   for(let i=1;i<all.length;i++){
@@ -443,10 +466,20 @@ function parseRefundsSheet(csvText){
     };
     if(_isRef(row)&&row.amt>FLAG_THRESHOLD&&date.getFullYear()===2026){
       flagged.push({date:_MO[date.getMonth()]+' '+date.getDate()+', '+date.getFullYear(),
-        agent:an,reason:row.reason,rawAmt:(f[12]||'').trim(),amount:row.amt});
+        agent:an,company:row.company,reason:row.reason,rawAmt:(f[12]||'').trim(),amount:row.amt});
     }
     rows.push(row);
   }
+  return {rows, flagged};
+}
+
+// --- Build the full DATA structure from (optionally company-filtered) rows ---
+// companyFilter: 'all' | 'ps' | 'ci' — applied once here so every KPI, chart, the agent table,
+// and the flagged table all reflect the same selected company with no special-casing downstream.
+function buildDashboardData(allRows, allFlagged, companyFilter){
+  const now=new Date();
+  const rows = companyFilter==='all' ? allRows : allRows.filter(companyFilter==='ps' ? _isPS : _isCI);
+  const flagged = companyFilter==='all' ? allFlagged : allFlagged.filter(f => companyFilter==='ps' ? /path/i.test(f.company) : /crowd/i.test(f.company));
 
   // 8 completed Monday-Sunday weeks (most recent first → index 7)
   const today=new Date(now);today.setHours(0,0,0,0);
@@ -523,6 +556,7 @@ function parseRefundsSheet(csvText){
   return{
     generated_at:generatedAt,
     row_count:rows.length,
+    total_row_count:allRows.length,
     week:buildSeries(wBuckets),
     month:buildSeries(mBuckets),
     week_periods:wPeriods,
@@ -536,17 +570,28 @@ function parseRefundsSheet(csvText){
 }
 
 // --- Load from live Google Sheet ---
-const RFND_CACHE_KEY = 'rfnd_dashboard_v1';
+// Cache the raw CSV text (not the built DATA) so the company toggle can rebuild
+// DATA for a different filter instantly, without waiting on a fresh fetch.
+const RFND_CACHE_KEY = 'rfnd_dashboard_csv_v2';
+
+function rebuildData(){
+  if(!RAW) return;
+  DATA = buildDashboardData(RAW.rows, RAW.flagged, companyFilter);
+}
 
 async function loadData(){
   // Show cached data instantly if available
   try{
-    const cached = localStorage.getItem(RFND_CACHE_KEY);
-    if(cached){
-      DATA = JSON.parse(cached);
-      document.getElementById('statusText').textContent = 'Cached data — refreshing…';
-      document.getElementById('rowCountText').textContent = '';
-      init();
+    const cachedCSV = localStorage.getItem(RFND_CACHE_KEY);
+    if(cachedCSV){
+      const parsed = parseRowsFromCSV(cachedCSV);
+      if(parsed){
+        RAW = parsed;
+        rebuildData();
+        document.getElementById('statusText').textContent = 'Cached data — refreshing…';
+        document.getElementById('rowCountText').textContent = '';
+        init();
+      }
     }
   }catch(e){}
 
@@ -556,10 +601,12 @@ async function loadData(){
     document.getElementById('rowCountText').textContent = '';
     const resp = await fetch(SHEET_URL+'&cachebust='+Date.now());
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const fresh = parseRefundsSheet(await resp.text());
-    if(!fresh) throw new Error('No rows parsed — check sheet URL');
-    DATA = fresh;
-    try{ localStorage.setItem(RFND_CACHE_KEY, JSON.stringify(DATA)); }catch(e){}
+    const csvText = await resp.text();
+    const parsed = parseRowsFromCSV(csvText);
+    if(!parsed) throw new Error('No rows parsed — check sheet URL');
+    RAW = parsed;
+    try{ localStorage.setItem(RFND_CACHE_KEY, csvText); }catch(e){}
+    rebuildData();
     init();
   }catch(e){
     if(!DATA){
@@ -572,9 +619,11 @@ async function loadData(){
 const EXCLUDE_AGENTS = new Set(['bianca','johnbaylon','rockwell']);
 const PALETTE = { navy:'#1F3864', accent:'#4472C4', amber:'#E8A33D', red:'#C0504D', green:'#4F8A5B', teal:'#2E8B8B', purple:'#7A5EA8' };
 
+let RAW = null;
 let DATA = null;
 let charts = {};
 let currentView = 'week';
+let companyFilter = 'all';
 let selectedPeriodKey = 'all';
 let agentSort = { key: 'pct_manual', dir: 'desc' };
 
@@ -606,8 +655,8 @@ function renderYesterday(){
     { label:'Refund $ (clean)', value: fmtMoney(y.refund_amount), delta: deltaSpan(pctDelta(y.refund_amount, db.refund_amount), 'down') },
     { label:'Dashboard Cancellations', value: fmtNum(y.cancel_total), delta: deltaSpan(pctDelta(y.cancel_total, db.cancel_total), 'down') },
     { label:'Refund Rate (Cxl)', value: y.refund_rate===null?'—':y.refund_rate+'%', delta: (y.refund_rate!==null&&db.refund_rate!==null)?deltaSpan(y.refund_rate-db.refund_rate,'down'):'<span class="delta flat">—</span>' },
-    { label:'Path / Crowd Split', value: `${y.company_path} / ${y.company_crowd}`, delta: '' },
   ];
+  if (companyFilter==='all') stats.push({ label:'Path / Crowd Split', value: `${y.company_path} / ${y.company_crowd}`, delta: '' });
   function reasonBox(label, count, color, reason, sub, insight){
     return `<div class="yday-reason-box">
       <h4 style="color:${color}">${label} <span style="font-weight:400;font-size:11px;color:rgba(255,255,255,.6)">(${count||0})</span></h4>
@@ -684,14 +733,16 @@ function renderCategoryChart(view){
 }
 function renderRefundChart(view){
   const d = DATA[view];
+  const allDatasets = [
+    { key:'ps', type:'bar', label:'Path Social — Cases', data:d.refund_count_ps, backgroundColor:'rgba(68,114,196,0.75)', yAxisID:'y', stack:'s' },
+    { key:'ci', type:'bar', label:'Crowd Ignite — Cases', data:d.refund_count_ci, backgroundColor:'rgba(46,139,139,0.75)', yAxisID:'y', stack:'s' },
+    { key:'ps', type:'line', label:'Path Social — $ Refunded', data:d.refund_amount_ps, borderColor:PALETTE.navy, backgroundColor:PALETTE.navy, yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2 },
+    { key:'ci', type:'line', label:'Crowd Ignite — $ Refunded', data:d.refund_amount_ci, borderColor:PALETTE.teal, backgroundColor:PALETTE.teal, yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2, borderDash:[4,3] }
+  ];
+  const datasets = allDatasets.filter(ds => companyFilter==='all' || ds.key===companyFilter);
   charts.refund = new Chart(document.getElementById('chartRefund'), {
     type:'bar',
-    data: { labels: d.labels, datasets: [
-      { type:'bar', label:'Path Social — Cases', data:d.refund_count_ps, backgroundColor:'rgba(68,114,196,0.75)', yAxisID:'y', stack:'s' },
-      { type:'bar', label:'Crowd Ignite — Cases', data:d.refund_count_ci, backgroundColor:'rgba(46,139,139,0.75)', yAxisID:'y', stack:'s' },
-      { type:'line', label:'Path Social — $ Refunded', data:d.refund_amount_ps, borderColor:PALETTE.navy, backgroundColor:PALETTE.navy, yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2 },
-      { type:'line', label:'Crowd Ignite — $ Refunded', data:d.refund_amount_ci, borderColor:PALETTE.teal, backgroundColor:PALETTE.teal, yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2, borderDash:[4,3] }
-    ]},
+    data: { labels: d.labels, datasets },
     options: { responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
       scales:{
@@ -719,12 +770,14 @@ function renderCancelChart(view){
 }
 function renderLOBChart(view){
   const d = DATA[view];
+  const allDatasets = [
+    { key:'ps', label:'Path Social', data:d.company_path, backgroundColor: barColors(view, PALETTE.navy), stack:'s' },
+    { key:'ci', label:'Crowd Ignite', data:d.company_crowd, backgroundColor: barColors(view, PALETTE.teal), stack:'s' }
+  ];
+  const datasets = allDatasets.filter(ds => companyFilter==='all' || ds.key===companyFilter);
   charts.lob = new Chart(document.getElementById('chartLOB'), {
     type:'bar',
-    data: { labels: d.labels, datasets: [
-      { label:'Path Social', data:d.company_path, backgroundColor: barColors(view, PALETTE.navy), stack:'s' },
-      { label:'Crowd Ignite', data:d.company_crowd, backgroundColor: barColors(view, PALETTE.teal), stack:'s' }
-    ]},
+    data: { labels: d.labels, datasets },
     options: { responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
       scales:{ x:{ stacked:true, ticks:{font:{size:10}} }, y:{ stacked:true, ticks:{font:{size:10}} } } }
@@ -806,7 +859,8 @@ function sortRows(rows){
 function renderAgentTable(view){
   const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
   const label = periods.find(p => p.key === selectedPeriodKey)?.label || 'All';
-  document.getElementById('agentCardTitle').textContent = `Agent Termination & Refund Activity — ${label}`;
+  const companyLabel = companyFilter==='ps' ? ' · Path Social' : companyFilter==='ci' ? ' · Crowd Ignite' : '';
+  document.getElementById('agentCardTitle').textContent = `Agent Termination & Refund Activity — ${label}${companyLabel}`;
   document.getElementById('periodNote').textContent = selectedPeriodKey === 'all'
     ? `Showing combined totals across the ${view === 'week' ? '8 weeks' : '6 months'}. Pick a single period from the dropdown to isolate it.`
     : `Isolated to ${label} only.`;
@@ -880,9 +934,34 @@ document.getElementById('periodSelect').addEventListener('change', (e) => {
   renderLOBChart(currentView); renderSaveUpsellChart(currentView); renderIssueChart();
   renderAgentTable(currentView);
 });
+// Company toggle is global: it rebuilds DATA from the raw rows filtered to the selected
+// company, then re-renders everything — KPIs, the yesterday card, every chart, the agent
+// table/insights, and the flagged-amounts table all reflect the same selected company.
+document.getElementById('companyToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#companyToggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  companyFilter = btn.dataset.company;
+  rebuildData();
+  updateRowCountText();
+  renderYesterday();
+  renderDataQuality();
+  renderAll(currentView);
+});
+
+function updateRowCountText(){
+  const el = document.getElementById('rowCountText');
+  if (companyFilter === 'all') {
+    el.textContent = `${DATA.total_row_count.toLocaleString()} rows loaded`;
+  } else {
+    const companyName = companyFilter === 'ps' ? 'Path Social' : 'Crowd Ignite';
+    el.textContent = `${DATA.row_count.toLocaleString()} of ${DATA.total_row_count.toLocaleString()} rows (${companyName})`;
+  }
+}
 
 function init(){
-  document.getElementById('rowCountText').textContent = `${DATA.row_count.toLocaleString()} rows loaded`;
+  updateRowCountText();
   document.getElementById('statusText').textContent = `Data as of ${DATA.generated_at}`;
   renderYesterday();
   renderDataQuality();
