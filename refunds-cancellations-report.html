@@ -119,8 +119,8 @@
     <div class="chart-wrap"><canvas id="chartCategory"></canvas></div>
   </div>
   <div class="card">
-    <h2>Annual Sub Refunds — Count &amp; Dollars (by LOB)</h2>
-    <p class="desc">Grouped bars = case count by LOB (left axis). Lines = $ refunded per LOB (right axis), excludes flagged outliers. Non-USD amounts converted to USD using historical FX rates.</p>
+    <h2 id="refundChartTitle">Annual Sub Refunds — Count &amp; Dollars (by LOB)</h2>
+    <p class="desc" id="refundChartDesc">Grouped bars = case count by LOB (left axis). Lines = $ refunded per LOB (right axis), excludes flagged outliers. Non-USD amounts converted to USD using historical FX rates.</p>
     <div class="chart-wrap"><canvas id="chartRefund"></canvas></div>
   </div>
   <div class="card">
@@ -129,8 +129,8 @@
     <div class="chart-wrap"><canvas id="chartCancel"></canvas></div>
   </div>
   <div class="card">
-    <h2>Line of Business Split</h2>
-    <p class="desc">Total logged actions per period, Path Social vs. Crowd Ignite.</p>
+    <h2 id="lobChartTitle">Line of Business Split</h2>
+    <p class="desc" id="lobChartDesc">Total logged actions per period, Path Social vs. Crowd Ignite.</p>
     <div class="chart-wrap"><canvas id="chartLOB"></canvas></div>
   </div>
   <div class="card">
@@ -945,6 +945,7 @@ document.getElementById('companyToggle').addEventListener('click', (e) => {
   companyFilter = btn.dataset.company;
   rebuildData();
   updateRowCountText();
+  updateCompanyScopedTitles();
   renderYesterday();
   renderDataQuality();
   renderAll(currentView);
@@ -960,8 +961,30 @@ function updateRowCountText(){
   }
 }
 
+// Card titles/descriptions that explicitly compare Path Social vs. Crowd Ignite need to say so
+// only when both are actually shown — otherwise they're misleading once filtered to one company.
+function updateCompanyScopedTitles(){
+  const companyName = companyFilter === 'ps' ? 'Path Social' : companyFilter === 'ci' ? 'Crowd Ignite' : null;
+  const refundTitleEl = document.getElementById('refundChartTitle');
+  const refundDescEl = document.getElementById('refundChartDesc');
+  const lobTitleEl = document.getElementById('lobChartTitle');
+  const lobDescEl = document.getElementById('lobChartDesc');
+  if (companyName) {
+    refundTitleEl.textContent = `Annual Sub Refunds — Count & Dollars — ${companyName}`;
+    refundDescEl.textContent = `Bars = case count (left axis). Line = $ refunded (right axis), excludes flagged outliers. Non-USD amounts converted to USD using historical FX rates.`;
+    lobTitleEl.textContent = `Line of Business Split — ${companyName}`;
+    lobDescEl.textContent = `Total logged actions per period for ${companyName}.`;
+  } else {
+    refundTitleEl.textContent = 'Annual Sub Refunds — Count & Dollars (by LOB)';
+    refundDescEl.textContent = 'Grouped bars = case count by LOB (left axis). Lines = $ refunded per LOB (right axis), excludes flagged outliers. Non-USD amounts converted to USD using historical FX rates.';
+    lobTitleEl.textContent = 'Line of Business Split';
+    lobDescEl.textContent = 'Total logged actions per period, Path Social vs. Crowd Ignite.';
+  }
+}
+
 function init(){
   updateRowCountText();
+  updateCompanyScopedTitles();
   document.getElementById('statusText').textContent = `Data as of ${DATA.generated_at}`;
   renderYesterday();
   renderDataQuality();
