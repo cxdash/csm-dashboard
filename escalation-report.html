@@ -7,6 +7,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+.gate-overlay{position:fixed;inset:0;background:#f1f4f9;display:flex;align-items:center;justify-content:center;z-index:9999}
+.gate-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:32px 36px;max-width:380px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,.12);text-align:center}
+.gate-card h2{margin:0 0 8px;font-size:17px;color:#1A1A2E}
+.gate-card p{margin:0 0 20px;font-size:12.5px;color:#64748b;line-height:1.5}
+.gate-form{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.gate-form input{padding:9px 12px;font-size:13px;border:1px solid #cbd5e1;border-radius:7px;font-family:'DM Sans',sans-serif}
+.gate-form button{padding:9px 12px;font-size:13px;font-weight:600;border:none;border-radius:7px;background:#4F8EF7;color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif}
+.gate-form button:hover{background:#3b7ae0}
+.gate-denied{color:#dc2626;font-size:12.5px;margin-top:14px;display:none}
+.admin-lock-badge{font-size:11px;color:#94a3b8;cursor:pointer;padding:4px 2px;background:none;border:none;font-family:'DM Sans',sans-serif}
+.admin-lock-badge:hover{color:#1A1A2E;text-decoration:underline}
 :root{
   --masthead:#1A1A2E;
   --accent:#4F8EF7;
@@ -144,6 +155,20 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 </head>
 <body>
 
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <h2>Restricted — Admin Only</h2>
+    <p id="gateMessage">Enter the admin code to view this report.</p>
+    <div class="gate-form">
+      <input type="password" id="gatePasscodeInput" placeholder="Admin code" autocomplete="off">
+      <button onclick="attemptUnlock()">Unlock</button>
+    </div>
+    <p class="gate-denied" id="gateDenied">Incorrect code.</p>
+  </div>
+</div>
+
+<div id="dashboardRoot" style="display:none;">
+
 <div class="masthead">
   <div class="masthead-left">
     <h1>Escalation Report</h1>
@@ -155,6 +180,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
       <button class="toggle-btn" id="btnMonthly" onclick="setPeriod('monthly')">Monthly</button>
     </div>
     <span class="chip-live" id="statusChip">⏳ Loading…</span>
+    <button class="admin-lock-badge" id="adminLockBadge" onclick="relock()" title="Click to lock">🔓</button>
     <button class="print-btn" onclick="window.print()">⎙ Print / PDF</button>
     <a href="index.html" style="font-size:12px;color:#94a3b8;text-decoration:none">← Dashboard</a>
   </div>
@@ -367,6 +393,8 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   </div>
 
 </div><!-- /main -->
+
+</div><!-- /dashboardRoot -->
 
 <script>
 'use strict';
@@ -1696,13 +1724,54 @@ async function loadSheets(){
   }catch(e){ chip.textContent='⚠ Error'; chip.style.background='#dc2626'; console.error(e); }
 }
 
-document.addEventListener('DOMContentLoaded',function(){
+function bootReport(){
   loadSheets();
-  // Show "Send Email Draft" only for the owner (URL must include ?owner=true)
-  if(new URLSearchParams(window.location.search).get('owner')==='true'){
-    document.getElementById('emailDraftBtn').style.display='flex';
+  // Only admin can view this page at all now, so always show the email-draft button.
+  var btn = document.getElementById('emailDraftBtn');
+  if(btn) btn.style.display = 'flex';
+}
+
+// ── Access gate — same admin passcode used on index.html (shared localStorage
+// key, so unlocking admin on either page unlocks it on both). No Google sign-in,
+// no external setup, no logging — just the code check.
+var ADMIN_CODE = 'Lisa2026cx';
+var isAdmin = (localStorage.getItem('csm_admin')==='1');
+
+function grantAccess(){
+  document.getElementById('gateOverlay').style.display = 'none';
+  document.getElementById('dashboardRoot').style.display = '';
+  bootReport();
+}
+
+function attemptUnlock(){
+  var input = document.getElementById('gatePasscodeInput');
+  var code = (input && input.value || '').trim();
+  if(code === ADMIN_CODE){
+    isAdmin = true;
+    localStorage.setItem('csm_admin','1');
+    document.getElementById('gateDenied').style.display = 'none';
+    grantAccess();
+  } else {
+    document.getElementById('gateDenied').style.display = 'block';
   }
-});
+}
+
+function relock(){
+  isAdmin = false;
+  localStorage.removeItem('csm_admin');
+  location.reload();
+}
+
+(function(){
+  var input = document.getElementById('gatePasscodeInput');
+  if(input){
+    input.addEventListener('keydown', function(e){ if(e.key === 'Enter') attemptUnlock(); });
+  }
+})();
+
+if(isAdmin){
+  grantAccess();
+}
 
 // ── PERIOD TOGGLE ─────────────────────────────────────────────────────────────
 function setPeriod(p){
