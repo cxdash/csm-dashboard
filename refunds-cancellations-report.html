@@ -4,7 +4,18 @@
 <meta charset="UTF-8">
 <title>Refunds and Cancellation Live Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
+  /* --- Access gate (Google Sign-In, org-domain restricted) --- */
+  .gate-overlay { position:fixed; inset:0; background:#F5F6F8; display:flex; align-items:center; justify-content:center; z-index:9999; }
+  .gate-card { background:#fff; border:1px solid #E1E4E8; border-radius:14px; padding:32px 36px; max-width:380px; width:90%; box-shadow:0 10px 40px rgba(0,0,0,.12); text-align:center; }
+  .gate-card h2 { margin:0 0 8px; font-size:17px; color:#1F3864; }
+  .gate-card p { margin:0 0 20px; font-size:12.5px; color:#6B7280; line-height:1.5; }
+  .gate-signin-slot { display:flex; justify-content:center; }
+  .gate-denied { color:#C0504D; font-size:12.5px; margin-top:16px; display:none; }
+  .gate-loading { font-size:12px; color:#6B7280; }
+  .visitor-badge { font-size:11px; color:var(--text-muted); cursor:pointer; }
+  .visitor-badge:hover { color:var(--navy); text-decoration:underline; }
   :root {
     --navy: #1F3864; --accent: #4472C4; --amber: #E8A33D; --red: #C0504D;
     --green: #4F8A5B; --teal: #2E8B8B; --purple: #7A5EA8;
@@ -84,10 +95,21 @@
 </head>
 <body>
 
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <h2>Adly Team — Restricted Dashboard</h2>
+    <p id="gateMessage">Sign in with your work Google account to continue. Access is limited to Adly Team staff.</p>
+    <div class="gate-signin-slot" id="gateSigninSlot"><span class="gate-loading">Loading sign-in…</span></div>
+    <p class="gate-denied" id="gateDenied">That Google account isn't on an approved Adly Team domain. If this is a mistake, contact Lisa.</p>
+  </div>
+</div>
+
+<div id="dashboardRoot" style="display:none;">
+
 <div class="header">
   <div>
     <h1>Refunds and Cancellation Live Dashboard - Path Social &amp; Crowd Ignite</h1>
-    <p class="subtitle">From the PS Daily Processes tracker (published Google Sheet). Weeks run Monday-Sunday.</p>
+    <p class="subtitle">From the PS Daily Processes tracker (published Google Sheet). Weeks run Monday-Sunday. <span class="visitor-badge" id="visitorBadge"></span></p>
   </div>
   <div class="controls">
     <div class="toggle" id="companyToggle">
@@ -579,6 +601,28 @@ function rebuildData(){
   DATA = buildDashboardData(RAW.rows, RAW.flagged, companyFilter);
 }
 
+// Re-render with fresh numbers WITHOUT resetting whatever the user currently has selected
+// (view, period, company). Used whenever a background refresh completes after the very first
+// paint — only the very first successful load should reset to defaults via init().
+function refreshInPlace(){
+  updateRowCountText();
+  updateCompanyScopedTitles();
+  document.getElementById('statusText').textContent = `Data as of ${DATA.generated_at}`;
+  renderYesterday();
+  renderDataQuality();
+  destroyCharts();
+  renderKPIs(currentView);
+  renderCategoryChart(currentView);
+  renderRefundChart(currentView);
+  renderCancelChart(currentView);
+  renderLOBChart(currentView);
+  renderSaveUpsellChart(currentView);
+  renderIssueChart();
+  renderAgentTable(currentView);
+}
+
+let hasInitialized = false;
+
 async function loadData(){
   // Show cached data instantly if available
   try{
@@ -591,6 +635,7 @@ async function loadData(){
         document.getElementById('statusText').textContent = 'Cached data — refreshing…';
         document.getElementById('rowCountText').textContent = '';
         init();
+        hasInitialized = true;
       }
     }
   }catch(e){}
@@ -598,7 +643,7 @@ async function loadData(){
   // Fetch fresh in background
   try{
     document.getElementById('statusText').textContent = (DATA ? 'Cached data — refreshing…' : 'Fetching live data…');
-    document.getElementById('rowCountText').textContent = '';
+    if(!DATA) document.getElementById('rowCountText').textContent = '';
     const resp = await fetch(SHEET_URL+'&cachebust='+Date.now());
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const csvText = await resp.text();
@@ -607,7 +652,12 @@ async function loadData(){
     RAW = parsed;
     try{ localStorage.setItem(RFND_CACHE_KEY, csvText); }catch(e){}
     rebuildData();
-    init();
+    if(hasInitialized){
+      refreshInPlace();
+    } else {
+      init();
+      hasInitialized = true;
+    }
   }catch(e){
     if(!DATA){
       document.getElementById('statusText').textContent = '⚠ Error loading data: '+e.message+' — reload to retry';
@@ -990,7 +1040,98 @@ function init(){
   renderDataQuality();
   renderAll('week');
 }
-loadData();
+
+// === Access gate — Google Sign-In restricted to org domains ===
+// SETUP: after creating an OAuth Client ID (see the setup instructions doc), paste it below.
+const GOOGLE_CLIENT_ID = 'PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE'; // ends in .apps.googleusercontent.com
+const ALLOWED_DOMAINS = ['pathsocial.com', 'adly.com'];
+const AUTH_CACHE_KEY = 'csm_auth_v1';
+const AUTH_CACHE_DAYS = 30;
+const DASHBOARD_LABEL = 'Refunds & Cancellations Report';
+// SETUP: after deploying the Apps Script access logger (see the setup instructions doc), paste its Web App URL below.
+const ACCESS_LOG_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'; // ends in /exec
+
+function _parseJwt(token){
+  try{
+    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    const json = decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(json);
+  }catch(e){ return null; }
+}
+
+function logVisit(email, label){
+  if(!ACCESS_LOG_URL || ACCESS_LOG_URL.indexOf('PASTE_YOUR') === 0) return; // logger not configured yet
+  const params = new URLSearchParams({
+    name: email || 'Unknown',
+    dashboard: label || DASHBOARD_LABEL,
+    clientTime: new Date().toISOString(),
+    ua: navigator.userAgent.slice(0,300)
+  });
+  const img = new Image();
+  img.src = ACCESS_LOG_URL + '?' + params.toString();
+}
+
+function grantAccess(email){
+  document.getElementById('gateOverlay').style.display = 'none';
+  document.getElementById('dashboardRoot').style.display = '';
+  const badge = document.getElementById('visitorBadge');
+  if(badge){
+    badge.textContent = `· Signed in as ${email} (switch account)`;
+    badge.onclick = function(){ localStorage.removeItem(AUTH_CACHE_KEY); location.reload(); };
+  }
+  logVisit(email);
+  loadData();
+}
+
+function denyAccess(email){
+  document.getElementById('gateSigninSlot').innerHTML = '';
+  document.getElementById('gateDenied').style.display = 'block';
+  logVisit(email, DASHBOARD_LABEL + ' (DENIED - wrong domain)');
+}
+
+function handleGoogleSignIn(response){
+  const payload = _parseJwt(response.credential);
+  if(!payload || !payload.email) return;
+  const email = payload.email;
+  const domain = (email.split('@')[1]||'').toLowerCase();
+  if(payload.email_verified && ALLOWED_DOMAINS.includes(domain)){
+    try{ localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({email, ts: Date.now()})); }catch(e){}
+    grantAccess(email);
+  } else {
+    denyAccess(email);
+  }
+}
+
+function initAuthGate(){
+  // Skip the sign-in button if there's a still-valid cached sign-in from a recent visit.
+  try{
+    const cached = JSON.parse(localStorage.getItem(AUTH_CACHE_KEY) || 'null');
+    if(cached && cached.email && (Date.now() - cached.ts) < AUTH_CACHE_DAYS*24*60*60*1000){
+      const domain = (cached.email.split('@')[1]||'').toLowerCase();
+      if(ALLOWED_DOMAINS.includes(domain)){
+        grantAccess(cached.email);
+        return;
+      }
+    }
+  }catch(e){}
+
+  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.indexOf('PASTE_YOUR') === 0){
+    document.getElementById('gateSigninSlot').innerHTML = '<span class="gate-loading">⚠ Sign-in not configured yet — see setup instructions.</span>';
+    return;
+  }
+  (function renderWhenReady(){
+    if(typeof google !== 'undefined' && google.accounts && google.accounts.id){
+      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleSignIn });
+      document.getElementById('gateSigninSlot').innerHTML = '';
+      google.accounts.id.renderButton(document.getElementById('gateSigninSlot'), { theme:'outline', size:'large', text:'signin_with' });
+    } else {
+      setTimeout(renderWhenReady, 150);
+    }
+  })();
+}
+
+initAuthGate();
 </script>
+</div>
 </body>
 </html>
