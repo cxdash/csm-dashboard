@@ -6,19 +6,8 @@
 <title>CSM KPI Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-/* --- Access gate (Google Sign-In, org-domain restricted) --- */
-.gate-overlay{position:fixed;inset:0;background:#f1f4f9;display:flex;align-items:center;justify-content:center;z-index:9999}
-.gate-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:32px 36px;max-width:380px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,.12);text-align:center}
-.gate-card h2{margin:0 0 8px;font-size:17px;color:#0f1b35}
-.gate-card p{margin:0 0 20px;font-size:12.5px;color:#94a3b8;line-height:1.5}
-.gate-signin-slot{display:flex;justify-content:center}
-.gate-denied{color:#dc2626;font-size:12.5px;margin-top:16px;display:none}
-.gate-loading{font-size:12px;color:#94a3b8}
-.visitor-badge{font-size:11px;color:rgba(255,255,255,.55);cursor:pointer;padding:4px 2px}
-.visitor-badge:hover{color:#fff;text-decoration:underline}
 :root{
   --navy:#0f1b35;--accent:#3b82f6;
   --bg:#f1f4f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#475569;--text3:#94a3b8;
@@ -200,23 +189,12 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 </head>
 <body>
 
-<div class="gate-overlay" id="gateOverlay">
-  <div class="gate-card">
-    <h2>Adly Team — Restricted Dashboard</h2>
-    <p id="gateMessage">Sign in with your work Google account to continue. Access is limited to Adly Team staff.</p>
-    <div class="gate-signin-slot" id="gateSigninSlot"><span class="gate-loading">Loading sign-in…</span></div>
-    <p class="gate-denied" id="gateDenied">That Google account isn't on an approved Adly Team domain. If this is a mistake, contact Lisa.</p>
-  </div>
-</div>
-
-<div id="dashboardRoot" style="display:none;">
-
 <div class="header">
   <div class="hdr-left">
     <div class="logo">CX</div>
     <div>
       <div class="hdr-title">CSM KPI Dashboard</div>
-      <div class="hdr-sub">Path Social &nbsp;·&nbsp; Crowd Ignite &nbsp;·&nbsp; High Social &nbsp;·&nbsp; Plixi &nbsp;·&nbsp; Goread &nbsp;·&nbsp; Follows — Email Support <span class="visitor-badge" id="visitorBadge"></span></div>
+      <div class="hdr-sub">Path Social &nbsp;·&nbsp; Crowd Ignite &nbsp;·&nbsp; High Social &nbsp;·&nbsp; Plixi &nbsp;·&nbsp; Goread &nbsp;·&nbsp; Follows — Email Support</div>
     </div>
   </div>
   <div class="hdr-right">
@@ -3373,106 +3351,10 @@ function toggleAdmin(){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-function bootDashboard(){
-  D = DEFAULT_DATA;
-  render();
-  loadData();
-  if(isAdmin){ var b=document.getElementById('adminBtn'); if(b){b.textContent='🔓';b.title='Admin — click to lock';} }
-}
-
-// ── Access gate — Google Sign-In restricted to org domains ─────────────────────
-// SETUP: after creating an OAuth Client ID (see the setup instructions doc), paste it below.
-// Use the SAME Client ID and Web App URL as the Refunds & Cancellations Report — one
-// OAuth client and one Apps Script logger cover both dashboards.
-const GOOGLE_CLIENT_ID = 'PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE'; // ends in .apps.googleusercontent.com
-const ALLOWED_DOMAINS = ['pathsocial.com', 'adly.com'];
-const AUTH_CACHE_KEY = 'csm_auth_v1';
-const AUTH_CACHE_DAYS = 30;
-const DASHBOARD_LABEL = 'CSM KPI Dashboard (Main)';
-// SETUP: after deploying the Apps Script access logger (see the setup instructions doc), paste its Web App URL below.
-const ACCESS_LOG_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'; // ends in /exec
-
-function _parseJwt(token){
-  try{
-    const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-    const json = decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-    return JSON.parse(json);
-  }catch(e){ return null; }
-}
-
-function logVisit(email, label){
-  if(!ACCESS_LOG_URL || ACCESS_LOG_URL.indexOf('PASTE_YOUR') === 0) return; // logger not configured yet
-  const params = new URLSearchParams({
-    name: email || 'Unknown',
-    dashboard: label || DASHBOARD_LABEL,
-    clientTime: new Date().toISOString(),
-    ua: navigator.userAgent.slice(0,300)
-  });
-  const img = new Image();
-  img.src = ACCESS_LOG_URL + '?' + params.toString();
-}
-
-function grantAccess(email){
-  document.getElementById('gateOverlay').style.display = 'none';
-  document.getElementById('dashboardRoot').style.display = '';
-  const badge = document.getElementById('visitorBadge');
-  if(badge){
-    badge.textContent = `· Signed in as ${email} (switch account)`;
-    badge.onclick = function(){ localStorage.removeItem(AUTH_CACHE_KEY); location.reload(); };
-  }
-  logVisit(email);
-  bootDashboard();
-}
-
-function denyAccess(email){
-  document.getElementById('gateSigninSlot').innerHTML = '';
-  document.getElementById('gateDenied').style.display = 'block';
-  logVisit(email, DASHBOARD_LABEL + ' (DENIED - wrong domain)');
-}
-
-function handleGoogleSignIn(response){
-  const payload = _parseJwt(response.credential);
-  if(!payload || !payload.email) return;
-  const email = payload.email;
-  const domain = (email.split('@')[1]||'').toLowerCase();
-  if(payload.email_verified && ALLOWED_DOMAINS.includes(domain)){
-    try{ localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({email, ts: Date.now()})); }catch(e){}
-    grantAccess(email);
-  } else {
-    denyAccess(email);
-  }
-}
-
-function initAuthGate(){
-  // Skip the sign-in button if there's a still-valid cached sign-in from a recent visit.
-  try{
-    const cached = JSON.parse(localStorage.getItem(AUTH_CACHE_KEY) || 'null');
-    if(cached && cached.email && (Date.now() - cached.ts) < AUTH_CACHE_DAYS*24*60*60*1000){
-      const domain = (cached.email.split('@')[1]||'').toLowerCase();
-      if(ALLOWED_DOMAINS.includes(domain)){
-        grantAccess(cached.email);
-        return;
-      }
-    }
-  }catch(e){}
-
-  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.indexOf('PASTE_YOUR') === 0){
-    document.getElementById('gateSigninSlot').innerHTML = '<span class="gate-loading">⚠ Sign-in not configured yet — see setup instructions.</span>';
-    return;
-  }
-  (function renderWhenReady(){
-    if(typeof google !== 'undefined' && google.accounts && google.accounts.id){
-      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleSignIn });
-      document.getElementById('gateSigninSlot').innerHTML = '';
-      google.accounts.id.renderButton(document.getElementById('gateSigninSlot'), { theme:'outline', size:'large', text:'signin_with' });
-    } else {
-      setTimeout(renderWhenReady, 150);
-    }
-  })();
-}
-
-initAuthGate();
+D = DEFAULT_DATA;
+render();
+loadData();
+if(isAdmin){ var b=document.getElementById('adminBtn'); if(b){b.textContent='🔓';b.title='Admin — click to lock';} }
 </script>
-</div>
 </body>
 </html>
