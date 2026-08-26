@@ -1042,6 +1042,7 @@ function parseGladlyCSV(text, tgt){
     team:     C('Team(s)'),
     loggedin: C('Logged in Time in seconds'),
     active:   C('Active Time in seconds'),
+    away:     C('Away Time in seconds'),
     fulfilled:C('Contact Fulfilled'),
     byresp:   C('Contact Fulfilled by Response'),
     missed:   C('Contact Missed'),
@@ -1087,7 +1088,7 @@ function parseGladlyCSV(text, tgt){
   function getAg(map,email,name,lob,dt){
     if(!map[email]){
       map[email]={name:name,email:email,lob:lob,lastDt:dt,days:new Set(),bucketTimes:[],
-                  fulfilled:0,byresp:0,missed:0,handleSec:0,activeSec:0,loggedinSec:0,chatFul:0,chatHT:0};
+                  fulfilled:0,byresp:0,missed:0,handleSec:0,activeSec:0,loggedinSec:0,awaySec:0,chatFul:0,chatHT:0};
     } else if(dt>map[email].lastDt){
       // Keep most-recent name/LOB (handles agents who changed teams)
       map[email].name=name; map[email].lob=lob; map[email].lastDt=dt;
@@ -1130,6 +1131,7 @@ function parseGladlyCSV(text, tgt){
       ag.handleSec    +=sf(row,COL.handle);
       ag.activeSec    +=sf(row,COL.active);
       ag.loggedinSec  +=sf(row,COL.loggedin);
+      ag.awaySec      +=sf(row,COL.away);
       ag.chatFul      +=sf(row,COL.chatFul);
       ag.chatHT       +=sf(row,COL.chatHT);
     }
@@ -1180,19 +1182,42 @@ function parseGladlyCSV(text, tgt){
       }
       if(days===0||ag.fulfilled===0) return null;
       var f=defFlags[ag.name.toLowerCase()]||{};
+      // Low-hours flag (Goread only, uses REAL calendar days worked — `days` above —
+      // not the 9h-shift divisor below, since that divisor is defined as hours÷9 and
+      // would always average out to exactly 9 by construction). Agents shouldn't log
+      // out for breaks — they should go Away instead — so a full 9h shift should show
+      // ~9h logged in with ~1h of that as Away (lunch/short breaks), netting ~8h
+      // logged-in/active. Flag when actual logged-in or active hours/day (on days they
+      // worked) fall under 8, or Away time/day tops 1h (more away time than a lunch+
+      // breaks allowance suggests, even if still logged in). Confirmed with Lisa 2026-08-26.
+      var isGoread = ag.lob==='Goread';
+      var avgLoginHrsVal  = ag.loggedinSec/3600/days;
+      var avgActiveHrsVal = ag.activeSec/3600/days;
+      var avgAwayHrsVal   = ag.awaySec/3600/days;
+      var lowHoursFlag = isGoread && (avgLoginHrsVal<8 || avgActiveHrsVal<8 || avgAwayHrsVal>1);
+      // Goread works 9-hour shifts (confirmed with Lisa 2026-08-26) — use logged-in
+      // hours ÷ 9 (kept fractional, not rounded, so it matches Lisa's manual calc) as
+      // the day divisor instead of session-gap detection, so Avg/Day and the other
+      // per-day metrics below reflect a standard 9-hour shift rather than raw calendar
+      // days with data. Other LOBs keep the session-based day count (`days` above).
+      var dayDivisor = (isGoread && ag.loggedinSec>0) ? (ag.loggedinSec/3600/9) : days;
       return {
         name:ag.name, lob:ag.lob,
         tickets:0, aht:0, ahtTgt:5.0,
         qa:null, qaTgt:0.90, csat:null, fcr:null, occ:0, adh:0.97,
         esc:f.esc||false, partTime:f.partTime||false,
-        avgCustDay:      Math.round(ag.fulfilled/days),
+        avgCustDay:      Math.round(ag.fulfilled/dayDivisor),
         handleCust:      fmtTime(ag.handleSec/ag.fulfilled),
         chatAHT:         ag.chatFul>5 ? fmtTime(ag.chatHT/ag.chatFul) : null,
-        missedChats:     Math.round(ag.missed/days),
-        avgLogin:        fmtHM(ag.loggedinSec/days),
+        missedChats:     Math.round(ag.missed/dayDivisor),
+        avgLogin:        fmtHM(ag.loggedinSec/dayDivisor),
         loginUtil:       ag.loggedinSec>0 ? ag.activeSec/ag.loggedinSec : null,
         productivity:    ag.activeSec>0   ? ag.handleSec/ag.activeSec  : null,
-        fulfilledByResp: Math.round(ag.byresp/days)
+        fulfilledByResp: Math.round(ag.byresp/dayDivisor),
+        avgLoginHrs:     avgLoginHrsVal,
+        avgActiveHrs:    avgActiveHrsVal,
+        avgAwayHrs:      avgAwayHrsVal,
+        lowHours:        lowHoursFlag
       };
     }).filter(Boolean).sort(function(a,b){
       var la=LOB_ORDER.indexOf(a.lob), lb=LOB_ORDER.indexOf(b.lob);
@@ -2515,7 +2540,7 @@ function renderAgents(){
       +'<td class="r" style="color:'+(ahtMet===null?'var(--text1)':ahtMet?'var(--green)':'var(--red)')+'">'+((a.handleCust)||'—')+'</td>'
       +'<td class="r">'+((a.chatAHT)||'—')+'</td>'
       +'<td class="r" style="color:'+((a.missedChats||0)===0?'var(--green)':((a.missedChats||0)<=5?'var(--text1)':'var(--red)'))+'">'+((a.missedChats!==null&&a.missedChats!==undefined)?a.missedChats:'—')+'</td>'
-      +'<td class="r">'+((a.avgLogin)||'—')+'</td>'
+      +'<td class="r"'+(a.lowHours?' style="color:var(--red);font-weight:700" title="Under 8h logged-in/active, or over 1h Away — below the ~8h expected after a 9h Goread shift with lunch/breaks"':'')+'>'+((a.avgLogin)||'—')+(a.lowHours?' ⚠':'')+'</td>'
       +'<td class="r" style="border-right:2px solid var(--border)">'+nullPct(a.loginUtil,1,0.85)+'</td>'
       +'<td class="r">'+nullPct(a.productivity,1,null)+'</td>'
       +'<td class="r">'+nullVal(a.fulfilledByResp,true)+'</td>'

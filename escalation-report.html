@@ -106,13 +106,14 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 
 /* ── VOLUME TABLE ── */
 .vol-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
-.vol-table col.c-lob{width:14%}
-.vol-table col.c-num{width:10%}
-.vol-table col.c-bench{width:13%}
-.vol-table col.c-frt{width:12%}
-.vol-table col.c-aht{width:13%}
-.vol-table col.c-fcr{width:10%}
-.vol-table col.c-note{width:18%}
+.vol-table col.c-lob{width:13%}
+.vol-table col.c-num{width:9%}
+.vol-table col.c-bench{width:12%}
+.vol-table col.c-frt{width:11%}
+.vol-table col.c-wait{width:11%}
+.vol-table col.c-aht{width:12%}
+.vol-table col.c-fcr{width:9%}
+.vol-table col.c-note{width:14%}
 .vol-table th{background:var(--masthead);color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vol-table th.r{text-align:right}
 .vol-table td{padding:8px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis}
@@ -371,6 +372,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
             <col class="c-num">
             <col class="c-bench">
             <col class="c-frt">
+            <col class="c-wait">
             <col class="c-aht">
             <col class="c-fcr">
             <col class="c-note">
@@ -381,6 +383,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
             <th class="r">SLA %</th>
             <th class="r">vs Benchmark</th>
             <th class="r">FRT avg</th>
+            <th class="r">Avg Wait Time</th>
             <th class="r">Avg Handle Time</th>
             <th class="r">FCR</th>
             <th class="r">Note</th>
@@ -1242,13 +1245,16 @@ function renderVolume(volData, fcrByLOB){
   var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
   var rows='', socialsVol=0,socialsWithin=0, overallVol=0,overallWithin=0,overallFrtSum=0,overallFrtCount=0,overallAhtSum=0,overallAhtCount=0;
   var socialsFcrSum=0,socialsFcrCount=0, overallFcrSum=0,overallFcrCount=0;
+  var socialsFrtSum=0,socialsFrtCount=0, socialsAhtSum=0,socialsAhtCount=0;
 
   LOB_ORDER.forEach(function(lob){
     var ld=byLOB[lob]||{vol:0,within:0,frtSum:0,frtCount:0,ahtSum:0,ahtCount:0};
     if(!ld.vol) return;
     var sla=ld.vol?ld.within/ld.vol*100:null;
     var frtSec=ld.frtCount?ld.frtSum/ld.frtCount:null;
-    var ahtMin=ld.ahtCount?ld.ahtSum/ld.ahtCount/60:null;
+    var ahtSec=ld.ahtCount?ld.ahtSum/ld.ahtCount:null;
+    var ahtMin=ahtSec!==null?ahtSec/60:null;
+    var waitSec=(frtSec!==null&&ahtSec!==null)?Math.max(0,frtSec-ahtSec):null;
     var fcr=fcrByLOB[lob]!==undefined?fcrByLOB[lob]:null;
     var slaOk=sla!==null&&sla>=SLA_TARGET;
     var isFollows=lob==='Follows';
@@ -1258,6 +1264,8 @@ function renderVolume(volData, fcrByLOB){
     if(fcr!==null){ overallFcrSum+=fcr; overallFcrCount++; }
     if(!isFollows){
       socialsVol+=ld.vol; socialsWithin+=ld.within;
+      socialsFrtSum+=ld.frtSum; socialsFrtCount+=ld.frtCount;
+      socialsAhtSum+=ld.ahtSum; socialsAhtCount+=ld.ahtCount;
       if(fcr!==null){ socialsFcrSum+=fcr; socialsFcrCount++; }
     }
     var slaDelta=sla!==null?(sla-SLA_TARGET).toFixed(1):null;
@@ -1272,6 +1280,7 @@ function renderVolume(volData, fcrByLOB){
       +'<td class="r" style="color:'+(slaDelta===null?'var(--text3)':parseFloat(slaDelta)>=0?'var(--green)':'var(--red)')+'">'+
         (slaDelta!==null?(parseFloat(slaDelta)>=0?'+':'')+slaDelta+'pts':'—')+'</td>'
       +'<td class="r" style="color:var(--text3)">'+(frtSec!==null?fmtSec(frtSec):'—')+'</td>'
+      +'<td class="r" style="color:var(--text3)">'+(waitSec!==null?fmtSec(waitSec):'—')+'</td>'
       +'<td class="r" style="color:var(--text3)">'+(ahtMin!==null?ahtMin.toFixed(1)+'m':'—')+'</td>'
       +'<td class="r" style="color:'+(fcr===null?'var(--text3)':'inherit')+'">'+(fcr!==null?(fcr*100).toFixed(1)+'%':'—')+'</td>'
       +'<td class="r" style="color:var(--text3);font-size:11px">'+note+'</td>'
@@ -1282,28 +1291,37 @@ function renderVolume(volData, fcrByLOB){
   var socSLA=socialsVol?socialsWithin/socialsVol*100:null;
   var socDelta=socSLA!==null?(socSLA-SLA_TARGET).toFixed(1):null;
   var socFCR=socialsFcrCount?(socialsFcrSum/socialsFcrCount*100).toFixed(1)+'%':'—';
+  var socFRT=socialsFrtCount?socialsFrtSum/socialsFrtCount:null;
+  var socAHTsec=socialsAhtCount?socialsAhtSum/socialsAhtCount:null;
+  var socAHT=socAHTsec!==null?socAHTsec/60:null;
+  var socWait=(socFRT!==null&&socAHTsec!==null)?Math.max(0,socFRT-socAHTsec):null;
   rows+='<tr class="socials-avg"><td>Socials Avg</td><td class="r">'+fmtNum(socialsVol)+'</td>'
     +'<td class="r">'+(socSLA!==null?socSLA.toFixed(1)+'%':'—')+'</td>'
     +'<td class="r">'+(socDelta!==null?(parseFloat(socDelta)>=0?'+':'')+socDelta+'pts':'—')+'</td>'
-    +'<td class="r">—</td><td class="r">—</td>'
+    +'<td class="r">'+(socFRT!==null?fmtSec(socFRT):'—')+'</td>'
+    +'<td class="r">'+(socWait!==null?fmtSec(socWait):'—')+'</td>'
+    +'<td class="r">'+(socAHT!==null?socAHT.toFixed(1)+'m':'—')+'</td>'
     +'<td class="r">'+socFCR+'</td>'
     +'<td class="r" style="color:var(--text3);font-size:11px">Benchmark: '+SLA_TARGET+'%</td></tr>';
 
   // Overall avg
   var ovSLA=overallVol?overallWithin/overallVol*100:null;
   var ovFRT=overallFrtCount?overallFrtSum/overallFrtCount:null;
-  var ovAHT=overallAhtCount?overallAhtSum/overallAhtCount/60:null;
+  var ovAHTsec=overallAhtCount?overallAhtSum/overallAhtCount:null;
+  var ovAHT=ovAHTsec!==null?ovAHTsec/60:null;
+  var ovWait=(ovFRT!==null&&ovAHTsec!==null)?Math.max(0,ovFRT-ovAHTsec):null;
   var ovFCR=overallFcrCount?(overallFcrSum/overallFcrCount*100).toFixed(1)+'%':'—';
   var ovDelta=ovSLA!==null?(ovSLA-SLA_TARGET).toFixed(1):null;
   rows+='<tr class="overall-avg"><td>Overall</td><td class="r">'+fmtNum(overallVol)+'</td>'
     +'<td class="r">'+(ovSLA!==null?ovSLA.toFixed(1)+'%':'—')+'</td>'
     +'<td class="r">'+(ovDelta!==null?(parseFloat(ovDelta)>=0?'+':'')+ovDelta+'pts':'—')+'</td>'
     +'<td class="r">'+(ovFRT!==null?fmtSec(ovFRT):'—')+'</td>'
+    +'<td class="r">'+(ovWait!==null?fmtSec(ovWait):'—')+'</td>'
     +'<td class="r">'+(ovAHT!==null?ovAHT.toFixed(1)+'m':'—')+'</td>'
     +'<td class="r">'+ovFCR+'</td>'
     +'<td class="r" style="color:var(--text3);font-size:11px">Inbound · Email + Chat</td></tr>';
 
-  document.getElementById('volBody').innerHTML = rows||'<tr><td colspan="8" style="color:var(--text3);text-align:center;padding:24px">No volume data this period</td></tr>';
+  document.getElementById('volBody').innerHTML = rows||'<tr><td colspan="9" style="color:var(--text3);text-align:center;padding:24px">No volume data this period</td></tr>';
 
   // Alerts
   var alerts='';
