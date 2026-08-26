@@ -389,15 +389,15 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 'use strict';
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
-var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
-var LOBS = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Subdelete':'#6366f1','Follows':'#6b7280'};
+var LOBS = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows'];
 
 // ── AGENT CODE LOOKUP (name → unique code) ────────────────────────────────────
 var AGENT_CODE_MAP = {
-  'Geric Vallar':'Geric2824ps',        'Zheraine Velasquez':'Zheraine1409ps',          'Abigail Aquino':'Abigail5506ps',
+  'Geric Vallar':'Geric2824ps',        'Zheraine Velasquez':'Zheraine1409sd',          'Abigail Aquino':'Abigail5506ps',
   'Benedict Catbagan':'Benedict5012ps','Kaila May Membredo':'Kaila4657ps',   'Jennilen Manosa':'Jennilen3286ps',
   'Pherbia Mayor':'Pherbia2679ps',           'Janelle Decena':'Janelle9935ps',
-  'Mark Lora':'Mark2424ci',            'Sonja Faye Regodon Lomarquez':'Faye7912ci',                  'Mariam Riasat':'Mariam1520ci',
+  'Mark Lora':'Mark2424sd',            'Sonja Faye Regodon Lomarquez':'Faye7912ci',                  'Mariam Riasat':'Mariam1520ci',
   'Rosie Eslao':'Rosie1488hs',         'Rockwell De Mesa':'Rockwell2535hs',  'Samantha Mae Parrilla':'Samantha4582hs',
   'Charito Mencedez':'Charito4811hs',  'Polly Yanah Salanatin':'Polly9279hs','Christine Joy M Salvador':'Christine1434hs',
   'Jaycel Napa':'Jaycel4257pl',        'Trisha Joy Cads':'Trisha9928pl',     'Mary Rose Sebastian':'Mary7873pl',
@@ -467,14 +467,14 @@ var DEFAULT_DATA = {
   ],
   agents: [
     {name:'Geric Vallar',          lob:'Path Social', tickets:678, aht:6.25,ahtTgt:5.0,qa:0.9192,qaTgt:0.90,csat:null,fcr:0.5786,occ:0.86,adh:0.97, avgCustDay:56, handleCust:'6m 15s', chatAHT:'9m 11s',  missedChats:0,  avgLogin:'8h 13m',loginUtil:0.895,productivity:0.87,fulfilledByResp:622},
-    {name:'Zheraine Velasquez',              lob:'Path Social', tickets:649, aht:6.02,ahtTgt:5.0,qa:0.9405,qaTgt:0.90,csat:null,fcr:0.5822,occ:0.89,adh:0.97, avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  avgLogin:'8h 12m',loginUtil:0.889,productivity:0.89,fulfilledByResp:614},
+    {name:'Zheraine Velasquez',              lob:'Subdelete', tickets:649, aht:6.02,ahtTgt:5.0,qa:0.9405,qaTgt:0.90,csat:null,fcr:0.5822,occ:0.89,adh:0.97, avgCustDay:65, handleCust:'6m 01s', chatAHT:'11m 44s', missedChats:0,  avgLogin:'8h 12m',loginUtil:0.889,productivity:0.89,fulfilledByResp:614}, // transferred from Path Social 2026-08
     {name:'Abigail Aquino',        lob:'Path Social', tickets:618, aht:5.97,ahtTgt:5.0,qa:0.9509,qaTgt:0.90,csat:null,fcr:0.5837,occ:0.81,adh:0.97, avgCustDay:37, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'7h 44m',loginUtil:0.896,productivity:0.81,fulfilledByResp:587},
     {name:'Benedict Catbagan',     lob:'Path Social', tickets:682, aht:5.58,ahtTgt:5.0,qa:0.9155,qaTgt:0.90,csat:null,fcr:0.5171,occ:0.81,adh:0.97, avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  avgLogin:'8h 9m', loginUtil:0.909,productivity:0.78,fulfilledByResp:654},
     {name:'Kaila May Membredo',    lob:'Path Social', tickets:677, aht:6.18,ahtTgt:5.0,qa:0.9260,qaTgt:0.90,csat:null,fcr:0.5203,occ:0.85,adh:0.97, avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, avgLogin:'8h 15m',loginUtil:0.909,productivity:0.85,fulfilledByResp:633},
     {name:'Jennilen Manosa',       lob:'Path Social', tickets:28,  aht:5.52,ahtTgt:5.0,qa:0.9581,qaTgt:0.90,csat:null,fcr:0.5964,occ:0.38,adh:0.97, avgCustDay:32, handleCust:'5m 31s', chatAHT:null,       missedChats:0,  avgLogin:'8h 13m',loginUtil:0.912,productivity:0.34,fulfilledByResp:22},
     {name:'Pherbia Mayor',               lob:'Path Social', tickets:237, aht:7.30,ahtTgt:5.0,qa:0.9485,qaTgt:0.90,csat:null,fcr:0.4027,occ:0.61,adh:0.97,esc:true, avgCustDay:22, handleCust:'7m 18s', chatAHT:null,       missedChats:0,  avgLogin:'7h 50m',loginUtil:0.891,productivity:0.38,fulfilledByResp:221},
     {name:'Janelle Decena',        lob:'Path Social', tickets:270, aht:3.90,ahtTgt:5.0,qa:0.9929,qaTgt:0.90,csat:null,fcr:0.3732,occ:0.23,adh:0.97,esc:true, avgCustDay:25, handleCust:'3m 54s', chatAHT:null,       missedChats:0,  avgLogin:'8h 12m',loginUtil:0.989,productivity:0.22,fulfilledByResp:171},
-    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:304, aht:6.13,ahtTgt:5.0,qa:0.9620,qaTgt:0.90,csat:null,fcr:0.4633,occ:0.62,adh:0.97, avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  avgLogin:'8h 03m',loginUtil:0.901,productivity:0.429,fulfilledByResp:247},
+    {name:'Mark Lora',             lob:'Subdelete',tickets:304, aht:6.13,ahtTgt:5.0,qa:0.9620,qaTgt:0.90,csat:null,fcr:0.4633,occ:0.62,adh:0.97, avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  avgLogin:'8h 03m',loginUtil:0.901,productivity:0.429,fulfilledByResp:247}, // transferred from Crowd Ignite 2026-08
     {name:'Sonja Faye Regodon Lomarquez',                  lob:'Crowd Ignite',tickets:291, aht:4.02,ahtTgt:5.0,qa:0.9760,qaTgt:0.90,csat:null,fcr:0.5051,occ:0.44,adh:0.97, avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  avgLogin:'6h 52m',loginUtil:0.930,productivity:0.235,fulfilledByResp:175},
     {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:234, aht:4.75,ahtTgt:5.0,qa:0.9912,qaTgt:0.90,csat:null,fcr:0.5535,occ:0.30,adh:0.97, avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'8h 07m',loginUtil:0.877,productivity:0.237,fulfilledByResp:139},
     {name:'Rosie Eslao',           lob:'High Social', tickets:585, aht:2.72,ahtTgt:5.0,qa:0.8960, qaTgt:0.90,csat:null,fcr:0.4814,occ:0.40,adh:0.97, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  avgLogin:'7h 39m',loginUtil:0.952,productivity:0.363,fulfilledByResp:281},
@@ -504,14 +504,14 @@ var DEFAULT_DATA = {
   // ── 12-MONTH DATA (Jan 2025 – Jun 2026 · sourced from Agent Reporting CSV) ──
   agents12m: [
     {name:'Geric Vallar',          lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:55, handleCust:'6m 05s', chatAHT:'8m 02s',  missedChats:0,  avgLogin:'8h 04m',loginUtil:0.899,productivity:0.764,fulfilledByResp:51},
-    {name:'Zheraine Velasquez',              lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:71, handleCust:'4m 43s', chatAHT:'7m 50s',  missedChats:0,  avgLogin:'8h 12m',loginUtil:0.904,productivity:0.757,fulfilledByResp:68},
+    {name:'Zheraine Velasquez',              lob:'Subdelete', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:71, handleCust:'4m 43s', chatAHT:'7m 50s',  missedChats:0,  avgLogin:'8h 12m',loginUtil:0.904,productivity:0.757,fulfilledByResp:68}, // transferred from Path Social 2026-08
     {name:'Abigail Aquino',        lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:49, handleCust:'6m 17s', chatAHT:'8m 10s',  missedChats:0,  avgLogin:'7h 27m',loginUtil:0.904,productivity:0.759,fulfilledByResp:46},
     {name:'Benedict Catbagan',     lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:50, handleCust:'6m 04s', chatAHT:'7m 22s',  missedChats:0,  avgLogin:'7h 46m',loginUtil:0.895,productivity:0.734,fulfilledByResp:49},
     {name:'Kaila May Membredo',    lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:60, handleCust:'5m 12s', chatAHT:'7m 11s',  missedChats:1,  avgLogin:'8h 04m',loginUtil:0.893,productivity:0.724,fulfilledByResp:54},
     {name:'Jennilen Manosa',       lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:58, handleCust:'5m 08s', chatAHT:'7m 59s',  missedChats:1,  avgLogin:'7h 54m',loginUtil:0.893,productivity:0.699,fulfilledByResp:53},
     {name:'Pherbia Mayor',               lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97,esc:true, avgCustDay:57, handleCust:'5m 41s', chatAHT:'6m 48s',  missedChats:0,  avgLogin:'8h 09m',loginUtil:0.883,productivity:0.753,fulfilledByResp:52},
     {name:'Janelle Decena',        lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97,esc:true, avgCustDay:32, handleCust:'3m 46s', chatAHT:'58m 57s', missedChats:0,  avgLogin:'7h 47m',loginUtil:0.968,productivity:0.264,fulfilledByResp:25},
-    {name:'Mark Lora',             lob:'Crowd Ignite',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:59, handleCust:'5m 35s', chatAHT:'6m 45s',  missedChats:0,  avgLogin:'7h 52m',loginUtil:0.893,productivity:0.785,fulfilledByResp:56},
+    {name:'Mark Lora',             lob:'Subdelete',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:59, handleCust:'5m 35s', chatAHT:'6m 45s',  missedChats:0,  avgLogin:'7h 52m',loginUtil:0.893,productivity:0.785,fulfilledByResp:56}, // transferred from Crowd Ignite 2026-08
     {name:'Sonja Faye Regodon Lomarquez',                  lob:'Crowd Ignite',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:41, handleCust:'6m 08s', chatAHT:'7m 47s',  missedChats:1,  avgLogin:'7h 07m',loginUtil:0.909,productivity:0.653,fulfilledByResp:37},
     {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:45, handleCust:'5m 25s', chatAHT:'5m 59s',  missedChats:0,  avgLogin:'7h 56m',loginUtil:0.908,productivity:0.566,fulfilledByResp:40},
     {name:'Rosie Eslao',           lob:'High Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:51, handleCust:'4m 09s', chatAHT:'7m 06s',  missedChats:0,  avgLogin:'8h 00m',loginUtil:0.955,productivity:0.458,fulfilledByResp:38},
@@ -1059,6 +1059,7 @@ function parseGladlyCSV(text, tgt){
     if(t.indexOf('high social')>=0||t.indexOf('cloutify')>=0)  return 'High Social';
     if(t.indexOf('plixi')>=0)                                   return 'Plixi';
     if(t.indexOf('goread')>=0||t.indexOf('viralpush')>=0)      return 'Goread';
+    if(t.indexOf('subdelete')>=0)                               return 'Subdelete';
     if(t.indexOf('followspy')>=0||t.indexOf('recentfollow')>=0||t.indexOf('follows')>=0) return 'Follows';
     return null;
   }
@@ -1072,10 +1073,13 @@ function parseGladlyCSV(text, tgt){
     var p = parts[0].split('/');
     if(p.length<3) return null;
     var dt = new Date(+p[2], +p[0]-1, +p[1]);
-    if(parts[1]){
-      var h = parseInt(parts[1].split(':')[0]);
-      if(!isNaN(h) && h < 8) dt.setDate(dt.getDate()-1); // roll back early-AM buckets to prev shift day
-    }
+    // NOTE: previously rolled back to the prior day whenever the bucket's hour was <8,
+    // meant for genuine overnight-shift timestamps. This sheet's buckets are always
+    // stamped exactly "H:00" at midnight (one row per calendar day, not per shift-hour),
+    // so that rule fired on EVERY row and silently dropped day-1 of each month from
+    // that month's totals (shifted into the previous month instead) — for every LOB,
+    // every month. Confirmed 2026-08-26: Goread's Dencio (57 fulfilled) and Suzette
+    // (29 fulfilled) Aug-1 rows were missing from August MTD totals until this was removed.
     return dt;
   }
 
@@ -1144,7 +1148,7 @@ function parseGladlyCSV(text, tgt){
   var defFlags={};
   DEFAULT_DATA.agents.forEach(function(a){ defFlags[a.name.toLowerCase()]={esc:!!a.esc,partTime:!!a.partTime}; });
 
-  var LOB_ORDER=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+  var LOB_ORDER=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows'];
 
   // Pre-compute session starts per agent from allMap (full history, no month boundary gaps)
   var _agSessionStarts={};
@@ -1182,25 +1186,30 @@ function parseGladlyCSV(text, tgt){
       }
       if(days===0||ag.fulfilled===0) return null;
       var f=defFlags[ag.name.toLowerCase()]||{};
-      // Low-hours flag (Goread only, uses REAL calendar days worked — `days` above —
-      // not the 9h-shift divisor below, since that divisor is defined as hours÷9 and
-      // would always average out to exactly 9 by construction). Agents shouldn't log
-      // out for breaks — they should go Away instead — so a full 9h shift should show
-      // ~9h logged in with ~1h of that as Away (lunch/short breaks), netting ~8h
-      // logged-in/active. Flag when actual logged-in or active hours/day (on days they
-      // worked) fall under 8, or Away time/day tops 1h (more away time than a lunch+
-      // breaks allowance suggests, even if still logged in). Confirmed with Lisa 2026-08-26.
-      var isGoread = ag.lob==='Goread';
+      // Shift length by LOB (confirmed with Lisa 2026-08-26): Goread works 9-hour
+      // shifts; every other LOB (Path Social, Crowd Ignite, High Social, Plixi,
+      // Subdelete, Follows) works a standard 8-hour shift.
+      var shiftHrs = (ag.lob==='Goread') ? 9 : 8;
+      // Low-hours flag — uses REAL calendar days worked (`days` above), NOT the
+      // shift-hour divisor below, since that divisor is defined as hours÷shiftHrs and
+      // would always average out to exactly shiftHrs by construction. Agents shouldn't
+      // log out for breaks — they should go Away instead — so a full shift should show
+      // ~shiftHrs logged in with ~1h of that as Away (lunch/short breaks), netting
+      // ~(shiftHrs-1)h logged-in/active. Flag when actual logged-in or active hours/day
+      // (on days they worked) fall under that (shiftHrs-1) floor, or Away time/day tops
+      // 1h (more away time than a lunch+breaks allowance suggests, even if still logged
+      // in). Applied to all LOBs 2026-08-26 (originally Goread-only, confirmed w/ Lisa).
       var avgLoginHrsVal  = ag.loggedinSec/3600/days;
       var avgActiveHrsVal = ag.activeSec/3600/days;
       var avgAwayHrsVal   = ag.awaySec/3600/days;
-      var lowHoursFlag = isGoread && (avgLoginHrsVal<8 || avgActiveHrsVal<8 || avgAwayHrsVal>1);
-      // Goread works 9-hour shifts (confirmed with Lisa 2026-08-26) — use logged-in
-      // hours ÷ 9 (kept fractional, not rounded, so it matches Lisa's manual calc) as
-      // the day divisor instead of session-gap detection, so Avg/Day and the other
-      // per-day metrics below reflect a standard 9-hour shift rather than raw calendar
-      // days with data. Other LOBs keep the session-based day count (`days` above).
-      var dayDivisor = (isGoread && ag.loggedinSec>0) ? (ag.loggedinSec/3600/9) : days;
+      var lowHoursFloor = shiftHrs-1;
+      var lowHoursFlag = (avgLoginHrsVal<lowHoursFloor || avgActiveHrsVal<lowHoursFloor || avgAwayHrsVal>1);
+      // Use logged-in hours ÷ shiftHrs (kept fractional, not rounded, so it matches
+      // Lisa's manual calc) as the day divisor instead of session-gap detection, so
+      // Avg/Day and the other per-day metrics below reflect a standard shift rather
+      // than raw calendar days with data. Applied to all LOBs 2026-08-26 (originally
+      // Goread-only 9h; every LOB now uses its own shiftHrs above).
+      var dayDivisor = ag.loggedinSec>0 ? (ag.loggedinSec/3600/shiftHrs) : days;
       return {
         name:ag.name, lob:ag.lob,
         tickets:0, aht:0, ahtTgt:5.0,
@@ -1210,7 +1219,7 @@ function parseGladlyCSV(text, tgt){
         handleCust:      fmtTime(ag.handleSec/ag.fulfilled),
         chatAHT:         ag.chatFul>5 ? fmtTime(ag.chatHT/ag.chatFul) : null,
         missedChats:     Math.round(ag.missed/dayDivisor),
-        avgLogin:        fmtHM(ag.loggedinSec/dayDivisor),
+        avgLogin:        fmtHM(ag.loggedinSec/days), // real avg login time per day actually worked — using dayDivisor here would be circular (always = 9h for Goread, since dayDivisor is derived FROM loggedinSec/9)
         loginUtil:       ag.loggedinSec>0 ? ag.activeSec/ag.loggedinSec : null,
         productivity:    ag.activeSec>0   ? ag.handleSec/ag.activeSec  : null,
         fulfilledByResp: Math.round(ag.byresp/dayDivisor),
@@ -2472,7 +2481,7 @@ function renderCharts(){
 function renderAgents(){
   // Tabs
   var tabs = document.getElementById('agTabs');
-  var allLOBs = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows','All'];
+  var allLOBs = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows','All'];
   tabs.innerHTML = allLOBs.map(function(lob){
     return '<div class="tab'+(agLOB===lob?' on':'')+'" onclick="setAgLOB(\''+lob+'\')">'+(lob==='All'?'All LOBs':lob)+'</div>';
   }).join('');
