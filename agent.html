@@ -222,6 +222,8 @@ var AGENT_CODES = {
   // Goread
   'Dencio6574gr':'Dencio Almag, Jr.', 'Moses5552gr':'Moses Eragbai',          'Nay3547gr':'Nay Nuttida',
   'Suzette4527gr':'Suzette Mejia',
+  // Subdelete (added 2026-08-26)
+  'Jasmine2201sd':'Jasmine Alcantara', 'JohnJohn3312sd':'John John Baylon',    'Bianca4498sd':'Bianca Alegre',
   // Follows
   'Roynalyn6514fo':'Roynalyn Malcampo','Geal2674fo':'Geal Ann Lorico',         'Jessica2519fo':'Jessica Ibañez'
 };
@@ -354,6 +356,19 @@ var DEFAULT_DATA = {
      fcrH:[0.622,0.743,0.717,0.698,0.697,0.695,0.676,0.661,0.629,0.641,0.653,0.669],
      qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
      avgDayH:[16,47,42,34,31,43,42,41,28,30,36,30]},
+    // Subdelete (added 2026-08-26; no static snapshot yet — live fetch populates on first login)
+    {name:'Jasmine Alcantara',       lob:'Subdelete',   tickets:0, emailTkts:0, chatTkts:0, avgCustDay:0, handleCust:null, chatAHT:null, missedChats:0, qa:null, fcr:null, ztpFlag:false, qaRows:[], loginUtil:null, aht:0, ahtTgt:5.0,
+     fcrH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,null,null,null,null,null]},
+    {name:'John John Baylon',        lob:'Subdelete',   tickets:0, emailTkts:0, chatTkts:0, avgCustDay:0, handleCust:null, chatAHT:null, missedChats:0, qa:null, fcr:null, ztpFlag:false, qaRows:[], loginUtil:null, aht:0, ahtTgt:5.0,
+     fcrH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,null,null,null,null,null]},
+    {name:'Bianca Alegre',           lob:'Subdelete',   tickets:0, emailTkts:0, chatTkts:0, avgCustDay:0, handleCust:null, chatAHT:null, missedChats:0, qa:null, fcr:null, ztpFlag:false, qaRows:[], loginUtil:null, aht:0, ahtTgt:5.0,
+     fcrH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     qaH:[null,null,null,null,null,null,null,null,null,null,null,null],
+     avgDayH:[null,null,null,null,null,null,null,null,null,null,null,null]},
     // Follows
     {name:'Roynalyn Malcampo',       lob:'Follows',     tickets:349,  emailTkts:274, chatTkts:75,  avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  qa:0.9622, fcr:0.4629, ztpFlag:false, qaRows:[], loginUtil:0.909, aht:5.98, ahtTgt:5.0,
      fcrH:[0.592,0.622,0.595,0.585,0.496,0.62,0.629,0.543,0.524,0.554,0.437,0.462],
@@ -884,7 +899,9 @@ var EMAIL_MAP={
   'Dencio Almag, Jr.':'dencio@adly.com','Moses Eragbai':'moses@adly.com',
   'Nay Nuttida':'nay@adly.com','Suzette Mejia':'suzette@adly.com',
   'Roynalyn Malcampo':'Roynalyn@pathsocial.com','Geal Ann Lorico':'geal@pathsocial.com',
-  'Jessica Ibañez':'jessica@pathsocial.com'
+  'Jessica Ibañez':'jessica@pathsocial.com',
+  'Jasmine Alcantara':'jasmine@tweetdelete.net','John John Baylon':'johnbaylon@pathsocial.com',
+  'Bianca Alegre':'bianca@pathsocial.com'
 };
 
 // ── SHOW DASHBOARD ─────────────────────────────────────────────────────────────
