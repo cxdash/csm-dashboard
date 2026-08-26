@@ -390,7 +390,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
 var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Subdelete':'#6366f1','Follows':'#6b7280'};
-var LOBS = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows'];
+var LOBS = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows']; // NOTE: kept at 6 (Subdelete NOT added here) — this array is also used positionally against DEFAULT_DATA.inbound.values and the Section 3 volume/SLA charts (renderCharts()), which don't have Subdelete data yet. Adding it here without a matching values row broke chart rendering (crashed on undefined.slice) and hung the whole "Loading from Sheets" flow. Section 4 (Agent Productivity)'s Subdelete support does NOT depend on this array — it uses the separate LOB_ORDER inside buildAgents() and getLOB(), both already updated. Known limitation: the manual xlsx-upload path (Sheet2/3/5 parsers below) will not recognize a "Subdelete" row until Section 3 gets real volume/SLA targets for it — see project memory.
 
 // ── AGENT CODE LOOKUP (name → unique code) ────────────────────────────────────
 var AGENT_CODE_MAP = {
