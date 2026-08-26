@@ -69,6 +69,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .kpi-val{font-size:24px;font-weight:800;color:var(--text);line-height:1.1;margin:3px 0 2px}
 .kpi-val.g{color:var(--green)}.kpi-val.r{color:var(--red)}.kpi-val.w{color:var(--amber)}
 .kpi-sub{font-size:10px;color:var(--text3)}
+.kpi-hoverable{position:relative;cursor:default}
+.kpi-tooltip{position:absolute;left:0;bottom:calc(100% + 8px);min-width:190px;background:#1e293b;color:#fff;border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.7;box-shadow:0 10px 24px rgba(0,0,0,.2);opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s ease,transform .15s ease;z-index:50;pointer-events:none}
+.kpi-hoverable:hover .kpi-tooltip{opacity:1;visibility:visible;transform:translateY(0)}
+.kpi-tooltip:after{content:'';position:absolute;top:100%;left:16px;border:5px solid transparent;border-top-color:#1e293b}
+.kpi-tt-title{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;font-weight:700;margin-bottom:5px}
+.kpi-tt-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:1px 0}
+.kpi-tt-name{display:flex;align-items:center;gap:6px;color:#e2e8f0}
+.kpi-tt-dot{width:7px;height:7px;border-radius:50%;flex:none}
+.kpi-tt-val{font-weight:700;color:#fff}
+.kpi-tt-total{border-top:1px solid rgba(255,255,255,.15);margin-top:5px;padding-top:5px}
 
 /* LOB TABS */
 .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
@@ -246,7 +256,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="kpi"><div class="kpi-lbl">Avg FCR</div><div class="kpi-val" id="kFCR">—</div><div class="kpi-sub">Target ≥ 75%</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg CSAT</div><div class="kpi-val" id="kCSAT">—</div><div class="kpi-sub">Target ≥ 85%</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg NPS</div><div class="kpi-val" id="kNPS">—</div><div class="kpi-sub">Target ≥ 30</div></div>
-    <div class="kpi"><div class="kpi-lbl">Active Agents</div><div class="kpi-val" id="kAgents">—</div><div class="kpi-sub">This period</div></div>
+    <div class="kpi kpi-hoverable" id="kpiAgentsCard"><div class="kpi-lbl">Active Agents</div><div class="kpi-val" id="kAgents">—</div><div class="kpi-sub">This period · hover for LOB breakdown</div><div class="kpi-tooltip" id="kAgentsTooltip"></div></div>
   </div>
 
   <!-- ══ 2 — LOB PERFORMANCE ══ -->
@@ -2026,9 +2036,11 @@ async function loadFromSheets(){
     function safeFetch(url){
       if(!url) return Promise.resolve(null);
       var u = url + cb;
-      return fetch(u,{credentials:'omit',redirect:'follow',cache:'no-store'})
-        .then(function(r){ console.log('[Sheets] fetch ok='+r.ok+' status='+r.status+' url='+url.slice(0,80)); return r; })
-        .catch(function(e){ console.warn('[Sheets] fetch error for '+url.slice(0,80)+': '+e.message); return null; });
+      var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function(){ctrl.abort();}, 30000) : null; // 30s safety timeout — a hung request must not freeze the "Updating…" chip forever
+      return fetch(u,{credentials:'omit',redirect:'follow',cache:'no-store',signal:ctrl?ctrl.signal:undefined})
+        .then(function(r){ if(timer) clearTimeout(timer); console.log('[Sheets] fetch ok='+r.ok+' status='+r.status+' url='+url.slice(0,80)); return r; })
+        .catch(function(e){ if(timer) clearTimeout(timer); console.warn('[Sheets] fetch error for '+url.slice(0,80)+': '+e.message); return null; });
     }
     var resps = await Promise.all([
       safeFetch(SHEETS_AGENT_URL),
@@ -2297,6 +2309,7 @@ function renderKPIs(){
   setKPI('kNPS', aNps.toFixed(1), cls(aNps,30));
   setKPI('kFCR', pct(aFcr), cls(aFcr,0.75));
   setKPI('kAgents', d.agents.length, 'n');
+  renderAgentsTooltip(d.agents);
   if(d.avgWait&&d.avgWait.emailMTD!==null&&d.avgWait.emailMTD!==undefined){
     var _ew=d.avgWait.emailMTD;
     var _eh=Math.floor(_ew/3600), _em=Math.floor((_ew%3600)/60);
@@ -2315,6 +2328,27 @@ function renderKPIs(){
   }
 }
 
+function renderAgentsTooltip(agents){
+  var el = document.getElementById('kAgentsTooltip');
+  if(!el) return;
+  if(!agents || !agents.length){ el.innerHTML=''; return; }
+  var counts = {}, order = [];
+  agents.forEach(function(a){
+    var lob = a.lob || 'Other';
+    if(!counts[lob]){ counts[lob]=0; order.push(lob); }
+    counts[lob]++;
+  });
+  // Sensible display order: LOB_COLORS' key order first (keeps this in sync with
+  // however many/whichever LOBs are live, e.g. Subdelete), then any leftover LOB not in that map.
+  var lobOrder = Object.keys(LOB_COLORS).filter(function(l){ return counts[l]; });
+  order.forEach(function(l){ if(lobOrder.indexOf(l)<0) lobOrder.push(l); });
+  var rows = lobOrder.map(function(l){
+    var color = LOB_COLORS[l] || '#94a3b8';
+    return '<div class="kpi-tt-row"><span class="kpi-tt-name"><span class="kpi-tt-dot" style="background:'+color+'"></span>'+l+'</span><span class="kpi-tt-val">'+counts[l]+'</span></div>';
+  }).join('');
+  el.innerHTML = '<div class="kpi-tt-title">By LOB</div>' + rows
+    + '<div class="kpi-tt-row kpi-tt-total"><span class="kpi-tt-name">Total</span><span class="kpi-tt-val">'+agents.length+'</span></div>';
+}
 function setKPI(id, val, c){
   var el = document.getElementById(id);
   el.textContent = val; el.className = 'kpi-val '+(c||'');
