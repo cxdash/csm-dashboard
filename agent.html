@@ -158,7 +158,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="sec-hdr" id="trendHdr" style="display:none">
       <div class="sec-bar" style="background:#8b5cf6"></div>
       <div class="sec-label">12-Month Trend</div>
-      <span style="font-size:10px;color:var(--text3);margin-left:6px">Jul 25 – Jun 26</span>
+      <span id="trendRange" style="font-size:10px;color:var(--text3);margin-left:6px"></span>
     </div>
     <div class="card" id="trendCard" style="display:none;padding:14px 16px 10px;margin-bottom:4px">
       <canvas id="trendChart" height="100"></canvas>
@@ -372,8 +372,15 @@ var DEFAULT_DATA = {
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var CODE_KEY = 'csm_agent_code';
-var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Subdelete':'#6366f1','Follows':'#6b7280'};
 var D = DEFAULT_DATA;
+var MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function trailing12Labels(){ var now=new Date(), out=[]; for(var m=11;m>=0;m--){ var d=new Date(now.getFullYear(), now.getMonth()-m, 1); out.push(MONTH_NAMES[d.getMonth()]); } return out; }
+// Period label was a hardcoded static string in DEFAULT_DATA ('Jun 2026 MTD') that never
+// updated on its own — this file hadn't been touched since 2026-06-23. Compute the real
+// current month/year here instead so it's always correct, independent of whether the live
+// Gladly fetch below succeeds or how long it's been since this file was last edited.
+(function(){ var now=new Date(); D.period = MONTH_NAMES[now.getMonth()]+' '+now.getFullYear()+' MTD'; })();
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 function doLogin(){
@@ -402,6 +409,8 @@ document.getElementById('codeInput').addEventListener('keydown', function(e){
 
 // ── UTILITIES ────────────────────────────────────────────────────────────────
 function pct(v, dec){ if(v===null||v===undefined||isNaN(v)) return '—'; return (v*100).toFixed(dec===undefined?1:dec)+'%'; }
+function fmtTime(sec){ if(sec===null||isNaN(sec)) return '—'; var m=Math.floor(sec/60),s=Math.round(sec%60); return m+'m '+(s<10?'0':'')+s+'s'; }
+function fmtHM(sec){ if(sec===null||isNaN(sec)) return '—'; var h=Math.floor(sec/3600),m=Math.round((sec%3600)/60); return h+'h '+(m<10?'0':'')+m+'m'; }
 function normName(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
 function parseCSVRow(line){
   var r=[],cur='',inQ=false;
@@ -540,14 +549,152 @@ function parseQASheetAg(text, text2, text3, agentEmail, agentName){
   return {qaMTD:qaMTD, qaH:qaH, ztpFlag:ztpFlag, qaRows:recentRows};
 }
 
+
+// ── GLADLY (LIVE PRODUCTIVITY) PARSER — SCOPED TO ONE AGENT ────────────────────
+// Mirrors index.html's parseGladlyCSV/buildAgents logic (no hour-based date rollback,
+// per-LOB shift-hour day divisor, session-based day counting via an 8h-gap rule) but
+// filtered to a single agent's email so this page doesn't need to build maps for the
+// whole roster. Added 2026-08-26 — this page previously never fetched the Gladly sheet
+// at all (SHEETS_AGENT_URL was declared but unused), so MTD Volume, Daily Avg, Handle
+// Time, Login Utilization, and the Avg/Day trend line were frozen at whatever was
+// hardcoded in DEFAULT_DATA (last edited 2026-06-23) and never refreshed.
+function parseGladlyForAgent(text, agentEmail){
+  var lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  function csvRow(line){
+    var r=[],c='',q=false;
+    for(var i=0;i<line.length;i++){
+      if(line[i]==='"'){q=!q;}
+      else if(line[i]===','&&!q){r.push(c);c='';}
+      else c+=line[i];
+    }
+    r.push(c); return r;
+  }
+  var hdrIdx=-1;
+  for(var i=0;i<Math.min(lines.length,5);i++){ if(lines[i].indexOf('Bucket Beginning')>=0){hdrIdx=i;break;} }
+  if(hdrIdx<0) return null;
+  var hdrs=csvRow(lines[hdrIdx]).map(function(h){return h.toLowerCase().trim();});
+  function C(name){ return hdrs.indexOf(name.toLowerCase()); }
+  var COL={
+    bucket:C('Bucket Beginning'), email:C('Email'), inboxes:C('Inbox(es)'), team:C('Team(s)'),
+    loggedin:C('Logged in Time in seconds'), active:C('Active Time in seconds'), away:C('Away Time in seconds'),
+    fulfilled:C('Contact Fulfilled'), byresp:C('Contact Fulfilled by Response'), missed:C('Contact Missed'),
+    handle:C('Contact Handle Time in seconds'), chatFul:C('Contact Fulfilled - Chat'), chatHT:C('Contact Handle Time in seconds - Chat')
+  };
+  function getLOB(inboxes,team){
+    var t=(inboxes+' '+team).toLowerCase();
+    if(t.indexOf('path')>=0) return 'Path Social';
+    if(t.indexOf('crowd')>=0) return 'Crowd Ignite';
+    if(t.indexOf('high social')>=0||t.indexOf('cloutify')>=0) return 'High Social';
+    if(t.indexOf('plixi')>=0) return 'Plixi';
+    if(t.indexOf('goread')>=0||t.indexOf('viralpush')>=0) return 'Goread';
+    if(t.indexOf('subdelete')>=0) return 'Subdelete';
+    if(t.indexOf('followspy')>=0||t.indexOf('recentfollow')>=0||t.indexOf('follows')>=0) return 'Follows';
+    return null;
+  }
+  function parseDateGl(s){
+    if(!s) return null;
+    var p=s.split(' ')[0].split('/');
+    if(p.length<3) return null;
+    return new Date(+p[2], +p[0]-1, +p[1]); // no hour-based rollback — see index.html's parseDate for why
+  }
+  function sf(row,i){ return i>=0&&row[i] ? +row[i]||0 : 0; }
+  var normEmail=(agentEmail||'').toLowerCase().trim();
+  if(!normEmail) return null;
+
+  var now=new Date(), curM=now.getMonth(), curY=now.getFullYear();
+  var months12=[];
+  for(var m=11;m>=0;m--){ var d=new Date(curY,curM-m,1); months12.push(d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)); }
+  var latestMon=months12[months12.length-1];
+
+  var byMon={}, bucketTimes=[], lastLOB=null, lastDt=null;
+  for(var i=hdrIdx+1;i<lines.length;i++){
+    var row=csvRow(lines[i]);
+    if(row.length<10) continue;
+    var email=(row[COL.email]||'').toLowerCase().trim();
+    if(email!==normEmail) continue;
+    var fulfilled=sf(row,COL.fulfilled);
+    var dt=parseDateGl(row[COL.bucket]||'');
+    if(!dt) continue;
+    var mon=dt.getFullYear()+'-'+(dt.getMonth()<9?'0':'')+(dt.getMonth()+1);
+    if(months12.indexOf(mon)<0) continue; // outside the trailing-12-month window
+    var lob=getLOB(row[COL.inboxes]||'', row[COL.team]||'');
+    if(lob&&(!lastDt||dt>lastDt)){ lastLOB=lob; lastDt=dt; }
+    if(!byMon[mon]) byMon[mon]={fulfilled:0,byresp:0,missed:0,handleSec:0,activeSec:0,loggedinSec:0,awaySec:0,chatFul:0,chatHT:0};
+    byMon[mon].fulfilled+=fulfilled;
+    byMon[mon].byresp+=sf(row,COL.byresp);
+    byMon[mon].missed+=sf(row,COL.missed);
+    byMon[mon].handleSec+=sf(row,COL.handle);
+    byMon[mon].activeSec+=sf(row,COL.active);
+    byMon[mon].loggedinSec+=sf(row,COL.loggedin);
+    byMon[mon].awaySec+=sf(row,COL.away);
+    byMon[mon].chatFul+=sf(row,COL.chatFul);
+    byMon[mon].chatHT+=sf(row,COL.chatHT);
+    // Track bucket timestamp for session-based day counting (same 8h-gap algorithm as index.html)
+    var _bkParts=(row[COL.bucket]||'').split(' ');
+    var _bkD=_bkParts[0].split('/');
+    if(_bkD.length===3){
+      var _bkH=_bkParts[1]?parseInt(_bkParts[1].split(':')[0]):0;
+      var _bkMin=_bkParts[1]?parseInt((_bkParts[1].split(':')[1])||'0'):0;
+      if(isNaN(_bkH))_bkH=0; if(isNaN(_bkMin))_bkMin=0;
+      var ts=new Date(+_bkD[2],+_bkD[0]-1,+_bkD[1],_bkH,_bkMin).getTime();
+      bucketTimes.push({ts:ts,mon:mon});
+    }
+  }
+  if(!Object.keys(byMon).length) return null;
+
+  // Session starts (gap > 8h = new session/day), same algorithm as index.html
+  bucketTimes.sort(function(a,b){return a.ts-b.ts;});
+  var sessionsByMon={};
+  if(bucketTimes.length){
+    var starts=[bucketTimes[0]];
+    for(var ti=1;ti<bucketTimes.length;ti++){
+      if(bucketTimes[ti].ts-bucketTimes[ti-1].ts>8*3600*1000) starts.push(bucketTimes[ti]);
+    }
+    starts.forEach(function(s){ sessionsByMon[s.mon]=(sessionsByMon[s.mon]||0)+1; });
+  }
+
+  var shiftHrs=(lastLOB==='Goread')?9:8;
+
+  function metricsForMonth(mon){
+    var mo=byMon[mon];
+    var days=sessionsByMon[mon]||0;
+    if(!mo||days===0||mo.fulfilled===0) return null;
+    var dayDivisor=mo.loggedinSec>0?(mo.loggedinSec/3600/shiftHrs):days;
+    return {
+      tickets: mo.fulfilled,
+      emailTkts: Math.max(0, mo.fulfilled-mo.chatFul),
+      chatTkts: mo.chatFul,
+      avgCustDay: Math.round(mo.fulfilled/dayDivisor),
+      handleCust: fmtTime(mo.handleSec/mo.fulfilled),
+      chatAHT: mo.chatFul>5 ? fmtTime(mo.chatHT/mo.chatFul) : null,
+      missedChats: Math.round(mo.missed/dayDivisor),
+      avgLogin: fmtHM(mo.loggedinSec/days),
+      loginUtil: mo.loggedinSec>0 ? mo.activeSec/mo.loggedinSec : null,
+      aht: (mo.handleSec/mo.fulfilled)/60
+    };
+  }
+
+  var mtd=metricsForMonth(latestMon);
+  var avgDayH=months12.map(function(mk){ var mm=metricsForMonth(mk); return mm?mm.avgCustDay:null; });
+
+  return { mtd: mtd, avgDayH: avgDayH, lob: lastLOB };
+}
+
 // ── LIVE SHEET LOADING ────────────────────────────────────────────────────────
 async function loadFromSheets(agentName, agentEmail){
   var cb='&_cb='+Date.now();
-  function sf(url){ if(!url) return Promise.resolve(null); return fetch(url+cb,{credentials:'omit',cache:'no-store'}).catch(function(){return null;}); }
+  function sf(url){
+    if(!url) return Promise.resolve(null);
+    var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function(){ctrl.abort();}, 30000) : null; // 30s safety timeout — a hung request must not freeze the "Updating…" chip forever
+    return fetch(url+cb,{credentials:'omit',cache:'no-store',signal:ctrl?ctrl.signal:undefined})
+      .then(function(r){ if(timer) clearTimeout(timer); return r; })
+      .catch(function(){ if(timer) clearTimeout(timer); return null; });
+  }
   var chip=document.getElementById('sheetChip');
   chip.style.display=''; chip.textContent='⏳ Updating…';
   try{
-    var resps=await Promise.all([sf(SHEETS_FCR_URL), sf(SHEETS_QA_URL), sf(SHEETS_QA2_URL), sf(SHEETS_QA3_URL)]);
+    var resps=await Promise.all([sf(SHEETS_FCR_URL), sf(SHEETS_QA_URL), sf(SHEETS_QA2_URL), sf(SHEETS_QA3_URL), sf(SHEETS_AGENT_URL)]);
     var a=D.agents.find(function(x){return normName(x.name)===normName(agentName);});
     if(!a) return;
     if(resps[0]&&resps[0].ok){
@@ -566,6 +713,19 @@ async function loadFromSheets(agentName, agentEmail){
       a.ztpFlag=qr.ztpFlag;
       a.qaRows=qr.qaRows;
     }
+    // Gladly (live productivity: MTD Volume, Daily Avg, Handle Time, Login Utilization, LOB)
+    if(resps[4]&&resps[4].ok){
+      var glText=await resps[4].text();
+      var gl=parseGladlyForAgent(glText, agentEmail);
+      if(gl && gl.mtd){
+        a.tickets=gl.mtd.tickets; a.emailTkts=gl.mtd.emailTkts; a.chatTkts=gl.mtd.chatTkts;
+        a.avgCustDay=gl.mtd.avgCustDay; a.handleCust=gl.mtd.handleCust; a.chatAHT=gl.mtd.chatAHT;
+        a.missedChats=gl.mtd.missedChats; a.avgLogin=gl.mtd.avgLogin; a.loginUtil=gl.mtd.loginUtil;
+        a.aht=gl.mtd.aht;
+      }
+      if(gl && gl.avgDayH && gl.avgDayH.some(function(v){return v!==null;})) a.avgDayH=gl.avgDayH;
+      if(gl && gl.lob) a.lob=gl.lob;
+    }
     chip.textContent='🔗 Live';
     renderDash(a);
   }catch(e){ chip.textContent='⚠️ Offline'; }
@@ -574,7 +734,9 @@ async function loadFromSheets(agentName, agentEmail){
 // ── RENDER: TREND CHART ───────────────────────────────────────────────────────
 var _chart=null;
 function renderChart(a){
-  var labels=['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+  var labels=trailing12Labels();
+  var trR=document.getElementById('trendRange');
+  if(trR){ var _now=new Date(); var _start=new Date(_now.getFullYear(),_now.getMonth()-11,1); trR.textContent=MONTH_NAMES[_start.getMonth()]+' '+String(_start.getFullYear()).slice(-2)+' – '+MONTH_NAMES[_now.getMonth()]+' '+String(_now.getFullYear()).slice(-2); }
   var ctx=document.getElementById('trendChart').getContext('2d');
   if(_chart){_chart.destroy(); _chart=null;}
   _chart=new Chart(ctx,{
