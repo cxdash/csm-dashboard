@@ -210,6 +210,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
   <div class="hdr-right">
     <span class="period-pill" id="periodPill">No data loaded</span>
     <span class="chip wait" id="sheetStatusChip" style="margin-top:0;font-size:10px">⏳ Loading…</span>
+    <button id="refreshBtn" onclick="manualRefresh()" title="Re-fetch live data from Sheets" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:13px;color:var(--text3)">🔄</button>
     <button id="adminBtn" onclick="toggleAdmin()" title="Admin access" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:13px;color:var(--text3)">🔒</button>
     <a class="agent-link" href="agent.html">👤 Agent View →</a>
   </div>
@@ -2031,26 +2032,41 @@ async function loadFromSheets(){
   setChip('wait','⏳ Updating from Sheets…');
   render(); // show last known good data immediately while sheets refresh
   try{
-    // Fetch all sheets in parallel — each wrapped so one failure won't block others
+    // Fetch all sheets in parallel — each wrapped so one failure won't block others.
+    // NOTE (added 2026-08-31): SHEETS_VOLUME_URL, SHEETS_SLA_URL and SHEETS_CONTACT_URL
+    // are three TABS of the SAME large Google Sheet doc. Firing all three at the exact
+    // same instant occasionally makes Google's CSV export exceed our 30s timeout for one
+    // or more of them (confirmed live — both Volume and SLA aborted together on a real
+    // load). Fix: stagger those three slightly so they don't all hit the doc at once, and
+    // give any failed fetch one retry with a longer timeout before giving up. See
+    // project memory (data update rules) for the full incident writeup.
     var cb = '&_cb='+Date.now(); // cache-buster prevents stale redirects
-    function safeFetch(url){
-      if(!url) return Promise.resolve(null);
+    function doFetch(url, timeoutMs){
       var u = url + cb;
       var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
-      var timer = ctrl ? setTimeout(function(){ctrl.abort();}, 30000) : null; // 30s safety timeout — a hung request must not freeze the "Updating…" chip forever
+      var timer = ctrl ? setTimeout(function(){ctrl.abort();}, timeoutMs) : null; // safety timeout — a hung request must not freeze the "Updating…" chip forever
       return fetch(u,{credentials:'omit',redirect:'follow',cache:'no-store',signal:ctrl?ctrl.signal:undefined})
         .then(function(r){ if(timer) clearTimeout(timer); console.log('[Sheets] fetch ok='+r.ok+' status='+r.status+' url='+url.slice(0,80)); return r; })
         .catch(function(e){ if(timer) clearTimeout(timer); console.warn('[Sheets] fetch error for '+url.slice(0,80)+': '+e.message); return null; });
     }
+    function safeFetch(url, staggerMs){
+      if(!url) return Promise.resolve(null);
+      var delay = staggerMs ? new Promise(function(res){ setTimeout(res, staggerMs); }) : Promise.resolve();
+      return delay.then(function(){ return doFetch(url, 30000); }).then(function(r){
+        if(r && r.ok) return r;
+        console.warn('[Sheets] retrying after failure/timeout: '+url.slice(0,80));
+        return doFetch(url, 45000); // one retry with extra headroom for the heavy doc
+      });
+    }
     var resps = await Promise.all([
       safeFetch(SHEETS_AGENT_URL),
       safeFetch(SHEETS_VOLUME_URL),
-      safeFetch(SHEETS_SLA_URL),
+      safeFetch(SHEETS_SLA_URL, 600),
       safeFetch(SHEETS_FCR_URL),
       safeFetch(SHEETS_QA_URL),
       safeFetch(SHEETS_QA2_URL),
       safeFetch(SHEETS_QA3_URL),
-      safeFetch(SHEETS_CONTACT_URL),
+      safeFetch(SHEETS_CONTACT_URL, 1200),
       safeFetch(SHEETS_ESC_PS_URL),
       safeFetch(SHEETS_ESC_CI_URL),
       safeFetch(SHEETS_RFND_URL)
@@ -2237,10 +2253,21 @@ async function loadFromSheets(){
 
     var ts = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
     var anyLive = [_rawAgentText,_rawVolText,_rawSLAText,_rawFCRText,_rawQAText,_rawContText,_rawEscPSText,_rawEscCIText,_rawRfndText].some(function(t){return !!t;});
+    // Which live sources failed even after the retry above (added 2026-08-31) — surfaced
+    // so a stale cached number is never shown as if it were fresh.
+    var _staleLabels=[];
+    if(!_rawVolText) _staleLabels.push('Volume');
+    if(!_rawContText && !_rawSLAText) _staleLabels.push('SLA%');
+    if(!_rawContText) _staleLabels.push('Wait Time');
+    D._staleSources = _staleLabels;
     // Cache live data to localStorage so next load shows last known good data
     if(anyLive){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(D)); localStorage.setItem(STORAGE_KEY+'_ts', new Date().toISOString()); }catch(e){} }
-    setChip('ok', anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data');
-    render(); return;
+    var _chipTxt = anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data';
+    if(anyLive && _staleLabels.length) _chipTxt = '🔗 Sheets live · '+ts+' · ⚠ '+_staleLabels.join('/')+' unavailable';
+    setChip('ok', _chipTxt);
+    render();
+    if(_PICKER_VALS.main) _reRenderMain(); // reapply a selected past month against the freshly refreshed data
+    return;
   }catch(e){ console.warn('Sheets fetch error:', e.message); }
   setChip('ok','⚠️ Sheets unreachable · please reload to update data');
   render();
@@ -2248,6 +2275,16 @@ async function loadFromSheets(){
 
 function loadData(){
   if(SHEETS_AGENT_URL || SHEETS_VOLUME_URL || SHEETS_SLA_URL || SHEETS_FCR_URL || SHEETS_QA_URL || SHEETS_QA2_URL || SHEETS_QA3_URL || SHEETS_CONTACT_URL || SHEETS_ESC_PS_URL || SHEETS_ESC_CI_URL || SHEETS_RFND_URL){ loadFromSheets(); } else { loadFromStorage(); }
+}
+
+// Manual "🔄" header button (added 2026-08-31) — re-fetches all live sheets on demand,
+// instead of relying on a full page reload or the month-picker round-trip.
+function manualRefresh(){
+  var btn = document.getElementById('refreshBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; btn.title = 'Refreshing…'; }
+  Promise.resolve(loadFromSheets()).then(function(){
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.title = 'Re-fetch live data from Sheets'; }
+  });
 }
 
 function clearData(){
@@ -2303,7 +2340,11 @@ function renderKPIs(){
   var aSLA = avg(d.sla,'sla'), aCsat = avg(d.sla,'csat'), aNps = avg(d.sla,'nps'), aFcr = avg(d.sla,'fcr');
   setKPI('kVol', fmt(totalVol), 'n');
   var kVolSub = document.getElementById('kVolSub');
-  if(kVolSub) kVolSub.textContent = (D.volCurMonth || 'MTD') + ' inbound';
+  if(kVolSub){
+    var _volStale = D._staleSources && D._staleSources.indexOf('Volume')>=0;
+    kVolSub.textContent = (D.volCurMonth || 'MTD') + ' inbound' + (_volStale ? ' · ⚠ live refresh failed, showing cached' : '');
+    kVolSub.style.color = _volStale ? '#f59e0b' : '';
+  }
   setKPI('kSLA', pct(aSLA), cls(aSLA,0.8));
   setKPI('kCSAT', pct(aCsat), cls(aCsat,0.85));
   setKPI('kNPS', aNps.toFixed(1), cls(aNps,30));
