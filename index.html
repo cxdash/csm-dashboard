@@ -1696,7 +1696,7 @@ function parseSLAFromContacts(text, tgt){
 
   for(var i=1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
-    if(f.length<13) continue;
+    if(f.length<18) continue; // need Col R (Within SLA flag, index 17) to be present
     // Direction = Inbound
     if((f[4]||'').trim().toLowerCase()!=='inbound') continue;
     // Channel = Email or Chat only
@@ -1720,9 +1720,15 @@ function parseSLAFromContacts(text, tgt){
       LOB_ORDER.forEach(function(l){ monthData[key][l]={met:0,total:0}; });
     }
     monthData[key][lob].total++;
-    // SLA met: Col M ≤ 0
-    var sv=parseFloat((f[12]||'').replace(/,/g,''));
-    if(!isNaN(sv)&&sv<=0) monthData[key][lob].met++;
+    // SLA met (switched 2026-08-31, per Lisa): use the explicit "Within SLA" flag —
+    // Col R, f[17], 1=yes — directly from the sheet, instead of deriving it from
+    // Col M ("Seconds within (-) or over (+) SLA") <= 0. Verified live: R and M agree
+    // on every row where M has a value, but M is BLANK for ~24% of a sampled batch of
+    // UNKNOWN-status contacts (mostly in earlier months) where R still correctly says
+    // "1" — the old M-based logic silently counted every one of those as a miss.
+    // Col R is never blank, so this is a strict improvement with no new "unmet" gaps.
+    var rFlag=(f[17]||'').trim();
+    if(rFlag==='1') monthData[key][lob].met++;
   }
 
   if(!monthOrder.length) return null;
