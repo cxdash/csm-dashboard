@@ -2271,8 +2271,41 @@ async function loadFromSheets(){
     var _chipTxt = anyLive ? '🔗 Sheets live · '+ts : '⚠️ Sheets unreachable · please reload to update data';
     if(anyLive && _staleLabels.length) _chipTxt = '🔗 Sheets live · '+ts+' · ⚠ '+_staleLabels.join('/')+' unavailable';
     setChip('ok', _chipTxt);
+
+    // Month-rollover guard (added 2026-09-02, see project memory
+    // feedback_2026-09-02_error_check_findings.md) — only kicks in when the
+    // user hasn't already picked a specific month themselves.
+    if(!_PICKER_VALS.main){
+      var _curNow=new Date();
+      var _curTgt={year:_curNow.getFullYear(), month:_curNow.getMonth()+1};
+      // Two independent signals, either one is enough to trigger the fallback:
+      // ContactExport has zero rows for the calendar-current month (drives
+      // Volume/SLA/Wait Time), or Gladly has zero MTD rows for it (drives
+      // Agent Detail/FCR/QA). NOTE: Gladly's "_curHasData.all" is a trailing
+      // 12-month array, not month-scoped — it's basically never empty, so it
+      // must NOT be used as a signal here (that was tried and verified to
+      // never trigger, since .all still has recent-but-not-this-month rows).
+      var _curContCheck = RAW_TEXTS.contact ? parseSLAFromContacts(RAW_TEXTS.contact,_curTgt) : null;
+      var _curHasData = RAW_TEXTS.agent ? parseGladlyCSV(RAW_TEXTS.agent,_curTgt) : null;
+      var _monthRollover = (RAW_TEXTS.contact && _curContCheck && _curContCheck.monthMissing) ||
+                            (RAW_TEXTS.agent && _curHasData && !_curHasData.mtd.length);
+      if(_monthRollover){
+        var _pm=_curTgt.month-1<1?12:_curTgt.month-1, _py=_curTgt.month-1<1?_curTgt.year-1:_curTgt.year;
+        _PICKER_VALS.main  = _py+'-'+_pm; SEL_YEAR=_py;       SEL_MONTH=_pm;
+        _PICKER_VALS.agent = _py+'-'+_pm; SEL_AGENT_YEAR=_py; SEL_AGENT_MONTH=_pm;
+      }
+    }
+
     render();
-    if(_PICKER_VALS.main) _reRenderMain(); // reapply a selected past month against the freshly refreshed data
+    if(_PICKER_VALS.main){
+      _reRenderMain();
+      renderAgents(); // _reRenderMain() only re-renders KPIs/LOB — Section 4 shares D.agents but needs its own repaint
+      // Only set the rollover note if _reRenderMain() didn't already set a
+      // more specific one (e.g. the picked month itself having no data).
+      var _rollNote='No '+MONTH_NAMES[new Date().getMonth()]+' data yet — showing '+MONTH_NAMES[SEL_MONTH-1]+' '+SEL_YEAR+' (last complete month)';
+      var _nm=document.getElementById('monthNoteMain');  if(_nm && !_nm.textContent)  _nm.textContent=_rollNote;
+      var _na=document.getElementById('monthNoteAgent'); if(_na && !_na.textContent) _na.textContent=_rollNote;
+    }
     return;
   }catch(e){ console.warn('Sheets fetch error:', e.message); }
   setChip('ok','⚠️ Sheets unreachable · please reload to update data');
@@ -2322,6 +2355,12 @@ function render(){
   renderFlags();
   var _now=new Date();
   var _dynPeriod=MONTH_NAMES[_now.getMonth()]+' '+_now.getFullYear();
+  // Reflect the month actually being shown (picker selection or the
+  // 2026-09-02 rollover-fallback below), not always literally "today."
+  if(_PICKER_VALS.main){
+    var _pmTag=_parsedMonth(_PICKER_VALS.main);
+    if(_pmTag) _dynPeriod=MONTH_NAMES[_pmTag.month-1]+' '+_pmTag.year;
+  }
   document.getElementById('periodPill').textContent=_dynPeriod;
   document.getElementById('periodTag').textContent=_dynPeriod;
   document.getElementById('footerSource').textContent = D._filename || 'Loaded data';
