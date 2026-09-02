@@ -1432,10 +1432,24 @@ function parseVolDaSheet(text, tgt){
       });
     });
 
-    // Convert "M/D" → "Mon DD-DD+6"
-    function wkLbl(s){ var p=s.split('/'),mo=parseInt(p[0]),d=parseInt(p[1]);
+    // Convert "M/D" (week start, Mon) → "Mon DD-DD" or "Mon DD-Mon DD" using real
+    // Date arithmetic, so a week that crosses a month boundary (e.g. week starting
+    // 7/27) formats correctly ("Jul 27-Aug 2") instead of naive day+6 math ("Jul 27-33").
+    // Fixed 2026-09-02 (Lisa flagged malformed labels like "Jul 27-33"/"Aug 31-37").
+    function wkLbl(s){
+      var p=s.split('/'), mo=parseInt(p[0]), d=parseInt(p[1]);
       var mn=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      return mn[mo]+' '+d+'-'+(d+6); }
+      var now=new Date();
+      // These weeks are always within the current reporting year, except right at a
+      // year boundary (e.g. reading a December week in early January) — guard for that.
+      var yr = now.getFullYear();
+      if(mo > now.getMonth()+2) yr -= 1;
+      var start = new Date(yr, mo-1, d);
+      var end = new Date(start.getTime()); end.setDate(end.getDate()+6);
+      var startLbl = mn[start.getMonth()+1]+' '+start.getDate();
+      var endLbl = (end.getMonth()!==start.getMonth() ? mn[end.getMonth()+1]+' ' : '') + end.getDate();
+      return startLbl+'-'+endLbl;
+    }
 
     var nSLA=sWks.length;
     wowResult={
@@ -2559,7 +2573,8 @@ function renderCharts(){
     avgSLA = allTgts2.length ? (allTgts2.reduce(function(a,b){return a+b;},0)/allTgts2.length*100).toFixed(1)*1 : 85;
     slaDatasets.push({label:'Avg Target',data:new Array(labels.length).fill(avgSLA),type:'line',borderColor:'#64748b',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false});
     document.getElementById('volChartTitle').textContent = 'Weekly Inbound Volume by LOB';
-    document.getElementById('volChartSub').textContent = 'Last 6 weeks (Mon–Sun) · Jun 15-21 = current week';
+    var curWkLbl = labels.length ? labels[labels.length-1] : '';
+    document.getElementById('volChartSub').textContent = 'Last 6 weeks (Mon–Sun)' + (curWkLbl ? ' · '+curWkLbl+' = current week' : '');
     document.getElementById('slaChartTitle').textContent = 'Weekly SLA% Trend by LOB';
     document.getElementById('slaChartSub').textContent = 'Last 6 weeks (Mon–Sun) · current week SLA pending';
   }
