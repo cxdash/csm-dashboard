@@ -464,6 +464,19 @@ function inPeriod(dateStr, mode){
   }
 }
 
+function inMonth(dateStr, year, month){
+  var parts = dateStr.split('/');
+  if(parts.length!==3) return false;
+  var d = new Date(parseInt(parts[2]), parseInt(parts[0])-1, parseInt(parts[1]));
+  if(isNaN(d.getTime())) return false;
+  return d.getFullYear()===year && d.getMonth()===month;
+}
+
+function prevMonthOf(year, month){
+  month--; if(month<0){ month=11; year--; }
+  return {year:year, month:month};
+}
+
 function inboxToLOB(name){
   var n=(name||'').toLowerCase().trim();
   for(var i=0;i<INBOX_LOB.length;i++){
@@ -561,9 +574,12 @@ function parseCI(text){
   return rows;
 }
 
-function parseVolume(text){
+function parseVolume(text, monthOverride){
   // ContactExport: f[3]=Channel, f[4]=Direction, f[9]=Inbox
   // f[11]=Queued-to-Fulfilled(sec) → FRT  f[12]=SLA diff  f[13]=Handle Time(sec) → AHT  f[16]=Date
+  // Respects the page's Weekly/Monthly toggle (`period`). In monthly mode, monthOverride
+  // ({year,month}) lets the caller re-run this against the last complete month when the
+  // current calendar month has no rows yet (see isVolEmpty()/renderAll()).
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var byLOB = {};
   var byInbox = {};
@@ -577,7 +593,11 @@ function parseVolume(text){
     if(ch!=='EMAIL'&&ch!=='CHAT') continue;
     if(dir!=='INBOUND') continue;
     var dateStr=(f[16]||'').trim();
-    if(!dateStr||!inPeriod(dateStr, 'monthly')) continue; // Section 7 is always MTD
+    if(!dateStr) continue;
+    if(period==='monthly'){
+      if(monthOverride){ if(!inMonth(dateStr, monthOverride.year, monthOverride.month)) continue; }
+      else if(!inPeriod(dateStr, 'monthly')) continue;
+    } else if(!inPeriod(dateStr, 'weekly')) continue;
     var inbox=(f[9]||'').trim();
     var lob=inboxToLOB(inbox);
     if(!lob) continue;
@@ -641,14 +661,18 @@ var EMAIL_LOB = {
 
 // FCR sheet: f[4]=Date, f[5]=daily FCR rate (0–1), f[8]=agent email
 // Groups by email→LOB via EMAIL_LOB roster map (more reliable than f[9] LOB field)
-function parseFCR(text){
+function parseFCR(text, monthOverride){
   var lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var byLOB={};
   for(var i=1;i<lines.length;i++){
     var f=parseCSVRow(lines[i]);
     if(f.length<9) continue;
     var dateStr=(f[4]||'').trim();
-    if(!dateStr||!inPeriod(dateStr,'monthly')) continue; // Section 7 is always MTD
+    if(!dateStr) continue;
+    if(period==='monthly'){
+      if(monthOverride){ if(!inMonth(dateStr, monthOverride.year, monthOverride.month)) continue; }
+      else if(!inPeriod(dateStr,'monthly')) continue;
+    } else if(!inPeriod(dateStr,'weekly')) continue;
     var rate=parseFloat(f[5]);
     if(isNaN(rate)) continue;
     var email=(f[8]||'').trim().toLowerCase();
@@ -1237,10 +1261,19 @@ function render(d){
 function renderVolume(volData, fcrByLOB){
   fcrByLOB = fcrByLOB || {};
   if(!volData || !volData.byLOB){ document.getElementById('volBody').innerHTML='<tr><td colspan="8" style="color:var(--text3);text-align:center;padding:24px">Volume data unavailable</td></tr>'; return; }
-  // Update s7sub with current month dynamically
-  var now=new Date();
+  // Label reflects the actual period shown: the Weekly/Monthly toggle in normal cases,
+  // or the last-complete-month fallback when the current month has no data yet.
   var s7sub=document.getElementById('s7sub');
-  if(s7sub){ var mn=now.toLocaleString('default',{month:'long'}); s7sub.textContent='Email + Chat · Inbound only · MTD '+mn+' '+now.getFullYear()+' · SLA benchmark '+SLA_TARGET+'%'; }
+  if(s7sub){
+    var lbl;
+    if(volData.fallback){
+      var fbDate=new Date(volData.fallback.year, volData.fallback.month, 1);
+      lbl=fbDate.toLocaleString('default',{month:'long'})+' '+volData.fallback.year+' (last complete month — current month has no data yet)';
+    } else {
+      lbl=periodLabel();
+    }
+    s7sub.textContent='Email + Chat · Inbound only · '+lbl+' · SLA benchmark '+SLA_TARGET+'%';
+  }
   var byLOB = volData.byLOB;
   var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
   var rows='', socialsVol=0,socialsWithin=0, overallVol=0,overallWithin=0,overallFrtSum=0,overallFrtCount=0,overallAhtSum=0,overallAhtCount=0;
@@ -2137,6 +2170,11 @@ function renderVolWoW(volText, fcrText){
   el.innerHTML=kpiRow+tbl;
 }
 
+function volTotal(vd){
+  if(!vd||!vd.byLOB) return 0;
+  return Object.keys(vd.byLOB).reduce(function(sum,lob){ return sum+(vd.byLOB[lob].vol||0); },0);
+}
+
 function renderAll(data){
   var parsedPS = data.psText ? parsePS(data.psText) : {psRows:data.psRows||[], ciFromPS:[]};
   var psRows   = parsedPS.psRows;
@@ -2144,8 +2182,24 @@ function renderAll(data){
   // CI sheet is the authoritative source — do NOT merge ciFromPS to avoid double-counting
   // (PS-tracker CI entries are rare legacy; Janelle's CI cases should be logged in the CI sheet)
   var ciRows   = data.ciText ? parseCI(data.ciText) : data.ciRows||[];
-  var volData  = data.volText?parseVolume(data.volText):data.volData||null;
-  var fcrData  = data.fcrText?parseFCR(data.fcrText):(data.fcrData||{});
+
+  // Volume & SLA (Section 9): respects the Weekly/Monthly toggle via `period`. In monthly
+  // mode, if the current calendar month has no rows yet (sheet not caught up), fall back
+  // to the last complete month instead of showing an empty section.
+  var volFallback = null;
+  var volData = null;
+  if(data.volText){
+    volData = parseVolume(data.volText);
+    if(period==='monthly' && volTotal(volData)===0){
+      var nowV=new Date();
+      volFallback = prevMonthOf(nowV.getFullYear(), nowV.getMonth());
+      volData = parseVolume(data.volText, volFallback);
+    }
+    volData.fallback = volFallback;
+  } else {
+    volData = data.volData||null;
+  }
+  var fcrData = data.fcrText?parseFCR(data.fcrText, volFallback):(data.fcrData||{});
   try{
     var computed=compute(psRows,ciRows,volData,fcrData);
     render(computed);
