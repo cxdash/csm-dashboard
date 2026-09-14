@@ -203,7 +203,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
     </div>
     <div class="sec-body">
       <div class="highlights-grid" id="hlGrid">
-        <div class="hl-col wins"><h4>✅ Wins</h4><div id="hlWins"></div></div>
+        <div class="hl-col wins"><h4>✅ Highlights</h4><div id="hlWins"></div></div>
         <div class="hl-col flags"><h4>⚠ Needs Attention</h4><div id="hlFlags"></div></div>
       </div>
     </div>
@@ -808,19 +808,19 @@ function renderCancelSection(cs){
   if(box){
     function insightBox(title, entries, emptyMsg){
       var lines = entries.length ? entries.map(function(e){
-        return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #e2e8f0"><span>'+e[0]+'</span><span style="color:#64748b;font-weight:600">'+e[1]+' cases</span></div>';
+        return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;padding:4px 0;border-bottom:1px dashed #e2e8f0"><span style="overflow-wrap:break-word;min-width:0">'+e[0]+'</span><span style="color:#64748b;font-weight:600;white-space:nowrap">'+e[1]+' cases</span></div>';
       }).join('') : '<div style="font-size:12px;color:#94a3b8;padding:4px 0">'+(emptyMsg||'No cases in window')+'</div>';
-      return '<div style="background:#FAFBFC;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px"><h3 style="font-size:12px;margin:0 0 8px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.03em">'+title+'</h3>'+lines+'</div>';
+      return '<div style="background:#FAFBFC;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;overflow:hidden"><h3 style="font-size:12px;margin:0 0 8px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.03em">'+title+'</h3>'+lines+'</div>';
     }
     var tagColor={Quality:'#C0504D',Loss:'#E8A33D',Targeting:'#4472C4'};
     var tagSub={Quality:'fake/bot followers, quality complaints',Loss:'follower loss, stalled/no growth',Targeting:'wrong audience, geotargeting'};
     var fulfillLines=['Quality','Loss','Targeting'].map(function(t){
       var f=cs.all.cur.fulfill[t];
-      return '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:5px 0;border-bottom:1px dashed #e2e8f0">'
-        +'<span><span style="font-weight:700;color:'+tagColor[t]+'">'+t+'</span><span style="display:block;font-size:10.5px;color:#94a3b8">'+tagSub[t]+'</span></span>'
-        +'<span style="color:#64748b;font-weight:600;white-space:nowrap">'+f.count+' case'+(f.count===1?'':'s')+' · '+f.uniqueAccounts+' acct'+(f.uniqueAccounts===1?'':'s')+(f.topPlan?' · '+f.topPlan:'')+'</span></div>';
+      return '<div style="padding:5px 0;border-bottom:1px dashed #e2e8f0">'
+        +'<div><span style="font-weight:700;color:'+tagColor[t]+'">'+t+'</span><span style="display:block;font-size:10.5px;color:#94a3b8">'+tagSub[t]+'</span></div>'
+        +'<div style="color:#64748b;font-weight:600;font-size:12px;margin-top:3px;overflow-wrap:break-word">'+f.count+' case'+(f.count===1?'':'s')+' · '+f.uniqueAccounts+' acct'+(f.uniqueAccounts===1?'':'s')+(f.topPlan?' · '+f.topPlan:'')+'</div></div>';
     }).join('');
-    var fulfillBoxHtml='<div style="background:#FAFBFC;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px"><h3 style="font-size:12px;margin:0 0 8px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.03em">Fulfillment Issue Tags</h3>'+fulfillLines+'</div>';
+    var fulfillBoxHtml='<div style="background:#FAFBFC;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;overflow:hidden"><h3 style="font-size:12px;margin:0 0 8px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.03em">Fulfillment Issue Tags</h3>'+fulfillLines+'</div>';
     box.innerHTML =
       insightBox('Top Cancellation Reasons', cs.all.cur.termReasons) +
       insightBox('Why Refunded Cancellations Happened', cs.all.cur.refundedReasons, 'No refunded cancellations in window') +
@@ -1751,7 +1751,7 @@ function renderHighlights(d){
   if(!winRows) winRows = '<tr><td colspan="2" style="padding:10px 12px;color:#64748b;font-size:12px">No notable wins to report this period.</td></tr>';
 
   html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
-    +'<tr><td colspan="2" style="background:#166534;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">✅ WINS</td></tr>'
+    +'<tr><td colspan="2" style="background:#166534;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">✅ HIGHLIGHTS</td></tr>'
     +'<tr><td colspan="2" style="background:#f0fdf4;padding:0"><table style="width:100%;border-collapse:collapse">'+winRows+'</table></td></tr>'
     +'</table>';
 
