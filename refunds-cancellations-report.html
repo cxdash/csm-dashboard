@@ -304,16 +304,23 @@ const FULFILL_TAG_PATTERNS = {
   Loss:      /follower\s*loss|followers?\s*loss|losing follow|loss of follow|no growth|slow growth|stalled?\s*[\/-]?\s*slow|lack of growth|growth issue|declining growth|not growing|no results|stagnant/i,
   Targeting: /\btarget(ing)?\b|geo[\s-]?target|wrong (audience|location|country)/i
 };
+// CHANGED 2026-09-14 per Lisa's explicit ask ("Follower loss count is still not showing here
+// (this is Path - 54)") — now also matches against the raw Issue Type column (r.issueType,
+// f[15]), not just free-text Reason/Root-Cause/Notes. Most Issue-Type="Follower Loss" rows are
+// plain issue reports with no cancellation/refund and no Reason/Notes text at all, so without
+// reading Issue Type directly they never matched anything.
 function _fulfillTags(r){
-  const txt = ((r.dcrsn||'')+' '+(r.reason||'')+' '+(r.notes||'')+' '+(r.cf||'')).toLowerCase();
+  const txt = ((r.dcrsn||'')+' '+(r.reason||'')+' '+(r.notes||'')+' '+(r.cf||'')+' '+(r.issueType||'')).toLowerCase();
   if(!txt.trim()) return [];
   const tags=[];
   for(const t of ['Quality','Loss','Targeting']) if(FULFILL_TAG_PATTERNS[t].test(txt)) tags.push(t);
   return tags;
 }
-// Only rows that ARE an actual cancellation or a (non-outlier) Annual Sub Refund count toward
-// fulfillment tagging — this mirrors the universe already used for the cancellation/refund stats.
-function _fulfillApplicable(r){ return _isCxl(r) || (_isRef(r) && r.amt<=FLAG_THRESHOLD); }
+// CHANGED 2026-09-14 per the same request — previously restricted to actual cancellations /
+// non-outlier Annual Sub Refunds only, which excluded plain "Issue Reporting/Monitoring" rows
+// (where nearly all Follower Loss tickets actually live). Now every row is eligible; matching
+// is entirely up to _fulfillTags() above.
+function _fulfillApplicable(r){ return true; }
 
 // Classify cancellation as manual / refunded(7-day) / selfserve
 // Primary: Status col (f[18]) — "Terminate"=manual, "Cancelled"=self, "Refunded"=ref

@@ -663,21 +663,32 @@ function _cancelStatus(r){
 }
 // Fulfillment issue tagging — Quality / Loss / Targeting, calibrated against real Root
 // Cause/Reason/Notes text from the live PS+CI escalation trackers and this sheet's own Notes
-// column. A row can match more than one tag (e.g. "follower quality (geotargeting)" is both
-// Quality and Targeting), so tags are additive, not exclusive.
+// column, PLUS the Issue Type dropdown value itself (added 2026-09-14 — see below). A row can
+// match more than one tag (e.g. "follower quality (geotargeting)" is both Quality and
+// Targeting), so tags are additive, not exclusive.
 var FULFILL_TAG_PATTERNS={
   Quality:/follower\s*quality|quality of follow|fake\s*follow|\bbots?\b|quality issue|poor quality|nude/i,
   Loss:/follower\s*loss|followers?\s*loss|losing follow|loss of follow|no growth|slow growth|stalled?\s*[\/-]?\s*slow|lack of growth|growth issue|declining growth|not growing|no results|stagnant/i,
   Targeting:/\btarget(ing)?\b|geo[\s-]?target|wrong (audience|location|country)/i
 };
+// CHANGED 2026-09-14 per Lisa's explicit ask ("Follower loss count is still not showing here
+// (this is Path - 54)") — _fulfillTags() now also matches against the raw Issue Type column
+// (f[15], parsed into r.issueType below), not just free-text Reason/Root-Cause/Notes. Most
+// Issue-Type="Follower Loss" rows are plain issue reports with no cancellation/refund and no
+// Reason/Notes text at all, so without reading Issue Type directly they never matched anything.
 function _fulfillTags(r){
-  var txt=((r.dcrsn||'')+' '+(r.reason||'')+' '+(r.notes||'')+' '+(r.cf||'')).toLowerCase();
+  var txt=((r.dcrsn||'')+' '+(r.reason||'')+' '+(r.notes||'')+' '+(r.cf||'')+' '+(r.issueType||'')).toLowerCase();
   if(!txt.replace(/\s/g,'')) return [];
   var tags=[];
   ['Quality','Loss','Targeting'].forEach(function(t){ if(FULFILL_TAG_PATTERNS[t].test(txt)) tags.push(t); });
   return tags;
 }
-function _fulfillApplicable(r){ return _cancelIsCxl(r) || (_cancelIsRef(r) && r.amt<=CANCEL_FLAG_THRESHOLD); }
+// CHANGED 2026-09-14 per the same request — previously restricted to actual Dashboard
+// Cancellations / non-outlier Annual Sub Refunds only, which excluded plain "Issue
+// Reporting/Monitoring" rows (where nearly all Follower Loss tickets actually live). Now every
+// row is eligible; matching is entirely up to _fulfillTags() above. Kept as a named function
+// (rather than removing the call site) in case a future ask reintroduces a category filter.
+function _fulfillApplicable(r){ return true; }
 function parseCancelSheet(text){
   var lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var rows=[];
@@ -694,7 +705,7 @@ function parseCancelSheet(text){
       reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
       amt:_cancelAmt(f[12]),
       status:(f[18]||'').trim(),dcrsn:(f[19]||'').trim(),
-      notes:(f[20]||'').trim()
+      notes:(f[20]||'').trim(),issueType:(f[15]||'').trim()
     });
   }
   return rows;
