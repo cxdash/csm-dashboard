@@ -150,11 +150,6 @@
     <div class="chart-wrap"><canvas id="chartSaveUpsell"></canvas></div>
   </div>
   <div class="card">
-    <h2 id="issueChartTitle">Issue Reporting — By Type</h2>
-    <p class="desc" id="issueChartDesc">Count by issue type for the selected period.</p>
-    <div class="chart-wrap"><canvas id="chartIssue"></canvas></div>
-  </div>
-  <div class="card">
     <h2>Issue Reporting — Trend</h2>
     <p class="desc">Stacked count of top issue types across the period range. Selected period outlined.</p>
     <div class="chart-wrap"><canvas id="chartIssueTrend"></canvas></div>
@@ -684,7 +679,6 @@ function refreshInPlace(){
   renderCancelChart(currentView);
   renderLOBChart(currentView);
   renderSaveUpsellChart(currentView);
-  renderIssueChart(currentView);
   renderIssueTrendChart(currentView);
   renderAgentTable(currentView);
 }
@@ -947,24 +941,6 @@ function renderSaveUpsellChart(view){
       scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10}}, beginAtZero:true } } }
   });
 }
-function renderIssueChart(view){
-  // Scoped to the selected period (per Lisa's request — this used to be a cumulative
-  // full-history tally regardless of the period picker).
-  const pd = currentPeriodData(view);
-  const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
-  const label = periods.find(p => p.key === selectedPeriodKey)?.label || 'All';
-  const descEl = document.getElementById('issueChartDesc');
-  if(descEl) descEl.textContent = `Count by issue type — ${label}.`;
-  const entries = pd.issue_types_arr || [];
-  const types = entries.map(e=>e[0]); const vals = entries.map(e=>e[1]);
-  charts.issue = new Chart(document.getElementById('chartIssue'), {
-    type:'bar',
-    data: { labels: types.length?types:['No issues logged'], datasets: [{ label:'Reports', data: vals.length?vals:[0], backgroundColor: PALETTE.amber }] },
-    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10.5}} } } }
-  });
-}
 function renderIssueTrendChart(view){
   const d = DATA[view];
   const types = d.issue_types_order || [];
@@ -1117,7 +1093,6 @@ function renderAll(view){
   renderCancelChart(view);
   renderLOBChart(view);
   renderSaveUpsellChart(view);
-  renderIssueChart(view);
   renderIssueTrendChart(view);
   renderAgentTable(view);
 }
@@ -1133,7 +1108,7 @@ document.getElementById('periodSelect').addEventListener('change', (e) => {
   selectedPeriodKey = e.target.value;
   destroyCharts();
   renderCategoryChart(currentView); renderRefundChart(currentView); renderCancelChart(currentView);
-  renderLOBChart(currentView); renderSaveUpsellChart(currentView); renderIssueChart(currentView);
+  renderLOBChart(currentView); renderSaveUpsellChart(currentView);
   renderIssueTrendChart(currentView);
   renderAgentTable(currentView);
 });
