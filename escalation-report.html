@@ -797,19 +797,29 @@ function computeCancelSummary(rows){
   function isCI(r){ return /crowd/i.test(r.company); }
   var curRows=rows.filter(function(r){ return r.date>=win.curStart && r.date<=win.curEnd; });
   var prevRows=rows.filter(function(r){ return r.date>=win.prevStart && r.date<=win.prevEnd; });
-  // Last-4-period trend (combined PS+CI) for the emailed Cancellations/Refunds/Annual Refunds
-  // section — per Lisa's request, oldest-to-newest, ending with the same "current" bucket as
-  // cur above. Only computed here (not rendered on-page); the email builder reads cs.trend.
-  var trend = cancelTrendWindows(period, 4).map(function(w){
-    var wRows = rows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
-    return { label: cancelTrendLabel(w, period), stats: _cancelBucketStats(wRows) };
-  });
+  // Last-4-period trend for the emailed Cancellations/Refunds/Annual Refunds section — per
+  // Lisa's request, oldest-to-newest, ending with the same "current" bucket as cur above.
+  // Split by LOB (added 2026-09-14, per Lisa: "I need to see here separate for Crowd Ignite" —
+  // the combined-only table didn't show Crowd Ignite's own numbers). Only computed here (not
+  // rendered on-page); the email builder reads cs.trendPS / cs.trendCI. cs.trend (combined) is
+  // kept for backward compatibility in case anything else references it.
+  var trendWindows = cancelTrendWindows(period, 4);
+  function _trendFor(filterFn){
+    return trendWindows.map(function(w){
+      var wRows = rows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
+      if(filterFn) wRows = wRows.filter(filterFn);
+      return { label: cancelTrendLabel(w, period), stats: _cancelBucketStats(wRows) };
+    });
+  }
+  var trend = _trendFor(null);
+  var trendPS = _trendFor(isPS);
+  var trendCI = _trendFor(isCI);
   return {
     word:win.word,
     all:{ cur:_cancelBucketStats(curRows), prev:_cancelBucketStats(prevRows) },
     ps:{ cur:_cancelBucketStats(curRows.filter(isPS)), prev:_cancelBucketStats(prevRows.filter(isPS)) },
     ci:{ cur:_cancelBucketStats(curRows.filter(isCI)), prev:_cancelBucketStats(prevRows.filter(isCI)) },
-    trend: trend
+    trend: trend, trendPS: trendPS, trendCI: trendCI
   };
 }
 function renderCancelSection(cs){
@@ -2012,27 +2022,31 @@ function renderHighlights(d){
 
     // ── 4-period trend (added 2026-09-14 per Lisa's ask: "I need the 4 week trend added" —
     // shows the last 4 completed weeks in Weekly view, or last 4 calendar months in Monthly
-    // view, combined Path Social + Crowd Ignite, ending with the same current period as the
-    // table above. ──
-    if(cs.trend && cs.trend.length){
-      var trendTitle = (cs.word==='month'?'4-MONTH':'4-WEEK')+' TREND (COMBINED — PS + CI)';
-      var trendCols = ['Metric'].concat(cs.trend.map(function(t){ return t.label; }));
+    // view, ending with the same current period as the table above. Split into separate
+    // Path Social / Crowd Ignite tables (changed 2026-09-14 per Lisa: "I need to see here
+    // separate for Crowd Ignite" — a single combined table didn't surface Crowd Ignite's own
+    // trend, since it's much smaller volume than Path Social). ──
+    [['Path Social', cs.trendPS, '#7c2d12'], ['Crowd Ignite', cs.trendCI, '#1e3a5f']].forEach(function(pair){
+      var lobName = pair[0], lobTrend = pair[1], lobColor = pair[2];
+      if(!lobTrend || !lobTrend.length) return;
+      var trendTitle = (cs.word==='month'?'4-MONTH':'4-WEEK')+' TREND — '+lobName.toUpperCase();
+      var trendCols = ['Metric'].concat(lobTrend.map(function(t){ return t.label; }));
       function trendRow8(label, getter, isMoney){
-        var cells = cs.trend.map(function(t){
+        var cells = lobTrend.map(function(t){
           var v = getter(t.stats);
           return '<td '+TDR+'>'+(isMoney? ('$'+Math.round(v).toLocaleString()) : v)+'</td>';
         }).join('');
         return '<tr><td '+TDBOLD+'>'+label+'</td>'+cells+'</tr>';
       }
       html += tbl(
-        secHdr('#7c2d12', trendTitle)
-        + thead('#7c2d12', trendCols)
+        secHdr(lobColor, trendTitle)
+        + thead(lobColor, trendCols)
         + trendRow8('Dashboard Cancellations', function(s){ return s.cxlTotal; })
         + trendRow8('Refunded Cancellations', function(s){ return s.refundedCxlTotal; })
         + trendRow8('Annual Sub Refunds (Count)', function(s){ return s.refTotal; })
         + trendRow8('Annual Sub Refunds ($)', function(s){ return s.refAmt; }, true)
       );
-    }
+    });
 
     var flagLines8=[];
     [['Path Social',cs.ps],['Crowd Ignite',cs.ci]].forEach(function(pair){
