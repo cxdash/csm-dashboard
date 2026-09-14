@@ -67,7 +67,7 @@
   th.sortable .arrow { font-size:9px; margin-left:4px; opacity:.5; }
   th.sortable.active .arrow { opacity:1; color: var(--navy); }
   th.num, td.num { text-align:right; }
-  .insight-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:14px; margin-bottom:16px; }
+  .insight-row { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom:16px; }
   .flags-banner { background:#FFF4E5; border:1px solid #F3C57C; border-radius:10px; padding:12px 16px; margin-bottom:16px; }
   .flags-title { font-weight:700; font-size:12.5px; color:#8A5A00; margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em; }
   .flag-chip { display:inline-block; background:#fff; border:1px solid #F3C57C; border-radius:6px; padding:5px 10px; margin:3px 6px 3px 0; font-size:12px; color:#5C3D00; }
@@ -79,7 +79,8 @@
   .insight-highlight { background:#F4F8FD; border:1px solid #D8E6F7; border-radius:8px; padding:9px 10px; margin-bottom:8px; }
   .insight-highlight .plan-name { font-weight:700; color:var(--navy); font-size:13px; }
   .insight-highlight .plan-stat { color:var(--text-muted); font-size:11.5px; margin-top:2px; }
-  @media (max-width: 900px) { .insight-row { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .insight-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .insight-row { grid-template-columns: 1fr; } }
   .insight-box { background:#FAFBFC; border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
   .insight-box h3 { font-size:12px; margin:0 0 8px 0; color: var(--navy); text-transform:uppercase; letter-spacing:.03em; }
   .insight-line { display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:4px 0; border-bottom:1px dashed #EEF0F3; }
@@ -149,9 +150,14 @@
     <div class="chart-wrap"><canvas id="chartSaveUpsell"></canvas></div>
   </div>
   <div class="card">
-    <h2>Issue Reporting — By Type (full history)</h2>
-    <p class="desc">Cumulative count by issue type across all data loaded.</p>
+    <h2 id="issueChartTitle">Issue Reporting — By Type</h2>
+    <p class="desc" id="issueChartDesc">Count by issue type for the selected period.</p>
     <div class="chart-wrap"><canvas id="chartIssue"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Issue Reporting — Trend</h2>
+    <p class="desc">Stacked count of top issue types across the period range. Selected period outlined.</p>
+    <div class="chart-wrap"><canvas id="chartIssueTrend"></canvas></div>
   </div>
 </div>
 
@@ -344,8 +350,10 @@ function _aggBucket(rows){
   const cc={}; _CATS.forEach(c=>cc[c]=0);
   let rc=0,ra=0,rc_ps=0,ra_ps=0,rc_ci=0,ra_ci=0,ct=0,cm=0,cref=0,css=0,ic=0,uc=0,sc=0,cp=0,cci=0;
   const fulfill={Quality:0,Loss:0,Targeting:0};
+  const issueMap={};
   for(const r of rows){
     if(cc.hasOwnProperty(r.cat)) cc[r.cat]++;
+    if(r.issueType) issueMap[r.issueType]=(issueMap[r.issueType]||0)+1;
     if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){
       rc++;ra+=r.amt;
       if(_isPS(r)){rc_ps++;ra_ps+=r.amt;}
@@ -368,7 +376,7 @@ function _aggBucket(rows){
     ct,cm,
     cpct:ct>0?Math.round(cm/ct*1000)/10:null,
     cpct_ref:ct>0?Math.round(cref/ct*1000)/10:null,
-    cref,css,ic,uc,sc,cp,cci,fulfill};
+    cref,css,ic,uc,sc,cp,cci,fulfill,issueMap};
 }
 
 // --- Aggregate period detail (agents, reasons, plans) ---
@@ -383,7 +391,11 @@ function _aggPeriod(rows){
   const fulfill={ Quality:{count:0,emails:new Set(),plans:{}},
                   Loss:{count:0,emails:new Set(),plans:{}},
                   Targeting:{count:0,emails:new Set(),plans:{}} };
+  // Issue Reporting — By Type, scoped to THIS period (week/month/All), per Lisa's request —
+  // previously this was a cumulative full-history tally regardless of the period selector.
+  const issueMap={};
   for(const r of rows){
+    if(r.issueType) issueMap[r.issueType]=(issueMap[r.issueType]||0)+1;
     if(!agents[r.agentName]) agents[r.agentName]={n:r.agentName,cc:0,man:0,cxlCancelled:0,cxlTerminated:0,rc:0,ra:0,tr:{},rr:{}};
     const ag=agents[r.agentName];
     if(_isCxl(r)){
@@ -434,7 +446,8 @@ function _aggPeriod(rows){
     refunded_cxl_reasons:_topN(refundedCxlR,8,false).map(([k,v])=>[k,v]),
     annual_cxl_total:annualCxlTotal,
     annual_cxl_reasons:_topN(annualCxlR,8,false).map(([k,v])=>[k,v]),
-    fulfill:fulfillSummary
+    fulfill:fulfillSummary,
+    issue_types_arr:_topN(issueMap,15,false).map(([k,v])=>[k,v])
   };
 }
 
@@ -578,9 +591,10 @@ function buildDashboardData(allRows, allFlagged, companyFilter){
       cancel_manual_pct:[],cancel_refunded:[],cancel_selfserve:[],
       issue_count:[],upsell_count:[],save_count:[],company_path:[],company_crowd:[],
       fulfill_quality:[],fulfill_loss:[],fulfill_targeting:[]};
-    for(const b of buckets){
+    const bucketAggs = buckets.map(b=>_aggBucket(b.rows));
+    buckets.forEach((b,i)=>{
+      const a=bucketAggs[i];
       res.labels.push(b.label);
-      const a=_aggBucket(b.rows);
       _CATS.forEach(c=>res.category_counts[c].push(a.cc[c]||0));
       res.refund_count.push(a.rc);res.refund_amount.push(a.ra);
       res.refund_count_ps.push(a.rc_ps);res.refund_amount_ps.push(a.ra_ps);
@@ -591,7 +605,23 @@ function buildDashboardData(allRows, allFlagged, companyFilter){
       res.upsell_count.push(a.uc);res.save_count.push(a.sc);
       res.company_path.push(a.cp);res.company_crowd.push(a.cci);
       res.fulfill_quality.push(a.fulfill.Quality);res.fulfill_loss.push(a.fulfill.Loss);res.fulfill_targeting.push(a.fulfill.Targeting);
-    }
+    });
+    // Issue Reporting trend — top 5 issue types by total volume across this range, stacked
+    // per bucket, plus an "Other" series for the rest. Lets Lisa see the trend regardless of
+    // which single period is selected (matching the "Selected period outlined" convention
+    // used by the other trend charts on this dashboard).
+    const issueTotals={};
+    bucketAggs.forEach(a=>{ Object.entries(a.issueMap).forEach(([k,v])=>{ issueTotals[k]=(issueTotals[k]||0)+v; }); });
+    const topIssueTypes=_topN(issueTotals,5,false).map(([k])=>k);
+    res.issue_series={};
+    topIssueTypes.forEach(t=>res.issue_series[t]=bucketAggs.map(a=>a.issueMap[t]||0));
+    const otherSeries=bucketAggs.map(a=>{
+      let sum=0;
+      Object.entries(a.issueMap).forEach(([k,v])=>{ if(!topIssueTypes.includes(k)) sum+=v; });
+      return sum;
+    });
+    res.issue_types_order=topIssueTypes.slice();
+    if(otherSeries.some(v=>v>0)){ res.issue_series['Other']=otherSeries; res.issue_types_order.push('Other'); }
     return res;
   }
 
@@ -606,11 +636,6 @@ function buildDashboardData(allRows, allFlagged, companyFilter){
   wBuckets.forEach((b,i)=>{ wPD['p'+i]=_aggPeriod(b.rows); });
   const mPD={all:_aggPeriod(allM)};
   mBuckets.forEach((b,i)=>{ mPD['p'+i]=_aggPeriod(b.rows); });
-
-  // Issue types — cumulative all history
-  const issueMap={};
-  for(const r of rows) if(r.issueType) issueMap[r.issueType]=(issueMap[r.issueType]||0)+1;
-  const issue_types_arr=_topN(issueMap,20,false).map(([k,v])=>[k,v]);
 
   // Generated-at timestamp
   let h=now.getHours(); const ampm=h>=12?'PM':'AM'; h=h%12||12;
@@ -628,8 +653,7 @@ function buildDashboardData(allRows, allFlagged, companyFilter){
     month_periods:mPeriods,
     month_period_data:mPD,
     yesterday:_ydayStats(rows,now),
-    flagged,
-    issue_types_arr
+    flagged
   };
 }
 
@@ -660,7 +684,8 @@ function refreshInPlace(){
   renderCancelChart(currentView);
   renderLOBChart(currentView);
   renderSaveUpsellChart(currentView);
-  renderIssueChart();
+  renderIssueChart(currentView);
+  renderIssueTrendChart(currentView);
   renderAgentTable(currentView);
 }
 
@@ -922,8 +947,15 @@ function renderSaveUpsellChart(view){
       scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10}}, beginAtZero:true } } }
   });
 }
-function renderIssueChart(){
-  const entries = DATA.issue_types_arr || [];
+function renderIssueChart(view){
+  // Scoped to the selected period (per Lisa's request — this used to be a cumulative
+  // full-history tally regardless of the period picker).
+  const pd = currentPeriodData(view);
+  const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
+  const label = periods.find(p => p.key === selectedPeriodKey)?.label || 'All';
+  const descEl = document.getElementById('issueChartDesc');
+  if(descEl) descEl.textContent = `Count by issue type — ${label}.`;
+  const entries = pd.issue_types_arr || [];
   const types = entries.map(e=>e[0]); const vals = entries.map(e=>e[1]);
   charts.issue = new Chart(document.getElementById('chartIssue'), {
     type:'bar',
@@ -931,6 +963,27 @@ function renderIssueChart(){
     options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false} },
       scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10.5}} } } }
+  });
+}
+function renderIssueTrendChart(view){
+  const d = DATA[view];
+  const types = d.issue_types_order || [];
+  const colors = [PALETTE.navy, PALETTE.red, PALETTE.green, PALETTE.amber, PALETTE.purple, PALETTE.teal];
+  if(!types.length){
+    charts.issueTrend = new Chart(document.getElementById('chartIssueTrend'), {
+      type:'bar',
+      data: { labels: d.labels, datasets: [{ label:'No issues logged', data: d.labels.map(()=>0), backgroundColor: PALETTE.amber }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+        scales:{ x:{ ticks:{font:{size:10}} }, y:{ ticks:{font:{size:10}} } } }
+    });
+    return;
+  }
+  charts.issueTrend = new Chart(document.getElementById('chartIssueTrend'), {
+    type:'bar',
+    data: { labels: d.labels, datasets: types.map((t,i) => ({ label:t, data:d.issue_series[t]||[], backgroundColor: barColors(view, colors[i%colors.length]), stack:'s' })) },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10, font:{size:10.5}} } },
+      scales:{ x:{ stacked:true, ticks:{font:{size:10}} }, y:{ stacked:true, ticks:{font:{size:10}} } } }
   });
 }
 
@@ -1064,7 +1117,8 @@ function renderAll(view){
   renderCancelChart(view);
   renderLOBChart(view);
   renderSaveUpsellChart(view);
-  renderIssueChart();
+  renderIssueChart(view);
+  renderIssueTrendChart(view);
   renderAgentTable(view);
 }
 
@@ -1079,7 +1133,8 @@ document.getElementById('periodSelect').addEventListener('change', (e) => {
   selectedPeriodKey = e.target.value;
   destroyCharts();
   renderCategoryChart(currentView); renderRefundChart(currentView); renderCancelChart(currentView);
-  renderLOBChart(currentView); renderSaveUpsellChart(currentView); renderIssueChart();
+  renderLOBChart(currentView); renderSaveUpsellChart(currentView); renderIssueChart(currentView);
+  renderIssueTrendChart(currentView);
   renderAgentTable(currentView);
 });
 // Company toggle is global: it rebuilds DATA from the raw rows filtered to the selected
