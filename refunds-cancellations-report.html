@@ -67,7 +67,15 @@
   th.sortable .arrow { font-size:9px; margin-left:4px; opacity:.5; }
   th.sortable.active .arrow { opacity:1; color: var(--navy); }
   th.num, td.num { text-align:right; }
-  .insight-row { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; margin-bottom:16px; }
+  .insight-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:14px; margin-bottom:16px; }
+  .flags-banner { background:#FFF4E5; border:1px solid #F3C57C; border-radius:10px; padding:12px 16px; margin-bottom:16px; }
+  .flags-title { font-weight:700; font-size:12.5px; color:#8A5A00; margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em; }
+  .flag-chip { display:inline-block; background:#fff; border:1px solid #F3C57C; border-radius:6px; padding:5px 10px; margin:3px 6px 3px 0; font-size:12px; color:#5C3D00; }
+  .flag-chip .flag-pct { color:#C0504D; font-weight:700; margin-left:4px; }
+  .fulfill-tag-row { display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; padding:5px 0; border-bottom:1px dashed #EEF0F3; }
+  .fulfill-tag-row:last-child { border-bottom:none; }
+  .fulfill-tag-row .tag-name { font-weight:700; }
+  .fulfill-tag-row .tag-sub { color:var(--text-muted); font-size:11px; display:block; margin-top:1px; font-weight:400; }
   .insight-highlight { background:#F4F8FD; border:1px solid #D8E6F7; border-radius:8px; padding:9px 10px; margin-bottom:8px; }
   .insight-highlight .plan-name { font-weight:700; color:var(--navy); font-size:13px; }
   .insight-highlight .plan-stat { color:var(--text-muted); font-size:11.5px; margin-top:2px; }
@@ -111,6 +119,8 @@
 <div class="yday-card" id="ydayCard" style="display:none;"></div>
 
 <div class="kpi-row" id="kpiRow"></div>
+
+<div class="flags-banner" id="flagsBanner" style="display:none;"></div>
 
 <div class="grid">
   <div class="card">
@@ -281,6 +291,28 @@ function _isCxl(r){
 function _isRef(r){ return r.cat==='Annual Sub Refunds'; }
 function _isPS(r){ return /path/i.test(r.company); }
 function _isCI(r){ return /crowd/i.test(r.company); }
+function _isAnnualPlan(plan){ return /annual/i.test(plan||''); }
+
+// Fulfillment issue tagging — Quality / Loss / Targeting (added 2026-09-14, per Lisa's request
+// to split "follower loss" style complaints so we know exactly what to check on fulfillment).
+// Calibrated against real Root Cause/Reason/Notes text from the live PS+CI escalation trackers
+// and this sheet's own Notes column — a row can match more than one tag (e.g. "follower quality
+// (geotargeting)" is both Quality and Targeting), so tags are additive, not exclusive.
+const FULFILL_TAG_PATTERNS = {
+  Quality:   /follower\s*quality|quality of follow|fake\s*follow|\bbots?\b|quality issue|poor quality|nude/i,
+  Loss:      /follower\s*loss|followers?\s*loss|losing follow|loss of follow|no growth|slow growth|stalled?\s*[\/-]?\s*slow|lack of growth|growth issue|declining growth|not growing|no results|stagnant/i,
+  Targeting: /\btarget(ing)?\b|geo[\s-]?target|wrong (audience|location|country)/i
+};
+function _fulfillTags(r){
+  const txt = ((r.dcrsn||'')+' '+(r.reason||'')+' '+(r.notes||'')+' '+(r.cf||'')).toLowerCase();
+  if(!txt.trim()) return [];
+  const tags=[];
+  for(const t of ['Quality','Loss','Targeting']) if(FULFILL_TAG_PATTERNS[t].test(txt)) tags.push(t);
+  return tags;
+}
+// Only rows that ARE an actual cancellation or a (non-outlier) Annual Sub Refund count toward
+// fulfillment tagging — this mirrors the universe already used for the cancellation/refund stats.
+function _fulfillApplicable(r){ return _isCxl(r) || (_isRef(r) && r.amt<=FLAG_THRESHOLD); }
 
 // Classify cancellation as manual / refunded(7-day) / selfserve
 // Primary: Status col (f[18]) — "Terminate"=manual, "Cancelled"=self, "Refunded"=ref
@@ -311,6 +343,7 @@ const _CATS=['Dashboard Cancellation','Annual Sub Refunds','Retention (Save Offe
 function _aggBucket(rows){
   const cc={}; _CATS.forEach(c=>cc[c]=0);
   let rc=0,ra=0,rc_ps=0,ra_ps=0,rc_ci=0,ra_ci=0,ct=0,cm=0,cref=0,css=0,ic=0,uc=0,sc=0,cp=0,cci=0;
+  const fulfill={Quality:0,Loss:0,Targeting:0};
   for(const r of rows){
     if(cc.hasOwnProperty(r.cat)) cc[r.cat]++;
     if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){
@@ -327,6 +360,7 @@ function _aggBucket(rows){
     if(r.cat==='Upsell')uc++;
     if(r.cat==='Retention (Save Offer)')sc++;
     if(_isPS(r))cp++; if(_isCI(r))cci++;
+    if(_fulfillApplicable(r)) _fulfillTags(r).forEach(t=>fulfill[t]++);
   }
   return {cc,rc,ra:Math.round(ra*100)/100,
     rc_ps,ra_ps:Math.round(ra_ps*100)/100,
@@ -334,12 +368,21 @@ function _aggBucket(rows){
     ct,cm,
     cpct:ct>0?Math.round(cm/ct*1000)/10:null,
     cpct_ref:ct>0?Math.round(cref/ct*1000)/10:null,
-    cref,css,ic,uc,sc,cp,cci};
+    cref,css,ic,uc,sc,cp,cci,fulfill};
 }
 
 // --- Aggregate period detail (agents, reasons, plans) ---
 function _aggPeriod(rows){
   const agents={},termR={},refR={},planR={};
+  // Narrower slices Lisa asked for: why were the REFUNDED cancellations refunded, and why
+  // were the ANNUAL-plan cancellations cancelled/terminated/refunded — separate from the
+  // blended "all cancellations" term_reasons tally above.
+  const refundedCxlR={}, annualCxlR={};
+  let annualCxlTotal=0, refundedCxlTotal=0;
+  // Fulfillment issue tags (Quality/Loss/Targeting): count + unique accounts (email) + plan hit.
+  const fulfill={ Quality:{count:0,emails:new Set(),plans:{}},
+                  Loss:{count:0,emails:new Set(),plans:{}},
+                  Targeting:{count:0,emails:new Set(),plans:{}} };
   for(const r of rows){
     if(!agents[r.agentName]) agents[r.agentName]={n:r.agentName,cc:0,man:0,cxlCancelled:0,cxlTerminated:0,rc:0,ra:0,tr:{},rr:{}};
     const ag=agents[r.agentName];
@@ -349,12 +392,21 @@ function _aggPeriod(rows){
       if(st==='manual'){ag.man++;ag.cxlTerminated++;}
       else if(st==='self') ag.cxlCancelled++;
       const k=r.dcrsn||r.reason||'-'; ag.tr[k]=(ag.tr[k]||0)+1; termR[k]=(termR[k]||0)+1;
+      if(st==='ref'){ refundedCxlTotal++; refundedCxlR[k]=(refundedCxlR[k]||0)+1; }
+      if(_isAnnualPlan(r.plan)){ annualCxlTotal++; annualCxlR[k]=(annualCxlR[k]||0)+1; }
     }
     if(_isRef(r)&&r.amt<=FLAG_THRESHOLD){
       ag.rc++; ag.ra+=r.amt;
       const k=r.reason||'-'; ag.rr[k]=(ag.rr[k]||0)+1;
       if(!refR[k]) refR[k]={count:0,amount:0}; refR[k].count++; refR[k].amount+=r.amt;
       const p=r.plan||'Unknown'; if(!planR[p]) planR[p]={count:0,amount:0}; planR[p].count++; planR[p].amount+=r.amt;
+    }
+    if(_fulfillApplicable(r)){
+      _fulfillTags(r).forEach(t=>{
+        fulfill[t].count++;
+        if(r.email) fulfill[t].emails.add(r.email);
+        const p=r.plan||'Unknown'; fulfill[t].plans[p]=(fulfill[t].plans[p]||0)+1;
+      });
     }
   }
   const agArr=Object.values(agents).map(ag=>{
@@ -369,11 +421,20 @@ function _aggPeriod(rows){
   });
   const normRef=Object.fromEntries(Object.entries(refR).map(([k,v])=>[k,{count:v.count,amount:Math.round(v.amount*100)/100}]));
   const normPlan=Object.fromEntries(Object.entries(planR).map(([k,v])=>[k,{count:v.count,amount:Math.round(v.amount*100)/100}]));
+  const fulfillSummary=Object.fromEntries(['Quality','Loss','Targeting'].map(t=>{
+    const f=fulfill[t];
+    return [t,{count:f.count,uniqueAccounts:f.emails.size,planBreakdown:_topN(f.plans,5,false)}];
+  }));
   return{
     agents:agArr,
     term_reasons:_topN(termR,10,false).map(([k,v])=>[k,v]),
     refund_reasons:_topN(normRef,6,true).map(([k,v])=>[k,v]),
-    plan_breakdown:_topN(normPlan,5,true).map(([k,v])=>[k,v])
+    plan_breakdown:_topN(normPlan,5,true).map(([k,v])=>[k,v]),
+    refunded_cxl_total:refundedCxlTotal,
+    refunded_cxl_reasons:_topN(refundedCxlR,8,false).map(([k,v])=>[k,v]),
+    annual_cxl_total:annualCxlTotal,
+    annual_cxl_reasons:_topN(annualCxlR,8,false).map(([k,v])=>[k,v]),
+    fulfill:fulfillSummary
   };
 }
 
@@ -456,6 +517,7 @@ function parseRowsFromCSV(csvText){
     if(EXCLUDE_AGENTS.has(an)) continue;
     const row={
       date,agentName:an||'unknown',
+      email:(f[3]||'').trim().toLowerCase(),
       plan:(f[5]||'').trim(),country:(f[6]||'').trim(),
       cat:(f[7]||'').trim(),company:(f[8]||'').trim(),
       reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
@@ -514,7 +576,8 @@ function buildDashboardData(allRows, allFlagged, companyFilter){
       refund_count_ci:[],refund_amount_ci:[],
       cancel_total:[],cancel_manual:[],
       cancel_manual_pct:[],cancel_refunded:[],cancel_selfserve:[],
-      issue_count:[],upsell_count:[],save_count:[],company_path:[],company_crowd:[]};
+      issue_count:[],upsell_count:[],save_count:[],company_path:[],company_crowd:[],
+      fulfill_quality:[],fulfill_loss:[],fulfill_targeting:[]};
     for(const b of buckets){
       res.labels.push(b.label);
       const a=_aggBucket(b.rows);
@@ -527,6 +590,7 @@ function buildDashboardData(allRows, allFlagged, companyFilter){
       res.cancel_selfserve.push(a.css);res.issue_count.push(a.ic);
       res.upsell_count.push(a.uc);res.save_count.push(a.sc);
       res.company_path.push(a.cp);res.company_crowd.push(a.cci);
+      res.fulfill_quality.push(a.fulfill.Quality);res.fulfill_loss.push(a.fulfill.Loss);res.fulfill_targeting.push(a.fulfill.Targeting);
     }
     return res;
   }
@@ -590,6 +654,7 @@ function refreshInPlace(){
   renderDataQuality();
   destroyCharts();
   renderKPIs(currentView);
+  renderFlags(currentView);
   renderCategoryChart(currentView);
   renderRefundChart(currentView);
   renderCancelChart(currentView);
@@ -740,6 +805,39 @@ function renderKPIs(view){
   `).join('');
 }
 
+// Flags any of a handful of key metrics that went UP vs. the immediately prior period —
+// per Lisa's request, compared against whatever period type is currently selected (WoW view
+// compares this week to last week; MoM compares this month to last month), and ANY increase
+// (not just a doubling) is worth a chip here. Kept to a short, specific list rather than every
+// metric, so it stays a "worth a look" signal and not noise.
+function renderFlags(view){
+  const d = DATA[view];
+  const periodWord = view==='week' ? 'week' : 'month';
+  const checks = [
+    { label:'Annual Refunds — cases',        series:d.refund_count },
+    { label:'Annual Refunds — $',            series:d.refund_amount, isMoney:true },
+    { label:'Dashboard Cancellations',       series:d.cancel_total },
+    { label:'Fulfillment — Follower Quality',series:d.fulfill_quality },
+    { label:'Fulfillment — Follower Loss / No Growth', series:d.fulfill_loss },
+    { label:'Fulfillment — Targeting',       series:d.fulfill_targeting }
+  ];
+  const flags = checks.map(c=>{
+    const [cur,prev]=last2(c.series);
+    if(cur==null||prev==null||!(cur>prev)) return null;
+    const pct = prev>0 ? Math.round((cur-prev)/prev*100) : null;
+    return {...c,cur,prev,pct};
+  }).filter(Boolean);
+  const box = document.getElementById('flagsBanner');
+  if(!flags.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  box.innerHTML = `<div class="flags-title">⚠ Increased vs prior ${periodWord} — worth a look</div>`
+    + flags.map(f=>{
+        const valFmt = f.isMoney ? fmtMoney : fmtNum;
+        const change = f.pct===null ? `new this ${periodWord}` : `+${f.pct}%`;
+        return `<span class="flag-chip">${f.label}: ${valFmt(f.prev)} → ${valFmt(f.cur)} <span class="flag-pct">(${change})</span></span>`;
+      }).join('');
+}
+
 function destroyCharts(){ Object.values(charts).forEach(c => c.destroy()); charts = {}; }
 function selectedIndex(){ if (selectedPeriodKey === 'all') return -1; const idx = parseInt(selectedPeriodKey.replace('p',''),10); return isNaN(idx)?-1:idx; }
 function barColors(view, baseColor){
@@ -848,10 +946,14 @@ function renderInsights(view){
   const termEntries = pd.term_reasons || [];
   const refEntries = pd.refund_reasons || [];
   const planEntries = pd.plan_breakdown || [];
+  const refundedCxlEntries = pd.refunded_cxl_reasons || [];
+  const annualCxlEntries = pd.annual_cxl_reasons || [];
   const periods = view === 'week' ? DATA.week_periods : DATA.month_periods;
   const label = periods.find(p => p.key === selectedPeriodKey)?.label || 'All';
   const termHtml = termEntries.map(([reason,count]) => `<div class="insight-line"><span>${reason}</span><span class="stat">${count} cases</span></div>`).join('');
   const refHtml = refEntries.map(([reason,v]) => `<div class="insight-line"><span>${reason}</span><span class="stat">${v.count} · ${fmtMoneyShort(v.amount)}</span></div>`).join('');
+  const refundedCxlHtml = refundedCxlEntries.map(([reason,count]) => `<div class="insight-line"><span>${reason}</span><span class="stat">${count} cases</span></div>`).join('');
+  const annualCxlHtml = annualCxlEntries.map(([reason,count]) => `<div class="insight-line"><span>${reason}</span><span class="stat">${count} cases</span></div>`).join('');
   let planHtml;
   if (planEntries.length) {
     const [topPlan, topV] = planEntries[0];
@@ -866,10 +968,27 @@ function renderInsights(view){
   } else {
     planHtml = '<div class="insight-line"><span>No refunds in window</span></div>';
   }
+  // Fulfillment issue tags — Quality / Loss / Targeting, split out per Lisa's request so it's
+  // clear which fulfillment lever (follower quality, follower loss/no-growth, or targeting) to
+  // check. Shows case count, unique accounts affected (by email), and the plan most impacted.
+  const fulfill = pd.fulfill || {};
+  const tagColor = { Quality:'#C0504D', Loss:'#E8A33D', Targeting:'#4472C4' };
+  const tagSub = { Quality:'fake/bot followers, quality complaints', Loss:'follower loss, stalled/no growth', Targeting:'wrong audience, geotargeting' };
+  const fulfillHtml = ['Quality','Loss','Targeting'].map(t=>{
+    const f = fulfill[t] || {count:0,uniqueAccounts:0,planBreakdown:[]};
+    const topPlan = f.planBreakdown && f.planBreakdown.length ? f.planBreakdown[0][0] : null;
+    return `<div class="fulfill-tag-row">
+      <span><span class="tag-name" style="color:${tagColor[t]}">${t}</span><span class="tag-sub">${tagSub[t]}</span></span>
+      <span class="stat">${f.count} case${f.count===1?'':'s'} · ${f.uniqueAccounts} account${f.uniqueAccounts===1?'':'s'}${topPlan?' · '+topPlan:''}</span>
+    </div>`;
+  }).join('');
   box.innerHTML = `
     <div class="insight-box"><h3>Top Reasons — Manual Termination (${label})</h3>${termHtml || '<div class="insight-line"><span>No manual terminations in window</span></div>'}</div>
     <div class="insight-box"><h3>Top Reasons — Annual Refunds (${label})</h3>${refHtml || '<div class="insight-line"><span>No refunds in window</span></div>'}</div>
     <div class="insight-box"><h3>Most Affected Plan — Annual Refunds (${label})</h3>${planHtml}</div>
+    <div class="insight-box"><h3>Why Refunded Cancellations Happened (${label})</h3>${refundedCxlHtml || '<div class="insight-line"><span>No refunded cancellations in window</span></div>'}</div>
+    <div class="insight-box"><h3>Why Annual-Plan Cancellations Happened (${label})</h3>${annualCxlHtml || '<div class="insight-line"><span>No annual-plan cancellations in window</span></div>'}</div>
+    <div class="insight-box"><h3>Fulfillment Issue Tags (${label})</h3>${fulfillHtml}</div>
   `;
 }
 function sortRows(rows){
@@ -939,6 +1058,7 @@ function renderAll(view){
   destroyCharts();
   populatePeriodSelect(view);
   renderKPIs(view);
+  renderFlags(view);
   renderCategoryChart(view);
   renderRefundChart(view);
   renderCancelChart(view);

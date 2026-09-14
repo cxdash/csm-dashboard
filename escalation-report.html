@@ -395,6 +395,31 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
     </div>
   </div>
 
+  <!-- 10 — CANCELLATIONS, REFUNDS & FULFILLMENT SIGNALS -->
+  <div class="sec" id="s10">
+    <div class="sec-hdr">
+      <div class="sec-dot" style="background:#C0504D"></div>
+      <div><div class="sec-title">10 — Cancellations, Refunds &amp; Fulfillment Signals</div><div class="sec-sub">From the PS Daily Processes tracker · Path Social &amp; Crowd Ignite · vs. prior <span id="s10PeriodWord">period</span></div></div>
+    </div>
+    <div class="sec-body">
+      <div id="s10Flags" style="margin-bottom:12px"></div>
+      <div style="overflow-x:auto">
+        <table class="vol-table" id="s10Table">
+          <thead><tr>
+            <th>LOB</th>
+            <th class="r">Dashboard Cxls</th>
+            <th class="r">— Refunded</th>
+            <th class="r">— Annual Plan</th>
+            <th class="r">Annual Sub Refunds</th>
+            <th class="r">Refund $</th>
+          </tr></thead>
+          <tbody id="s10Body"></tbody>
+        </table>
+      </div>
+      <div class="insight-row" id="s10InsightRow" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px,1fr));gap:14px;margin-top:14px"></div>
+    </div>
+  </div>
+
 </div><!-- /main -->
 
 </div><!-- /dashboardRoot -->
@@ -409,6 +434,12 @@ var SHEETS_CONTACT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSbJZ7
 
 // FCR sheet
 var SHEETS_FCR_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1422680454&single=true&output=csv';
+
+// PS Daily Processes tracker — same sheet powering refunds-cancellations-report.html's
+// Dashboard Cancellations / Annual Sub Refunds stats. Added 2026-09-14 so Section 10 can show
+// cancellation/refund insights + fulfillment-issue flags alongside escalations in this report
+// and in the generated email.
+var SHEETS_CANCEL_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvIuq_6wUTzcbNm-ZXwQJKzbMsEniRxYEi6d-FlrIbhlF4g3Eek97QM8M1UDYUKxCU34eoMzcXhQKI/pub?gid=1093050961&single=true&output=csv';
 
 // SLA + FRT targets
 var SLA_TARGET = 90;
@@ -429,6 +460,7 @@ var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social'
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var period = 'weekly';
 var D = null; // parsed data
+var LAST_CANCEL_SUMMARY = null; // Section 10 data (cancellations/refunds/fulfillment), read by the email builder
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function pct(v,d){ return (v*(d===0?1:1)*100).toFixed(d===undefined?1:d)+'%'; }
@@ -572,6 +604,229 @@ function parseCI(text){
     });
   }
   return rows;
+}
+
+// ── PS Daily Processes tracker (Cancellations & Refunds) — added 2026-09-14 ──
+// Same sheet/column mapping + fulfillment classifier as refunds-cancellations-report.html,
+// so Section 10 here shows the same Dashboard Cancellations / Annual Sub Refunds insights and
+// the Quality/Loss/Targeting fulfillment tags, both on-page and in the generated email.
+function _cancelCsvRow(line){
+  var fields=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
+    else if(c===','&&!inQ){ fields.push(cur); cur=''; }
+    else cur+=c;
+  }
+  fields.push(cur); return fields;
+}
+var CANCEL_FX={'$':1,'USD':1,'US$':1,'£':1.27,'GBP':1.27,'€':1.09,'EUR':1.09,'A$':0.65,'AUD':0.65,'CA$':0.73,'CAD':0.73,'NZ$':0.60,'NZD':0.60,'₱':0.017,'PHP':0.017,'S$':0.74,'SGD':0.74,'HK$':0.13,'HKD':0.13,'MXN':0.057,'MXN$':0.057,'MX$':0.057,'R$':0.18,'BRL':0.18,'₹':0.012,'INR':0.012,'ARS':0.00067,'AR$':0.00067,'CLP':0.0011,'CRC':0.0022,'₡':0.0022,'COP':0.00032,'NOK':0.105,'SEK':0.095,'DKK':0.14};
+var CANCEL_CODE_RE=/(USD|GBP|EUR|AUD|CAD|NZD|PHP|SGD|HKD|MXN|BRL|INR|ARS|CLP|CRC|COP)/i;
+function _cancelParseSingle(s){
+  s=(s||'').trim(); if(!s||s==='-') return 0;
+  var cm=s.match(CANCEL_CODE_RE);
+  if(cm){ var nm=s.match(/([\d,]+\.?\d*)/); if(nm){ var r=CANCEL_FX[cm[1].toUpperCase()]||1; return parseFloat(nm[1].replace(/,/g,''))*r; } }
+  var k=s.match(/^kr\s*([\d,\.]+)/i)||s.match(/^([\d,\.]+)\s*kr$/i);
+  if(k){ return parseFloat(k[1].replace(/,/g,''))*(CANCEL_FX['NOK']); }
+  var m=s.match(/^(US\$|A\$|CA\$|NZ\$|HK\$|S\$|R\$|AR\$|MXN?\$?|[£€₱₹₡\$])\s*([\d,\.]+)/i);
+  if(m){ var r2=CANCEL_FX[m[1]]||CANCEL_FX[m[1].toUpperCase()]||1; return parseFloat(m[2].replace(/,/g,''))*r2; }
+  m=s.match(/^([\d,\.]+)\s+([A-Z]{2,3})$/i);
+  if(m){ var r3=CANCEL_FX[m[2].toUpperCase()]||1; return parseFloat(m[1].replace(/,/g,''))*r3; }
+  var n=parseFloat(s.replace(/[^0-9.]/g,''));
+  return isNaN(n)?0:n;
+}
+function _cancelAmt(raw){
+  var s=(raw||'').trim(); if(!s||s==='-') return 0;
+  var symCount=(s.match(/[£€₱₹\$]/g)||[]).length;
+  if(symCount>1){ var parts=s.split(/[,;]\s*(?=[£€₱₹\$])/); var t=0; for(var i=0;i<parts.length;i++) t+=_cancelParseSingle(parts[i]); return t; }
+  return _cancelParseSingle(s);
+}
+var CANCEL_FLAG_THRESHOLD=3000;
+function _cancelIsCxl(r){
+  if(r.cat==='Dashboard Cancellation'||/^dashboard.cancel/i.test(r.cat)) return true;
+  var st=(r.status||'').toLowerCase();
+  return /^(cancel|terminat|refund)/.test(st) && r.cat!=='Annual Sub Refunds';
+}
+function _cancelIsRef(r){ return r.cat==='Annual Sub Refunds'; }
+function _cancelIsAnnual(plan){ return /annual/i.test(plan||''); }
+function _cancelStatus(r){
+  var st=(r.status||'').toLowerCase();
+  if(/terminat/i.test(st)) return 'manual';
+  if(/refund/i.test(st)) return 'ref';
+  if(/cancel/i.test(st)) return 'self';
+  var cf=(r.cf||'').toLowerCase();
+  if(/self[- ]?serv|complian/i.test(cf)) return 'self';
+  if(/refund|7[- ]?day/i.test(cf)) return 'ref';
+  if(/manual|terminat/i.test(cf)) return 'manual';
+  if(/sub[- ]?ending|expir|auto[- ]?cancel/i.test(r.reason)) return 'self';
+  return 'manual';
+}
+// Fulfillment issue tagging — Quality / Loss / Targeting, calibrated against real Root
+// Cause/Reason/Notes text from the live PS+CI escalation trackers and this sheet's own Notes
+// column. A row can match more than one tag (e.g. "follower quality (geotargeting)" is both
+// Quality and Targeting), so tags are additive, not exclusive.
+var FULFILL_TAG_PATTERNS={
+  Quality:/follower\s*quality|quality of follow|fake\s*follow|\bbots?\b|quality issue|poor quality|nude/i,
+  Loss:/follower\s*loss|followers?\s*loss|losing follow|loss of follow|no growth|slow growth|stalled?\s*[\/-]?\s*slow|lack of growth|growth issue|declining growth|not growing|no results|stagnant/i,
+  Targeting:/\btarget(ing)?\b|geo[\s-]?target|wrong (audience|location|country)/i
+};
+function _fulfillTags(r){
+  var txt=((r.dcrsn||'')+' '+(r.reason||'')+' '+(r.notes||'')+' '+(r.cf||'')).toLowerCase();
+  if(!txt.replace(/\s/g,'')) return [];
+  var tags=[];
+  ['Quality','Loss','Targeting'].forEach(function(t){ if(FULFILL_TAG_PATTERNS[t].test(txt)) tags.push(t); });
+  return tags;
+}
+function _fulfillApplicable(r){ return _cancelIsCxl(r) || (_cancelIsRef(r) && r.amt<=CANCEL_FLAG_THRESHOLD); }
+function parseCancelSheet(text){
+  var lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var rows=[];
+  for(var i=1;i<lines.length;i++){
+    if(!lines[i].trim()) continue;
+    var f=_cancelCsvRow(lines[i]);
+    if(!f[0]||!f[0].trim()) continue;
+    var date=new Date(f[0].trim());
+    if(isNaN(date.getTime())) continue;
+    rows.push({
+      date:date,
+      email:(f[3]||'').trim().toLowerCase(),
+      plan:(f[5]||'').trim(),cat:(f[7]||'').trim(),company:(f[8]||'').trim(),
+      reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
+      amt:_cancelAmt(f[12]),
+      status:(f[18]||'').trim(),dcrsn:(f[19]||'').trim(),
+      notes:(f[20]||'').trim()
+    });
+  }
+  return rows;
+}
+// Period windows for Section 10 — mirrors this report's own weekly/monthly semantics exactly:
+// weekly = the last COMPLETED Mon-Sun week (same as periodLabel()/inPeriod() elsewhere in this
+// file, NOT week-to-date), monthly = current calendar month to date. "Previous" is the window
+// immediately before that, for the increase-flagging comparison.
+function cancelPeriodWindows(mode){
+  var now=new Date();
+  if(mode==='monthly'){
+    var curStart=new Date(now.getFullYear(),now.getMonth(),1,0,0,0);
+    var curEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59,999);
+    var prevStart=new Date(now.getFullYear(),now.getMonth()-1,1,0,0,0);
+    var prevEnd=new Date(now.getFullYear(),now.getMonth(),0,23,59,59,999);
+    return {curStart:curStart,curEnd:curEnd,prevStart:prevStart,prevEnd:prevEnd,word:'month'};
+  } else {
+    var currMon=getMonday(now);
+    var mon=new Date(currMon); mon.setDate(currMon.getDate()-7);
+    var sun=new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+    var monStart=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate(),0,0,0);
+    var prevMon=new Date(monStart); prevMon.setDate(prevMon.getDate()-7);
+    var prevSun=new Date(monStart); prevSun.setDate(prevSun.getDate()-1); prevSun.setHours(23,59,59,999);
+    return {curStart:monStart,curEnd:sun,prevStart:prevMon,prevEnd:prevSun,word:'week'};
+  }
+}
+function _cancelBucketStats(bucketRows){
+  var cxl=bucketRows.filter(_cancelIsCxl);
+  var ref=bucketRows.filter(function(r){ return _cancelIsRef(r)&&r.amt<=CANCEL_FLAG_THRESHOLD; });
+  var refundedCxl=cxl.filter(function(r){ return _cancelStatus(r)==='ref'; });
+  var annualCxl=cxl.filter(function(r){ return _cancelIsAnnual(r.plan); });
+  var refAmt=0; ref.forEach(function(r){ refAmt+=r.amt; });
+  function tally(arr,keyFn){
+    var m={}; arr.forEach(function(x){ var k=keyFn(x)||'-'; m[k]=(m[k]||0)+1; });
+    return Object.entries(m).sort(function(a,b){return b[1]-a[1];});
+  }
+  var fulfill={};
+  ['Quality','Loss','Targeting'].forEach(function(t){
+    var applicable=bucketRows.filter(function(r){ return _fulfillApplicable(r) && _fulfillTags(r).indexOf(t)>=0; });
+    var emails={},plans={};
+    applicable.forEach(function(r){ if(r.email) emails[r.email]=1; var p=r.plan||'Unknown'; plans[p]=(plans[p]||0)+1; });
+    var planArr=Object.entries(plans).sort(function(a,b){return b[1]-a[1];});
+    fulfill[t]={count:applicable.length, uniqueAccounts:Object.keys(emails).length, topPlan: planArr.length?planArr[0][0]:null};
+  });
+  return {
+    cxlTotal:cxl.length, refundedCxlTotal:refundedCxl.length, annualCxlTotal:annualCxl.length,
+    refTotal:ref.length, refAmt:Math.round(refAmt*100)/100,
+    termReasons:tally(cxl,function(r){return r.dcrsn||r.reason;}).slice(0,6),
+    refundedReasons:tally(refundedCxl,function(r){return r.dcrsn||r.reason;}).slice(0,6),
+    annualReasons:tally(annualCxl,function(r){return r.dcrsn||r.reason;}).slice(0,6),
+    planTally:tally(cxl,function(r){return r.plan;}).slice(0,5),
+    fulfill:fulfill
+  };
+}
+function computeCancelSummary(rows){
+  var win=cancelPeriodWindows(period);
+  function isPS(r){ return /path/i.test(r.company); }
+  function isCI(r){ return /crowd/i.test(r.company); }
+  var curRows=rows.filter(function(r){ return r.date>=win.curStart && r.date<=win.curEnd; });
+  var prevRows=rows.filter(function(r){ return r.date>=win.prevStart && r.date<=win.prevEnd; });
+  return {
+    word:win.word,
+    all:{ cur:_cancelBucketStats(curRows), prev:_cancelBucketStats(prevRows) },
+    ps:{ cur:_cancelBucketStats(curRows.filter(isPS)), prev:_cancelBucketStats(prevRows.filter(isPS)) },
+    ci:{ cur:_cancelBucketStats(curRows.filter(isCI)), prev:_cancelBucketStats(prevRows.filter(isCI)) }
+  };
+}
+function renderCancelSection(cs){
+  var pw=document.getElementById('s10PeriodWord'); if(pw) pw.textContent='prior '+cs.word;
+  function fmtMoney0(n){ return '$'+Math.round(n).toLocaleString(); }
+  function row(label,d){
+    return '<tr><td>'+label+'</td><td class="r">'+d.cxlTotal+'</td><td class="r">'+d.refundedCxlTotal+'</td>'
+      +'<td class="r">'+d.annualCxlTotal+'</td><td class="r">'+d.refTotal+'</td><td class="r">'+fmtMoney0(d.refAmt)+'</td></tr>';
+  }
+  var bodyEl=document.getElementById('s10Body');
+  if(bodyEl) bodyEl.innerHTML = row('Path Social',cs.ps.cur) + row('Crowd Ignite',cs.ci.cur);
+
+  var flagChecks=[];
+  [['Path Social',cs.ps],['Crowd Ignite',cs.ci]].forEach(function(pair){
+    var lob=pair[0], d=pair[1];
+    var checks=[
+      {label:lob+' — Dashboard Cancellations', cur:d.cur.cxlTotal, prev:d.prev.cxlTotal},
+      {label:lob+' — Annual Sub Refunds (cases)', cur:d.cur.refTotal, prev:d.prev.refTotal},
+      {label:lob+' — Annual Sub Refunds ($)', cur:d.cur.refAmt, prev:d.prev.refAmt, isMoney:true},
+      {label:lob+' — Fulfillment: Follower Quality', cur:d.cur.fulfill.Quality.count, prev:d.prev.fulfill.Quality.count},
+      {label:lob+' — Fulfillment: Follower Loss / No Growth', cur:d.cur.fulfill.Loss.count, prev:d.prev.fulfill.Loss.count},
+      {label:lob+' — Fulfillment: Targeting', cur:d.cur.fulfill.Targeting.count, prev:d.prev.fulfill.Targeting.count}
+    ];
+    checks.forEach(function(c){
+      if(c.cur>c.prev){
+        var pct = c.prev>0 ? Math.round((c.cur-c.prev)/c.prev*100) : null;
+        flagChecks.push({label:c.label,cur:c.cur,prev:c.prev,pct:pct,isMoney:c.isMoney});
+      }
+    });
+  });
+  var flagsEl=document.getElementById('s10Flags');
+  if(flagsEl){
+    if(!flagChecks.length){
+      flagsEl.innerHTML='<div class="hl-item">✅ No increases vs prior '+cs.word+' across cancellations, refunds, or fulfillment signals.</div>';
+    } else {
+      flagsEl.innerHTML = flagChecks.map(function(f){
+        var curV = f.isMoney? ('$'+Math.round(f.cur).toLocaleString()) : f.cur;
+        var prevV = f.isMoney? ('$'+Math.round(f.prev).toLocaleString()) : f.prev;
+        var chg = f.pct===null? ('new this '+cs.word) : ('+'+f.pct+'%');
+        return '<div class="hl-item">⚠ '+f.label+': '+prevV+' → '+curV+' ('+chg+')</div>';
+      }).join('');
+    }
+  }
+
+  var box=document.getElementById('s10InsightRow');
+  if(box){
+    function insightBox(title, entries, emptyMsg){
+      var lines = entries.length ? entries.map(function(e){
+        return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #e2e8f0"><span>'+e[0]+'</span><span style="color:#64748b;font-weight:600">'+e[1]+' cases</span></div>';
+      }).join('') : '<div style="font-size:12px;color:#94a3b8;padding:4px 0">'+(emptyMsg||'No cases in window')+'</div>';
+      return '<div style="background:#FAFBFC;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px"><h3 style="font-size:12px;margin:0 0 8px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.03em">'+title+'</h3>'+lines+'</div>';
+    }
+    var tagColor={Quality:'#C0504D',Loss:'#E8A33D',Targeting:'#4472C4'};
+    var tagSub={Quality:'fake/bot followers, quality complaints',Loss:'follower loss, stalled/no growth',Targeting:'wrong audience, geotargeting'};
+    var fulfillLines=['Quality','Loss','Targeting'].map(function(t){
+      var f=cs.all.cur.fulfill[t];
+      return '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:5px 0;border-bottom:1px dashed #e2e8f0">'
+        +'<span><span style="font-weight:700;color:'+tagColor[t]+'">'+t+'</span><span style="display:block;font-size:10.5px;color:#94a3b8">'+tagSub[t]+'</span></span>'
+        +'<span style="color:#64748b;font-weight:600;white-space:nowrap">'+f.count+' case'+(f.count===1?'':'s')+' · '+f.uniqueAccounts+' acct'+(f.uniqueAccounts===1?'':'s')+(f.topPlan?' · '+f.topPlan:'')+'</span></div>';
+    }).join('');
+    var fulfillBoxHtml='<div style="background:#FAFBFC;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px"><h3 style="font-size:12px;margin:0 0 8px;color:#1e3a5f;text-transform:uppercase;letter-spacing:.03em">Fulfillment Issue Tags</h3>'+fulfillLines+'</div>';
+    box.innerHTML =
+      insightBox('Top Cancellation Reasons', cs.all.cur.termReasons) +
+      insightBox('Why Refunded Cancellations Happened', cs.all.cur.refundedReasons, 'No refunded cancellations in window') +
+      insightBox('Why Annual-Plan Cancellations Happened', cs.all.cur.annualReasons, 'No annual-plan cancellations in window') +
+      fulfillBoxHtml;
+  }
 }
 
 function parseVolume(text, monthOverride){
@@ -1717,6 +1972,72 @@ function renderHighlights(d){
       +volRows+'</table>';
   }
 
+  // ── Section 10 — Cancellations, Refunds & Fulfillment Signals ──
+  if(LAST_CANCEL_SUMMARY){
+    var cs = LAST_CANCEL_SUMMARY;
+    var cxlRows10 = ['Path Social','Crowd Ignite'].map(function(lob,idx){
+      var dd = idx===0? cs.ps.cur : cs.ci.cur;
+      return '<tr><td '+TDBOLD+'>'+lob+'</td><td '+TDR+'>'+dd.cxlTotal+'</td><td '+TDR+'>'+dd.refundedCxlTotal+'</td>'
+        +'<td '+TDR+'>'+dd.annualCxlTotal+'</td><td '+TDR+'>'+dd.refTotal+'</td><td '+TDR+'>$'+Math.round(dd.refAmt).toLocaleString()+'</td></tr>';
+    }).join('');
+    html += tbl(
+      secHdr('#C0504D','CANCELLATIONS, REFUNDS &amp; FULFILLMENT SIGNALS')
+      + thead('#C0504D',['LOB','Dashboard Cxls','Refunded','Annual Plan','Annual Sub Refunds','Refund $'])
+      + cxlRows10
+    );
+
+    var flagLines10=[];
+    [['Path Social',cs.ps],['Crowd Ignite',cs.ci]].forEach(function(pair){
+      var lob=pair[0], dd=pair[1];
+      var checks=[
+        {label:lob+' — Dashboard Cancellations', cur:dd.cur.cxlTotal, prev:dd.prev.cxlTotal},
+        {label:lob+' — Annual Sub Refunds (cases)', cur:dd.cur.refTotal, prev:dd.prev.refTotal},
+        {label:lob+' — Annual Sub Refunds ($)', cur:dd.cur.refAmt, prev:dd.prev.refAmt, isMoney:true},
+        {label:lob+' — Follower Quality issues', cur:dd.cur.fulfill.Quality.count, prev:dd.prev.fulfill.Quality.count},
+        {label:lob+' — Follower Loss / No Growth issues', cur:dd.cur.fulfill.Loss.count, prev:dd.prev.fulfill.Loss.count},
+        {label:lob+' — Targeting issues', cur:dd.cur.fulfill.Targeting.count, prev:dd.prev.fulfill.Targeting.count}
+      ];
+      checks.forEach(function(c){
+        if(c.cur>c.prev){
+          var pct = c.prev>0 ? Math.round((c.cur-c.prev)/c.prev*100) : null;
+          var curV = c.isMoney? ('$'+Math.round(c.cur).toLocaleString()) : c.cur;
+          var prevV = c.isMoney? ('$'+Math.round(c.prev).toLocaleString()) : c.prev;
+          flagLines10.push('⚠ '+c.label+': '+prevV+' → '+curV+' ('+(pct===null?('new this '+cs.word):('+'+pct+'%'))+')');
+        }
+      });
+    });
+    if(flagLines10.length){
+      html += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px 14px;margin:4px 0 14px"><div style="font-weight:700;font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Increased vs prior '+cs.word+'</div>'
+        + flagLines10.map(function(l){ return '<div style="font-size:12px;color:#7c2d12;padding:2px 0">'+l+'</div>'; }).join('') + '</div>';
+    } else {
+      html += '<div style="font-size:12px;color:#166534;margin:4px 0 14px">✅ No increases vs prior '+cs.word+' in cancellations, refunds, or fulfillment signals.</div>';
+    }
+
+    html += tbl(
+      secHdr('#1e3a5f','FULFILLMENT ISSUE TAGS (COMBINED — PS + CI)')
+      + thead('#1e3a5f',['Tag','Cases','Unique Accounts','Top Plan Affected'])
+      + ['Quality','Loss','Targeting'].map(function(t){
+          var f=cs.all.cur.fulfill[t];
+          return '<tr><td '+TD+'>'+t+'</td><td '+TDR+'>'+f.count+'</td><td '+TDR+'>'+f.uniqueAccounts+'</td><td '+TDR+'>'+(f.topPlan||'—')+'</td></tr>';
+        }).join('')
+    );
+
+    function topReasonRows10(entries,label){
+      if(!entries.length) return '<tr><td colspan="2" '+TD+'>No '+label+' in window</td></tr>';
+      return entries.map(function(e){ return '<tr><td '+TD+'>'+e[0]+'</td><td '+TDR+'>'+e[1]+' cases</td></tr>'; }).join('');
+    }
+    html += tbl(
+      secHdr('#334155','WHY REFUNDED CANCELLATIONS HAPPENED')
+      + thead('#334155',['Reason','Cases'])
+      + topReasonRows10(cs.all.cur.refundedReasons,'refunded cancellations')
+    );
+    html += tbl(
+      secHdr('#334155','WHY ANNUAL-PLAN CANCELLATIONS HAPPENED')
+      + thead('#334155',['Reason','Cases'])
+      + topReasonRows10(cs.all.cur.annualReasons,'annual-plan cancellations')
+    );
+  }
+
   html += '<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px;font-size:13px;color:#334155">Full report attached.</div>';
   html += '<p style="font-size:13px;color:#334155;margin-top:8px">Best,<br>Lisa</p></div>';
 
@@ -1763,13 +2084,14 @@ async function loadSheets(){
       .then(function(r){ return r.ok?r:null; }).catch(function(){ return null; });
   }
   try{
-    var resps=await Promise.all([safeFetch(SHEETS_ESC_PS_URL),safeFetch(SHEETS_ESC_CI_URL),safeFetch(SHEETS_CONTACT_URL),safeFetch(SHEETS_FCR_URL)]);
+    var resps=await Promise.all([safeFetch(SHEETS_ESC_PS_URL),safeFetch(SHEETS_ESC_CI_URL),safeFetch(SHEETS_CONTACT_URL),safeFetch(SHEETS_FCR_URL),safeFetch(SHEETS_CANCEL_URL)]);
     var psText=resps[0]?await resps[0].text():null;
     var ciText=resps[1]?await resps[1].text():null;
     var volText=resps[2]?await resps[2].text():null;
     var fcrText=resps[3]?await resps[3].text():null;
+    var cancelText=resps[4]?await resps[4].text():null;
     if(!psText&&!ciText){ chip.textContent='⚠ No data'; chip.style.background='#b45309'; return; }
-    D={psText:psText,ciText:ciText||'',volText:volText||'',fcrText:fcrText||''};
+    D={psText:psText,ciText:ciText||'',volText:volText||'',fcrText:fcrText||'',cancelText:cancelText||''};
     renderAll(D);
     chip.textContent='✅ Live'; chip.style.background='#15803d';
   }catch(e){ chip.textContent='⚠ Error'; chip.style.background='#dc2626'; console.error(e); }
@@ -2202,9 +2524,16 @@ function renderAll(data){
   var fcrData = data.fcrText?parseFCR(data.fcrText, volFallback):(data.fcrData||{});
   try{
     var computed=compute(psRows,ciRows,volData,fcrData);
+    var cancelRows = data.cancelText ? parseCancelSheet(data.cancelText) : [];
+    LAST_CANCEL_SUMMARY = computeCancelSummary(cancelRows);
     render(computed);
   }catch(e){
     console.error('[render] error:',e);
+  }
+  try{
+    if(LAST_CANCEL_SUMMARY) renderCancelSection(LAST_CANCEL_SUMMARY);
+  }catch(e){
+    console.error('[renderCancelSection] error:',e);
   }
   try{
     renderWoW(data.psText||'', data.ciText||'');
