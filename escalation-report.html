@@ -2197,29 +2197,34 @@ function renderHighlights(d){
       );
     });
 
-    var flagLines8=[];
+    var flagRows8=[];
     [['Path Social',cs.ps],['Crowd Ignite',cs.ci]].forEach(function(pair){
       var lob=pair[0], dd=pair[1];
       var checks=[
-        {label:lob+' — Dashboard Cancellations', cur:dd.cur.cxlTotal, prev:dd.prev.cxlTotal},
-        {label:lob+' — Annual Sub Refunds (cases)', cur:dd.cur.refTotal, prev:dd.prev.refTotal},
-        {label:lob+' — Annual Sub Refunds ($)', cur:dd.cur.refAmt, prev:dd.prev.refAmt, isMoney:true},
-        {label:lob+' — Follower Quality issues', cur:dd.cur.fulfill.Quality.count, prev:dd.prev.fulfill.Quality.count},
-        {label:lob+' — Follower Loss / No Growth issues', cur:dd.cur.fulfill.Loss.count, prev:dd.prev.fulfill.Loss.count},
-        {label:lob+' — Targeting issues', cur:dd.cur.fulfill.Targeting.count, prev:dd.prev.fulfill.Targeting.count}
+        {label:'Dashboard Cancellations', cur:dd.cur.cxlTotal, prev:dd.prev.cxlTotal},
+        {label:'Annual Sub Refunds (cases)', cur:dd.cur.refTotal, prev:dd.prev.refTotal},
+        {label:'Annual Sub Refunds ($)', cur:dd.cur.refAmt, prev:dd.prev.refAmt, isMoney:true},
+        {label:'Follower Quality issues', cur:dd.cur.fulfill.Quality.count, prev:dd.prev.fulfill.Quality.count},
+        {label:'Follower Loss / No Growth issues', cur:dd.cur.fulfill.Loss.count, prev:dd.prev.fulfill.Loss.count},
+        {label:'Targeting issues', cur:dd.cur.fulfill.Targeting.count, prev:dd.prev.fulfill.Targeting.count}
       ];
       checks.forEach(function(c){
         if(c.cur>c.prev){
           var pct = c.prev>0 ? Math.round((c.cur-c.prev)/c.prev*100) : null;
           var curV = c.isMoney? ('$'+Math.round(c.cur).toLocaleString()) : c.cur;
           var prevV = c.isMoney? ('$'+Math.round(c.prev).toLocaleString()) : c.prev;
-          flagLines8.push('⚠ '+c.label+': '+prevV+' → '+curV+' ('+(pct===null?('new this '+cs.word):('+'+pct+'%'))+')');
+          var changeV = pct===null ? ('new this '+cs.word) : ('+'+pct+'%');
+          flagRows8.push('<tr><td '+TDBOLD+'>'+lob+'</td><td '+TD+'>'+c.label+'</td><td '+TDR+'>'+prevV+'</td><td '+TDR+'>'+curV+'</td>'
+            +'<td style="padding:7px 10px;font-size:12px;color:#9a3412;font-weight:700;border-bottom:1px solid #e2e8f0;text-align:right">⚠ '+changeV+'</td></tr>');
         }
       });
     });
-    if(flagLines8.length){
-      html += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px 14px;margin:4px 0 14px"><div style="font-weight:700;font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Increased vs prior '+cs.word+'</div>'
-        + flagLines8.map(function(l){ return '<div style="font-size:12px;color:#7c2d12;padding:2px 0">'+l+'</div>'; }).join('') + '</div>';
+    if(flagRows8.length){
+      html += tbl(
+        secHdr('#9a3412','INCREASED VS PRIOR '+cs.word.toUpperCase())
+        + thead('#9a3412',['LOB','Metric','Prior','Current','Change'])
+        + flagRows8.join('')
+      );
     } else {
       html += '<div style="font-size:12px;color:#166534;margin:4px 0 14px">✅ No increases vs prior '+cs.word+' in cancellations, refunds, or fulfillment signals.</div>';
     }
@@ -2800,17 +2805,13 @@ function renderAll(data){
   }
   var fcrData = data.fcrText?parseFCR(data.fcrText, volFallback):(data.fcrData||{});
   try{
-    var computed=compute(psRows,ciRows,volData,fcrData);
-    var cancelRows = data.cancelText ? parseCancelSheet(data.cancelText) : [];
-    LAST_CANCEL_SUMMARY = computeCancelSummary(cancelRows);
-    render(computed);
-  }catch(e){
-    console.error('[render] error:',e);
-  }
-  try{
     // Highlights trend (added 2026-09-15): needs ALL dated PS/CI rows, not just the rows in
     // the currently-selected period, so it re-parses with parsePSAll/parseCIAll rather than
-    // reusing psRows/ciRows above.
+    // reusing psRows/ciRows below. MUST run before render(computed) below, since render()
+    // calls renderHighlights() synchronously and that reads LAST_HIGHLIGHTS_TREND — computing
+    // it afterward left renderHighlights() reading a stale (or, on first load, null) value
+    // and the trend table never appeared. Fixed 2026-09-15 per Lisa: "still not seeing the
+    // trend table in highlights".
     var psAllRows = data.psText ? parsePSAll(data.psText) : [];
     var ciAllRows = data.ciText ? parseCIAll(data.ciText) : [];
     var HL_TREND_N = period==='monthly' ? 3 : 4;
@@ -2818,6 +2819,14 @@ function renderAll(data){
   }catch(e){
     console.error('[computeHighlightsTrend] error:',e);
     LAST_HIGHLIGHTS_TREND = null;
+  }
+  try{
+    var computed=compute(psRows,ciRows,volData,fcrData);
+    var cancelRows = data.cancelText ? parseCancelSheet(data.cancelText) : [];
+    LAST_CANCEL_SUMMARY = computeCancelSummary(cancelRows);
+    render(computed);
+  }catch(e){
+    console.error('[render] error:',e);
   }
   try{
     if(LAST_CANCEL_SUMMARY) renderCancelSection(LAST_CANCEL_SUMMARY);
