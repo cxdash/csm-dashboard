@@ -452,15 +452,20 @@ var INBOX_LOB = [
   {lob:'High Social',    inboxes:['high social - general','high social - escalations','cloutify - general']},
   {lob:'Goread',         inboxes:['goread - general','viralpush - general']},
   {lob:'Crowd Ignite',   inboxes:['crowd ignite - general','crowd ignite - onboarding insights']},
-  {lob:'Follows',        inboxes:['followspy - general','recent follow - general']}
+  {lob:'Follows',        inboxes:['followspy - general','recent follow - general']},
+  {lob:'Subdelete',      inboxes:['subdelete - general']}
 ];
 var SOCIALS_LOBS = ['Path Social','Plixi','High Social','Goread','Crowd Ignite'];
-var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280'};
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Follows':'#6b7280','Subdelete':'#6366f1'};
+// Volume & SLA LOBs that are tracked but excluded from the "Socials Avg" aggregate — added
+// 2026-09-15 (Subdelete) per Lisa: "exclude from Socials like Follows".
+function _isSocialsLOB(lob){ return lob!=='Follows' && lob!=='Subdelete'; }
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var period = 'weekly';
 var D = null; // parsed data
 var LAST_CANCEL_SUMMARY = null; // Section 8 data (cancellations/refunds/fulfillment), read by the email builder
+var LAST_HIGHLIGHTS_TREND = null; // Key Highlights trend (added 2026-09-15), read by the email builder
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function pct(v,d){ return (v*(d===0?1:1)*100).toFixed(d===undefined?1:d)+'%'; }
@@ -579,6 +584,58 @@ function parsePS(text){
   return {psRows:rows, ciFromPS:ciFromPS};
 }
 
+// ── Key Highlights trend (added 2026-09-15, per Lisa: "can I have a trend analysis of this
+// highlights (4 weeks for weekly and 3 months for monthly)") — parsePS/parseCI above only
+// return rows inside the CURRENTLY selected period (they filter on the global `period` var
+// via inPeriod()), so a trend needs its own parse pass that keeps every dated row instead,
+// each with a real Date object attached for windowed filtering. Field mapping mirrors
+// parsePS/parseCI exactly. ──
+function _escDateObj(dateStr){
+  var parts=(dateStr||'').split('/');
+  if(parts.length!==3) return null;
+  var d=new Date(parseInt(parts[2]),parseInt(parts[0])-1,parseInt(parts[1]));
+  return isNaN(d.getTime())?null:d;
+}
+function parsePSAll(text){
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var rows = [];
+  for(var i=2;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(!f||!f[1]||!f[1].trim()) continue;
+    var dateStr=(f[1]||'').trim();
+    var dobj=_escDateObj(dateStr);
+    if(!dobj) continue;
+    var status=(f[12]||'').trim();
+    if(!status) continue; // skip unprocessed rows (no status assigned yet) — matches parsePS
+    var company=(f[4]||'').trim().toLowerCase();
+    if(company==='crowd'||company==='crowd ignite'||company==='crowdignite') continue; // routed to CI sheet, same as parsePS
+    rows.push({
+      date:dobj,
+      plan:(f[6]||'').trim(), reason:(f[7]||'').trim(), rootCause:(f[8]||'').trim(),
+      action:(f[9]||'').trim(), specialist:(f[10]||'').trim(), status:status,
+      remarks:(f[13]||'').trim(), category:(f[14]||'').trim()
+    });
+  }
+  return rows;
+}
+function parseCIAll(text){
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var rows = [];
+  for(var i=2;i<lines.length;i++){
+    var f=parseCSVRow(lines[i]);
+    if(!f||!f[0]||!f[0].trim()) continue;
+    var dateStr=(f[0]||'').trim();
+    var dobj=_escDateObj(dateStr);
+    if(!dobj) continue;
+    var ciStatusRaw=(f[14]||'').trim();
+    var ciAction=(f[11]||'').trim();
+    var ciRootCause=(f[10]||'').trim();
+    if(!ciStatusRaw&&!ciAction&&!ciRootCause) continue; // skip completely unprocessed rows — matches parseCI
+    var ciStatus=ciStatusRaw?ciStatusRaw:(ciAction?'Resolved':'Open');
+    rows.push({date:dobj, category:(f[1]||'').trim(), rootCause:ciRootCause, reason:(f[9]||'').trim(), action:ciAction, status:ciStatus});
+  }
+  return rows;
+}
 function parseCI(text){
   // CI sheet: 2 header rows
   // f[0]=Date, f[1]=Category, f[10]=Root Cause (Col K), f[11]=Action Taken (Col L, credits/discounts), f[14]=Status (Col O)
@@ -889,12 +946,18 @@ function renderCancelSection(cs){
   }
 }
 
-function parseVolume(text, monthOverride){
-  // ContactExport: f[3]=Channel, f[4]=Direction, f[9]=Inbox
-  // f[11]=Queued-to-Fulfilled(sec) → FRT  f[12]=SLA diff  f[13]=Handle Time(sec) → AHT  f[16]=Date
-  // Respects the page's Weekly/Monthly toggle (`period`). In monthly mode, monthOverride
-  // ({year,month}) lets the caller re-run this against the last complete month when the
-  // current calendar month has no rows yet (see isVolEmpty()/renderAll()).
+function _volDateObj(dateStr){
+  var parts=(dateStr||'').split('/');
+  if(parts.length!==3) return null;
+  var d=new Date(parseInt(parts[2]),parseInt(parts[0])-1,parseInt(parts[1]));
+  return isNaN(d.getTime())?null:d;
+}
+// Shared aggregation core for the Contact Volume export, factored out 2026-09-15 so the
+// Highlights trend (parseVolumeInWindow) can reuse the exact same row logic as the
+// period-aware parseVolume below, just with a different date-acceptance test.
+// ContactExport: f[3]=Channel, f[4]=Direction, f[9]=Inbox
+// f[11]=Queued-to-Fulfilled(sec) → FRT  f[12]=SLA diff  f[13]=Handle Time(sec) → AHT  f[16]=Date
+function _aggregateVolumeRows(text, dateAcceptFn){
   var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   var byLOB = {};
   var byInbox = {};
@@ -909,10 +972,7 @@ function parseVolume(text, monthOverride){
     if(dir!=='INBOUND') continue;
     var dateStr=(f[16]||'').trim();
     if(!dateStr) continue;
-    if(period==='monthly'){
-      if(monthOverride){ if(!inMonth(dateStr, monthOverride.year, monthOverride.month)) continue; }
-      else if(!inPeriod(dateStr, 'monthly')) continue;
-    } else if(!inPeriod(dateStr, 'weekly')) continue;
+    if(!dateAcceptFn(dateStr)) continue;
     var inbox=(f[9]||'').trim();
     var lob=inboxToLOB(inbox);
     if(!lob) continue;
@@ -933,6 +993,26 @@ function parseVolume(text, monthOverride){
     }
   }
   return {byLOB:byLOB, byInbox:byInbox};
+}
+function parseVolume(text, monthOverride){
+  // Respects the page's Weekly/Monthly toggle (`period`). In monthly mode, monthOverride
+  // ({year,month}) lets the caller re-run this against the last complete month when the
+  // current calendar month has no rows yet (see isVolEmpty()/renderAll()).
+  return _aggregateVolumeRows(text, function(dateStr){
+    if(period==='monthly'){
+      if(monthOverride) return inMonth(dateStr, monthOverride.year, monthOverride.month);
+      return inPeriod(dateStr, 'monthly');
+    }
+    return inPeriod(dateStr, 'weekly');
+  });
+}
+// Added 2026-09-15 for the Highlights trend — aggregates against an arbitrary {start,end}
+// Date window (from cancelTrendWindows) instead of the page's current period toggle.
+function parseVolumeInWindow(text, win){
+  return _aggregateVolumeRows(text, function(dateStr){
+    var d=_volDateObj(dateStr);
+    return !!d && d>=win.start && d<=win.end;
+  });
 }
 
 // Format seconds into human-readable time (5s / 4.2m / 2h 15m)
@@ -1061,6 +1141,48 @@ function analyzeSaves(rows, company){
   console.log('[analyzeSaves] '+(company||'PS')+' — received:'+saveEscs.length+' converted:'+savesConverted.length);
   saveEscs.forEach(function(r){ console.log('  reason:'+JSON.stringify(r.reason||r.category||'')+'  action:'+JSON.stringify(r.action||'')+' → saved:'+(savesConverted.indexOf(r)>=0)); });
   return {saveEscs:saveEscs, savesConverted:savesConverted, hiddenSaves:hiddenSaves, offerCounts:offerCounts, rate:rate, company:company||'PS'};
+}
+
+// ── KEY HIGHLIGHTS TREND (added 2026-09-15, per Lisa: "can I have a trend analysis of this
+// highlights (4 weeks for weekly and 3 months for monthly)", then "I also need to add here
+// the Volume and SLA highlights") — buckets the full (unfiltered-by-current-period) PS/CI
+// escalation rows and the raw Volume export into the last n periods (reusing
+// cancelTrendWindows/cancelTrendLabel — the window math is generic, not cancellation-specific)
+// and computes the same headline metrics the single-period Key Highlights box shows: PS
+// resolution rate, combined PS+CI save conversion rate, PS CB/dispute count, Crowd Ignite
+// escalation count, and overall Contact Volume + SLA%.
+function computeHighlightsTrend(psAllRows, ciAllRows, volText, n){
+  var windows = cancelTrendWindows(period, n);
+  return windows.map(function(w){
+    var ps = psAllRows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
+    var ci = ciAllRows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
+    var totalPS=ps.length, totalCI=ci.length;
+    var resolvedPS=ps.filter(function(r){return /resolv/i.test(r.status);}).length;
+    var cb=ps.filter(function(r){return /dispute|chargeback/i.test(r.reason);}).length;
+    var saves=analyzeSaves(ps,'Path Social');
+    var ciSaves=analyzeSaves(ci,'Crowd Ignite');
+    var combinedTotal=totalPS+totalCI;
+    var combinedSaved=saves.savesConverted.length+ciSaves.savesConverted.length;
+
+    var volContacts=0, volWithin=0;
+    if(volText){
+      var volAgg=parseVolumeInWindow(volText, w);
+      Object.keys(volAgg.byLOB).forEach(function(lob){
+        volContacts+=volAgg.byLOB[lob].vol||0;
+        volWithin+=volAgg.byLOB[lob].within||0;
+      });
+    }
+
+    return {
+      label: cancelTrendLabel(w, period),
+      totalPS: totalPS, totalCI: totalCI,
+      resRate: totalPS ? resolvedPS/totalPS : null,
+      saveRate: combinedTotal ? combinedSaved/combinedTotal : null,
+      cb: cb,
+      volContacts: volContacts,
+      volSlaPct: volContacts ? volWithin/volContacts : null
+    };
+  });
 }
 
 // ── COMPUTE ───────────────────────────────────────────────────────────────────
@@ -1590,7 +1712,7 @@ function renderVolume(volData, fcrByLOB){
     s7sub.textContent='Email + Chat · Inbound only · '+lbl+' · SLA benchmark '+SLA_TARGET+'%';
   }
   var byLOB = volData.byLOB;
-  var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'];
+  var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows','Subdelete'];
   var rows='', socialsVol=0,socialsWithin=0, overallVol=0,overallWithin=0,overallFrtSum=0,overallFrtCount=0,overallAhtSum=0,overallAhtCount=0;
   var socialsFcrSum=0,socialsFcrCount=0, overallFcrSum=0,overallFcrCount=0;
   var socialsFrtSum=0,socialsFrtCount=0, socialsAhtSum=0,socialsAhtCount=0;
@@ -1606,19 +1728,20 @@ function renderVolume(volData, fcrByLOB){
     var fcr=fcrByLOB[lob]!==undefined?fcrByLOB[lob]:null;
     var slaOk=sla!==null&&sla>=SLA_TARGET;
     var isFollows=lob==='Follows';
+    var excludeFromSocials=!_isSocialsLOB(lob); // Follows, and Subdelete (added 2026-09-15)
     overallVol+=ld.vol; overallWithin+=ld.within;
     overallFrtSum+=ld.frtSum; overallFrtCount+=ld.frtCount;
     overallAhtSum+=ld.ahtSum; overallAhtCount+=ld.ahtCount;
     if(fcr!==null){ overallFcrSum+=fcr; overallFcrCount++; }
-    if(!isFollows){
+    if(!excludeFromSocials){
       socialsVol+=ld.vol; socialsWithin+=ld.within;
       socialsFrtSum+=ld.frtSum; socialsFrtCount+=ld.frtCount;
       socialsAhtSum+=ld.ahtSum; socialsAhtCount+=ld.ahtCount;
       if(fcr!==null){ socialsFcrSum+=fcr; socialsFcrCount++; }
     }
     var slaDelta=sla!==null?(sla-SLA_TARGET).toFixed(1):null;
-    var lobShort={'Path Social':'Path','Crowd Ignite':'Crowd','High Social':'High','Plixi':'Plixi','Goread':'Goread','Follows':'Follows'};
-    var note=isFollows?'Excl. from Socials avg':'';
+    var lobShort={'Path Social':'Path','Crowd Ignite':'Crowd','High Social':'High','Plixi':'Plixi','Goread':'Goread','Follows':'Follows','Subdelete':'Subdelete'};
+    var note=excludeFromSocials?'Excl. from Socials avg':'';
     var rowBg=sla!==null&&!slaOk&&!isFollows?'background:rgba(255,80,80,0.06)':'';
     var lobColor=sla!==null&&!slaOk&&!isFollows?'var(--red)':isFollows?'var(--green)':'';
     rows+='<tr style="'+rowBg+'">'
@@ -1814,6 +1937,32 @@ function renderHighlights(d){
     +'<tr><td colspan="2" style="background:#166534;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">✅ HIGHLIGHTS</td></tr>'
     +'<tr><td colspan="2" style="background:#f0fdf4;padding:0"><table style="width:100%;border-collapse:collapse">'+winRows+'</table></td></tr>'
     +'</table>';
+
+  // ── HIGHLIGHTS TREND (added 2026-09-15 per Lisa's ask) — 4 weeks in Weekly view, 3 months
+  // in Monthly view, ending with the same current period as the Highlights box above. ──
+  var ht = LAST_HIGHLIGHTS_TREND;
+  if(ht && ht.length){
+    var htTitle = (ht.length===3?'3-MONTH':'4-WEEK')+' HIGHLIGHTS TREND';
+    var htCols = ['Metric'].concat(ht.map(function(t){ return t.label; }));
+    function htRow(label, getter, fmt){
+      var cells = ht.map(function(t){
+        var v = getter(t);
+        var out = (v===null||v===undefined) ? '—' : (fmt ? fmt(v) : v);
+        return '<td '+TDR+'>'+out+'</td>';
+      }).join('');
+      return '<tr><td '+TDBOLD+'>'+label+'</td>'+cells+'</tr>';
+    }
+    html += tbl(
+      secHdr('#166534', htTitle)
+      + thead('#166534', htCols)
+      + htRow('Resolution Rate (PS)', function(t){ return t.resRate; }, function(v){ return (v*100).toFixed(1)+'%'; })
+      + htRow('Save Conversion Rate (PS+CI)', function(t){ return t.saveRate; }, function(v){ return (v*100).toFixed(1)+'%'; })
+      + htRow('CB / Disputes (PS)', function(t){ return t.cb; })
+      + htRow('Crowd Ignite Escalations', function(t){ return t.totalCI; })
+      + htRow('Contact Volume (All LOBs)', function(t){ return t.volContacts; }, function(v){ return v.toLocaleString(); })
+      + htRow('SLA % (All LOBs)', function(t){ return t.volSlaPct; }, function(v){ return (v*100).toFixed(1)+'%'; })
+    );
+  }
 
   // ── NEEDS ATTENTION ──
   var flagRows=''; var hasFlag2=false;
@@ -2103,7 +2252,7 @@ function renderHighlights(d){
   // ── VOLUME & SLA (moved after Cancellations/Refunds/Fulfillment Section 8, 2026-09-14) ──
   if(d.volData&&d.volData.byLOB){
     var fcrByLOBe=d.fcrData||{};
-    var volRows='',lobOrderE=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows'],ovVolE=0,ovWithinE=0;
+    var volRows='',lobOrderE=['Path Social','Crowd Ignite','High Social','Plixi','Goread','Follows','Subdelete'],ovVolE=0,ovWithinE=0;
     var socVolE=0,socWithinE=0,socialsFcrSumE=0,socialsFcrCntE=0,ovFcrSumE=0,ovFcrCntE=0;
     var ovFrtSumE=0,ovFrtCntE=0,ovAhtSumE=0,ovAhtCntE=0;
     lobOrderE.forEach(function(lob){
@@ -2121,7 +2270,7 @@ function renderHighlights(d){
       ovFrtSumE+=ld.frtSum; ovFrtCntE+=ld.frtCount;
       ovAhtSumE+=ld.ahtSum; ovAhtCntE+=ld.ahtCount;
       if(fcrE!==null){ ovFcrSumE+=fcrE; ovFcrCntE++; }
-      if(lob!=='Follows'){
+      if(_isSocialsLOB(lob)){
         socVolE+=ld.vol; socWithinE+=ld.within;
         if(fcrE!==null){ socialsFcrSumE+=fcrE; socialsFcrCntE++; }
       }
@@ -2503,7 +2652,7 @@ function renderVolWoW(volText, fcrText){
   var el=document.getElementById('volWowSection'); if(!el) return;
   var allWeeks=parseVolWoWData(volText,fcrText);
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var LOB_ORDER=['Path Social','Plixi','High Social','Goread','Crowd Ignite','Follows'];
+  var LOB_ORDER=['Path Social','Plixi','High Social','Goread','Crowd Ignite','Follows','Subdelete'];
   function wkLbl(w){var s=w.start,e=w.end;return MO[s.getMonth()]+' '+s.getDate()+'–'+(e.getMonth()!==s.getMonth()?MO[e.getMonth()]+' ':'')+e.getDate();}
 
   function mkStat(w){
@@ -2657,6 +2806,18 @@ function renderAll(data){
     render(computed);
   }catch(e){
     console.error('[render] error:',e);
+  }
+  try{
+    // Highlights trend (added 2026-09-15): needs ALL dated PS/CI rows, not just the rows in
+    // the currently-selected period, so it re-parses with parsePSAll/parseCIAll rather than
+    // reusing psRows/ciRows above.
+    var psAllRows = data.psText ? parsePSAll(data.psText) : [];
+    var ciAllRows = data.ciText ? parseCIAll(data.ciText) : [];
+    var HL_TREND_N = period==='monthly' ? 3 : 4;
+    LAST_HIGHLIGHTS_TREND = computeHighlightsTrend(psAllRows, ciAllRows, data.volText||'', HL_TREND_N);
+  }catch(e){
+    console.error('[computeHighlightsTrend] error:',e);
+    LAST_HIGHLIGHTS_TREND = null;
   }
   try{
     if(LAST_CANCEL_SUMMARY) renderCancelSection(LAST_CANCEL_SUMMARY);
