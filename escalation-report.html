@@ -42,6 +42,17 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .toggle-btn.on{background:var(--accent);color:#fff}
 .print-btn{padding:6px 14px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .print-btn:hover{background:rgba(255,255,255,.1)}
+.print-btn.active{background:#b45309;border-color:#b45309;color:#fff}
+/* ── EDIT MODE (added 2026-09-15, per Lisa: "is there a way this can be editable I need to
+   update?" — lets her correct a number in the on-page report right before printing to PDF,
+   so the PDF she attaches matches the numbers she already fixed in the email draft. Opt-in
+   only (a toggle button), so normal browsing/toggling isn't affected. Edits are NOT saved
+   anywhere — they exist only in that browser tab until reload/refresh. ── */
+.main.edit-mode{outline:2px dashed #f59e0b;outline-offset:6px;border-radius:4px}
+.main.edit-mode .sec{cursor:text}
+.edit-mode-banner{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;font-weight:600;padding:8px 14px;border-radius:6px;margin-bottom:14px}
+.main.edit-mode .edit-mode-banner{display:block}
+@media print{ .edit-mode-banner{display:none!important} }
 .chip-live{font-size:10px;font-family:'DM Mono',monospace;padding:3px 8px;background:rgba(255,255,255,.08);border-radius:4px;color:#94a3b8}
 
 /* ── LAYOUT ── */
@@ -182,12 +193,15 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
     </div>
     <span class="chip-live" id="statusChip">⏳ Loading…</span>
     <button class="admin-lock-badge" id="adminLockBadge" onclick="relock()" title="Click to lock">🔓</button>
+    <button class="print-btn" id="editModeBtn" onclick="toggleEditMode()" title="Click any number/text below to correct it, then use Print/PDF — your edits are NOT saved anywhere, they only affect what prints">✏️ Edit Mode</button>
     <button class="print-btn" onclick="window.print()">⎙ Print / PDF</button>
     <a href="index.html" style="font-size:12px;color:#94a3b8;text-decoration:none">← Dashboard</a>
   </div>
 </div>
 
 <div class="main">
+
+  <div class="edit-mode-banner">✏️ Edit Mode is on — click directly on any number or text below to correct it, then use Print / PDF. These edits are NOT saved anywhere; reloading or refreshing this page will discard them.</div>
 
   <!-- 1 — KEY HIGHLIGHTS -->
   <div class="sec" id="s1">
@@ -1164,12 +1178,19 @@ function computeHighlightsTrend(psAllRows, ciAllRows, volText, n){
     var combinedTotal=totalPS+totalCI;
     var combinedSaved=saves.savesConverted.length+ciSaves.savesConverted.length;
 
-    var volContacts=0, volWithin=0;
+    // All-LOBs, Socials-only (per _isSocialsLOB — excludes Follows & Subdelete), and
+    // Subdelete-only volume/SLA totals — added 2026-09-15 per Lisa: "can you also have the
+    // socials totals for volume and SLA, and separate for Subdelete since this is currently
+    // what we're monitoring". Socials/Subdelete split uses the same _isSocialsLOB() gate
+    // already used by the Volume & SLA tables' "Socials Avg" row, for consistency.
+    var volContacts=0, volWithin=0, socContacts=0, socWithin=0, sdContacts=0, sdWithin=0;
     if(volText){
       var volAgg=parseVolumeInWindow(volText, w);
       Object.keys(volAgg.byLOB).forEach(function(lob){
-        volContacts+=volAgg.byLOB[lob].vol||0;
-        volWithin+=volAgg.byLOB[lob].within||0;
+        var v=volAgg.byLOB[lob].vol||0, w2=volAgg.byLOB[lob].within||0;
+        volContacts+=v; volWithin+=w2;
+        if(lob==='Subdelete'){ sdContacts+=v; sdWithin+=w2; }
+        else if(_isSocialsLOB(lob)){ socContacts+=v; socWithin+=w2; }
       });
     }
 
@@ -1180,7 +1201,11 @@ function computeHighlightsTrend(psAllRows, ciAllRows, volText, n){
       saveRate: combinedTotal ? combinedSaved/combinedTotal : null,
       cb: cb,
       volContacts: volContacts,
-      volSlaPct: volContacts ? volWithin/volContacts : null
+      volSlaPct: volContacts ? volWithin/volContacts : null,
+      socContacts: socContacts,
+      socSlaPct: socContacts ? socWithin/socContacts : null,
+      sdContacts: sdContacts,
+      sdSlaPct: sdContacts ? sdWithin/sdContacts : null
     };
   });
 }
@@ -1961,6 +1986,10 @@ function renderHighlights(d){
       + htRow('Crowd Ignite Escalations', function(t){ return t.totalCI; })
       + htRow('Contact Volume (All LOBs)', function(t){ return t.volContacts; }, function(v){ return v.toLocaleString(); })
       + htRow('SLA % (All LOBs)', function(t){ return t.volSlaPct; }, function(v){ return (v*100).toFixed(1)+'%'; })
+      + htRow('Contact Volume (Socials)', function(t){ return t.socContacts; }, function(v){ return v.toLocaleString(); })
+      + htRow('SLA % (Socials)', function(t){ return t.socSlaPct; }, function(v){ return (v*100).toFixed(1)+'%'; })
+      + htRow('Contact Volume (Subdelete)', function(t){ return t.sdContacts; }, function(v){ return v.toLocaleString(); })
+      + htRow('SLA % (Subdelete)', function(t){ return t.sdSlaPct; }, function(v){ return (v*100).toFixed(1)+'%'; })
     );
   }
 
@@ -2415,6 +2444,29 @@ function relock(){
   isAdmin = false;
   localStorage.removeItem('csm_admin');
   location.reload();
+}
+
+// ── EDIT MODE (added 2026-09-15) — opt-in toggle so Lisa can hand-correct a number in the
+// on-page report right before Print/PDF, so the attached PDF matches whatever she already
+// fixed in the copied email text. Off by default so normal page interaction (period toggle,
+// Send Email Draft button, etc.) isn't affected; edits live only in the DOM of this tab and
+// are never saved back anywhere — reloading/refreshing/switching period wipes them.
+function toggleEditMode(){
+  var main = document.querySelector('.main');
+  var btn = document.getElementById('editModeBtn');
+  if(!main || !btn) return;
+  var turningOn = !main.classList.contains('edit-mode');
+  if(turningOn){
+    main.setAttribute('contenteditable','true');
+    main.classList.add('edit-mode');
+    btn.textContent = '✓ Editing — click Print when done';
+    btn.classList.add('active');
+  } else {
+    main.removeAttribute('contenteditable');
+    main.classList.remove('edit-mode');
+    btn.textContent = '✏️ Edit Mode';
+    btn.classList.remove('active');
+  }
 }
 
 (function(){
