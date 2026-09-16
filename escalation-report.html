@@ -2039,7 +2039,10 @@ function renderHighlights(d){
     +'</div>';
 
   // ── Greeting ──
-  html += '<p style="margin:12px 0 16px;font-size:13px">Hi [Director],<br><br>Please find the CX escalation summary for <strong>'+periodLabel()+'</strong>.</p>';
+  // id="email-greeting-line" added 2026-09-16 (Round 5) so the Print-to-PDF flow in
+  // openGmailDraft() can hide just this line when Lisa saves the draft as a PDF attachment
+  // instead of sending it as an email — a "Hi [Director]," salutation doesn't belong on a PDF.
+  html += '<p id="email-greeting-line" style="margin:12px 0 16px;font-size:13px">Hi [Director],<br><br>Please find the CX escalation summary for <strong>'+periodLabel()+'</strong>.</p>';
 
   // ── WINS ──
   var winRows = '';
@@ -2585,7 +2588,9 @@ function renderHighlights(d){
   }
 
   html += '<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px;font-size:13px;color:#334155">Full report attached.</div>';
-  html += '<p style="font-size:13px;color:#334155;margin-top:8px">Best,<br>Lisa</p></div>';
+  // id="email-signoff-line" added 2026-09-16 (Round 5) — paired with email-greeting-line above,
+  // hidden by the Print-to-PDF flow so a PDF attachment doesn't carry an email sign-off.
+  html += '<p id="email-signoff-line" style="font-size:13px;color:#334155;margin-top:8px">Best,<br>Lisa</p></div>';
 
   window._emailDraftHTML    = html;
   window._emailDraftSubject = 'CX Weekly Update — '+periodLabel();
@@ -2594,14 +2599,27 @@ function renderHighlights(d){
 function openGmailDraft(){
   if(!window._emailDraftHTML){ alert('Please load data first.'); return; }
   var subject = window._emailDraftSubject||'CX Weekly Update';
+  // Added 2026-09-16 (Round 5) per Lisa: needs both a "send as email" option and a
+  // "save as PDF" option from this same draft window, with the "Hi [Director]," greeting and
+  // "Best, Lisa" sign-off automatically left out of the PDF (they only make sense as an email).
+  // Implementation: those two lines carry id="email-greeting-line"/"email-signoff-line" (see
+  // where window._emailDraftHTML is built above) and are hidden ONLY under @media print via
+  // CSS here, along with both action buttons — so Copy & Open Gmail still copies the full text
+  // (greeting + sign-off included) for the email, while clicking Print to PDF (or Ctrl+P in this
+  // window) omits both lines from what actually prints/saves.
   var fullPage = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
     +'<style>body{font-family:Arial,sans-serif;padding:24px;background:#f8fafc}'
-    +'#copy-btn{position:fixed;top:16px;right:16px;background:#4285F4;color:#fff;border:none;'
+    +'#copy-btn{position:fixed;top:16px;right:190px;background:#4285F4;color:#fff;border:none;'
     +'padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;z-index:999}'
     +'#copy-btn.done{background:#15803d}'
+    +'#print-pdf-btn{position:fixed;top:16px;right:16px;background:#1e3a5f;color:#fff;border:none;'
+    +'padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;z-index:999}'
     +'#email-body{background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}'
+    +'@media print{ #copy-btn,#print-pdf-btn,#email-greeting-line,#email-signoff-line{display:none !important} '
+    +'body{padding:0;background:#fff} #email-body{box-shadow:none;padding:0} }'
     +'</style></head><body>'
     +'<button id="copy-btn" onclick="doCopy()">📋 Copy &amp; Open Gmail</button>'
+    +'<button id="print-pdf-btn" onclick="window.print()">🖨️ Print to PDF</button>'
     +'<div id="email-body">'+window._emailDraftHTML+'</div>'
     +'<script>function doCopy(){'
     +'  var btn=document.getElementById("copy-btn");'
