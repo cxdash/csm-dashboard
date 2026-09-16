@@ -858,6 +858,11 @@ function _cancelBucketStats(bucketRows){
     termReasons:tally(cxl,function(r){return r.dcrsn||r.reason;}).slice(0,6),
     refundedReasons:tally(refundedCxl,function(r){return r.dcrsn||r.reason;}).slice(0,6),
     annualReasons:tally(annualCxl,function(r){return r.dcrsn||r.reason;}).slice(0,6),
+    // Added 2026-09-17 per Lisa's ask for an "Annual Refunds top driver" highlight — reasons
+    // tallied on the Annual Sub Refunds records themselves (ref), distinct from annualReasons
+    // above (which is annual-PLAN cancellations, a different category — see _cancelIsRef vs
+    // _cancelIsAnnual).
+    refReasons:tally(ref,function(r){return r.dcrsn||r.reason;}).slice(0,6),
     planTally:tally(cxl,function(r){return r.plan;}).slice(0,5),
     fulfill:fulfill
   };
@@ -1106,6 +1111,12 @@ var SAVE_ACTION_RE = /applied discount|applied credit|free month|month free|free
 // Save escalation reasons (exact values from sheet):
 //   "Manual Save – Monthly" | "Manual Save – Annual" | "Refund DG Difference"
 var SAVE_REASON_RE = /manual save|refund dg difference/i;
+// Added 2026-09-17 per Lisa: "on the hidden retention saves, please note that Refunded 50% +
+// Terminate is not part of retention/saves" — a partial refund (e.g. "Refunded 50%") followed
+// by the account actually terminating is NOT a save, even though the action text also matches
+// SAVE_ACTION_RE's `refunded\s*\d+\s*%` pattern (or the hidden-saves "retention" text match
+// below) on its own. Any action mentioning termination overrides those matches to "not saved".
+var TERMINATE_ACTION_RE = /terminat/i;
 
 // Normalize raw action field → clean display label for offer breakdown table
 function normalizeOfferLabel(action){
@@ -1128,22 +1139,23 @@ function analyzeSaves(rows, company){
     var reason=r.reason||'', action=r.action||'', category=r.category||'';
     var rowIsCI = isCI;
     var isEsc=false, isSave=false;
+    var isTerminated = TERMINATE_ACTION_RE.test(action);
     if(rowIsCI){
       // CI sheet = all rows are escalations by definition.
       // Save = action matches a known save offer (or Refunded).
       isEsc=true;
-      if(SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim())) isSave=true;
+      if(!isTerminated && (SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim()))) isSave=true;
     } else if(SAVE_REASON_RE.test(reason)){
       isEsc=true;
       if(/refund dg difference/i.test(reason)){
         // Reason = "Refund DG Difference" → action is "Refunded"
-        if(/refunded|refund.*difference/i.test(action)) isSave=true;
+        if(!isTerminated && /refunded|refund.*difference/i.test(action)) isSave=true;
       } else {
         // Reason = "Manual Save – Monthly/Annual" → applied discount/credit/free month/etc. OR Refunded (downgrade save)
-        if(SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim())) isSave=true;
+        if(!isTerminated && (SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim()))) isSave=true;
       }
     }
-    if(/refund escalation/i.test(reason)&&/retention/i.test(action)){
+    if(/refund escalation/i.test(reason)&&/retention/i.test(action)&&!isTerminated){
       hiddenSaves.push(r);
     }
     if(isEsc){ saveEscs.push(r); if(isSave){ savesConverted.push(r);
@@ -1165,8 +1177,16 @@ function analyzeSaves(rows, company){
 // and computes the same headline metrics the single-period Key Highlights box shows: PS
 // resolution rate, combined PS+CI save conversion rate, PS CB/dispute count, Crowd Ignite
 // escalation count, and overall Contact Volume + SLA%.
-function computeHighlightsTrend(psAllRows, ciAllRows, volText, n){
+// cancelAllRows (added 2026-09-17, per Lisa: "can also have the Annual Sub Refunds trend
+// here and breakdown per LOB... Admin Cancellations (Dashboard Cancellations & Refunds
+// Total)") — raw parseCancelSheet() rows (unfiltered by period), reusing the same
+// _cancelBucketStats() logic Section 8 already uses, just windowed to this table's own n
+// buckets instead of Section 8's fixed 4. Optional — pages/tests that don't have the
+// cancellations sheet loaded can omit it and these fields come back zeroed.
+function computeHighlightsTrend(psAllRows, ciAllRows, volText, n, cancelAllRows){
   var windows = cancelTrendWindows(period, n);
+  function _htIsPSCompany(r){ return /path/i.test(r.company); }
+  function _htIsCICompany(r){ return /crowd/i.test(r.company); }
   return windows.map(function(w){
     var ps = psAllRows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
     var ci = ciAllRows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
@@ -1203,6 +1223,20 @@ function computeHighlightsTrend(psAllRows, ciAllRows, volText, n){
       });
     }
 
+    // Annual Refunds / Admin Cancellations trend, split Path Social vs Crowd Ignite — added
+    // 2026-09-17 per Lisa's ask above. _cancelBucketStats() already computes cxlTotal
+    // (Dashboard Cancellations), refTotal (Annual Sub Refunds, cases) and refundedCxlTotal
+    // (of those cancellations, how many were refunded) — exactly the 3 figures needed here.
+    var psCancel = {cxlTotal:0, refTotal:0, refundedCxlTotal:0};
+    var ciCancel = {cxlTotal:0, refTotal:0, refundedCxlTotal:0};
+    if(cancelAllRows && cancelAllRows.length){
+      var wCancelRows = cancelAllRows.filter(function(r){ return r.date>=w.start && r.date<=w.end; });
+      var psCancelStats = _cancelBucketStats(wCancelRows.filter(_htIsPSCompany));
+      var ciCancelStats = _cancelBucketStats(wCancelRows.filter(_htIsCICompany));
+      psCancel = {cxlTotal:psCancelStats.cxlTotal, refTotal:psCancelStats.refTotal, refundedCxlTotal:psCancelStats.refundedCxlTotal};
+      ciCancel = {cxlTotal:ciCancelStats.cxlTotal, refTotal:ciCancelStats.refTotal, refundedCxlTotal:ciCancelStats.refundedCxlTotal};
+    }
+
     return {
       label: cancelTrendLabel(w, period),
       totalPS: totalPS, totalCI: totalCI,
@@ -1217,7 +1251,10 @@ function computeHighlightsTrend(psAllRows, ciAllRows, volText, n){
       sdSlaPct: sdContacts ? sdWithin/sdContacts : null,
       followsContacts: followsContacts,
       followsSlaPct: followsContacts ? followsWithin/followsContacts : null,
-      volLOB: volLOB
+      volLOB: volLOB,
+      psCxlTotal: psCancel.cxlTotal, ciCxlTotal: ciCancel.cxlTotal,
+      psRefTotal: psCancel.refTotal, ciRefTotal: ciCancel.refTotal,
+      psRefundedCxlTotal: psCancel.refundedCxlTotal, ciRefundedCxlTotal: ciCancel.refundedCxlTotal
     };
   });
 }
@@ -1852,6 +1889,10 @@ function renderHighlights(d){
   // data (LAST_CANCEL_SUMMARY), per Lisa's request to surface these in Key Highlights too.
   var cs = LAST_CANCEL_SUMMARY;
   var cancelFlagLines = [], cancelSummaryLine = null, cancelTopDriver = null;
+  // Added 2026-09-17 per Lisa's ask for a dedicated Annual Refunds top-driver insight and a
+  // "how many refunded, PS vs CI" breakdown in Key Highlights.
+  var annualRefundTopDriver = null, annualRefundTopDriverCount = 0;
+  var refundedBreakdownLine = null;
   if(cs){
     var ccChecks=[
       {label:'Dashboard Cancellations', cur:cs.all.cur.cxlTotal, prev:cs.all.prev.cxlTotal},
@@ -1863,6 +1904,12 @@ function renderHighlights(d){
     ccChecks.forEach(function(c){ if(c.cur>c.prev) cancelFlagLines.push(c.label+' up to '+c.cur+' (from '+c.prev+')'); });
     cancelTopDriver = (cs.all.cur.refundedReasons && cs.all.cur.refundedReasons[0]) ? cs.all.cur.refundedReasons[0][0] : null;
     cancelSummaryLine = cs.all.cur.cxlTotal+' dashboard cancellations · '+cs.all.cur.refTotal+' annual refunds ($'+Math.round(cs.all.cur.refAmt).toLocaleString()+') this '+cs.word+(cancelTopDriver?' — top refund driver: "'+cancelTopDriver+'"':'')+'.';
+    if(cs.all.cur.refReasons && cs.all.cur.refReasons[0]){
+      annualRefundTopDriver = cs.all.cur.refReasons[0][0];
+      annualRefundTopDriverCount = cs.all.cur.refReasons[0][1];
+    }
+    var refundedPS = cs.ps.cur.refundedCxlTotal, refundedCI = cs.ci.cur.refundedCxlTotal;
+    refundedBreakdownLine = cs.all.cur.refundedCxlTotal+' cancellation'+(cs.all.cur.refundedCxlTotal===1?'':'s')+' refunded this '+cs.word+' — Path Social: '+refundedPS+', Crowd Ignite: '+refundedCI+'.';
   }
 
   if(d.totalPS>0){
@@ -1874,8 +1921,8 @@ function renderHighlights(d){
     var totalEscs  = d.totalPS + d.totalCI;
     wins.push('✅ '+totalSaved+' saves converted — '+(d.totalPS?'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+saveRatePct+')':'')+(d.totalCI?' · CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+(d.ciSaveRate*100).toFixed(1)+'%)':''));
   }
-  if(d.cb>=20) flags.push('⚠ '+d.cb+' CB/dispute escalations — elevated; verify root cause and payment gateway');
-  else if(d.cb>0&&d.cb<15) wins.push('✅ CB/disputes managed at '+d.cb+' cases');
+  if(d.cb>=20) flags.push('⚠ '+d.cb+' chargebacks and dispute threats — elevated; verify root cause and payment gateway');
+  else if(d.cb>0&&d.cb<15) wins.push('✅ Chargebacks and dispute threats managed at '+d.cb+' cases');
   if(d.totalCI===0) wins.push('✅ No Crowd Ignite escalations this period');
   else if(d.openCI>0) flags.push('⚠ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open');
 
@@ -1884,6 +1931,8 @@ function renderHighlights(d){
 
   if(cs){
     wins.push('✅ '+cancelSummaryLine);
+    if(annualRefundTopDriver) wins.push('✅ Annual Refunds top driver: "'+annualRefundTopDriver+'" ('+annualRefundTopDriverCount+' case'+(annualRefundTopDriverCount===1?'':'s')+')');
+    if(refundedBreakdownLine) wins.push('✅ '+refundedBreakdownLine);
     if(cancelFlagLines.length) flags.push('⚠ Up vs prior '+cs.word+': '+cancelFlagLines.join('; ')+' — see Section 8.');
   }
 
@@ -1953,7 +2002,7 @@ function renderHighlights(d){
   if(d.cb>0&&d.cb<15){
     winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
       +'<td style="padding:10px 12px">'
-      +'<div style="font-weight:700;font-size:13px;color:#15803d">CB/disputes managed at '+d.cb+' cases</div>'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">Chargebacks and dispute threats managed at '+d.cb+' cases</div>'
       +(d.topCBReasons.length?'<div style="font-size:12px;color:#166534;margin-top:3px">Top root cause: '+d.topCBReasons[0].reason+' ('+d.topCBReasons[0].count+'). No critical spike.</div>':'')
       +'</td></tr>';
   }
@@ -1967,6 +2016,19 @@ function renderHighlights(d){
       +'<div style="font-weight:700;font-size:13px;color:#15803d">'+cs.all.cur.cxlTotal+' cancellations · '+cs.all.cur.refTotal+' annual refunds this '+cs.word+'</div>'
       +'<div style="font-size:12px;color:#166534;margin-top:3px">$'+Math.round(cs.all.cur.refAmt).toLocaleString()+' refunded'+(cancelTopDriver?'. Top driver: '+cancelTopDriver:'')+'. Full breakdown in Section 8 below.</div>'
       +'</td></tr>';
+    if(annualRefundTopDriver){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">Annual Refunds top driver: "'+annualRefundTopDriver+'"</div>'
+        +'<div style="font-size:12px;color:#166534;margin-top:3px">'+annualRefundTopDriverCount+' case'+(annualRefundTopDriverCount===1?'':'s')+' this '+cs.word+'.</div>'
+        +'</td></tr>';
+    }
+    if(refundedBreakdownLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+refundedBreakdownLine+'</div>'
+        +'</td></tr>';
+    }
   }
   if(!winRows) winRows = '<tr><td colspan="2" style="padding:10px 12px;color:#64748b;font-size:12px">No notable wins to report this period.</td></tr>';
 
@@ -1987,8 +2049,12 @@ function renderHighlights(d){
         var out = (v===null||v===undefined) ? '—' : (fmt ? fmt(v) : v);
         return '<td '+TDR+'>'+out+'</td>';
       }).join('');
-      var labelCell = sub
-        ? '<td style="padding:7px 10px 7px 26px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0">'+label+'</td>'
+      // sub: false/0 = bold top-level row; true or 1 = indented sub-row (26px, existing
+      // behavior, unchanged); 2 = a deeper sub-row nested under a sub-row (e.g. "Refunds"
+      // under a LOB) — added 2026-09-17 for the Admin Cancellations trend table.
+      var lvl = sub===true ? 1 : (typeof sub==='number' ? sub : 0);
+      var labelCell = lvl>0
+        ? '<td style="padding:7px 10px 7px '+(10+lvl*16)+'px;font-size:12px;color:#475569;border-bottom:1px solid #e2e8f0">'+label+'</td>'
         : '<td '+TDBOLD+'>'+label+'</td>';
       return '<tr>'+labelCell+cells+'</tr>';
     }
@@ -1999,7 +2065,7 @@ function renderHighlights(d){
       + thead('#166534', htCols)
       + htRow('Resolution Rate (PS)', function(t){ return t.resRate; }, pctFmt)
       + htRow('Save Conversion Rate (PS+CI)', function(t){ return t.saveRate; }, pctFmt)
-      + htRow('CB / Disputes (PS)', function(t){ return t.cb; })
+      + htRow('Chargebacks and Dispute Threats (PS)', function(t){ return t.cb; })
       + htRow('Path Social Escalations', function(t){ return t.totalPS; })
       + htRow('Crowd Ignite Escalations', function(t){ return t.totalCI; })
     );
@@ -2028,6 +2094,29 @@ function renderHighlights(d){
     }
     html += groupedTrendTable('CONTACT VOLUME TREND', '#1e3a5f', 'contacts');
     html += groupedTrendTable('SLA % TREND', '#1e3a5f', 'slaPct');
+
+    // ── ANNUAL REFUNDS TREND & ADMIN CANCELLATIONS TREND — added 2026-09-17 per Lisa: "can
+    // you also have the socials totals... can also have the Annual Sub Refunds trend here and
+    // breakdown per LOB... Admin Cancellations (Dashboard Cancellations & Refunds Total):
+    // Path Social > Refunds, Crowd Ignite > Refunds". Same cancellations-sheet data Section 8
+    // uses below, just windowed to this table's own n buckets — see computeHighlightsTrend's
+    // psCxlTotal/ciCxlTotal/psRefTotal/ciRefTotal/psRefundedCxlTotal/ciRefundedCxlTotal. ──
+    html += tbl(
+      secHdr('#C0504D', 'ANNUAL REFUNDS TREND')
+      + thead('#C0504D', htCols)
+      + htRow('Annual Refunds (Total)', function(t){ return t.psRefTotal + t.ciRefTotal; })
+      + htRow('Path Social', function(t){ return t.psRefTotal; }, null, 1)
+      + htRow('Crowd Ignite', function(t){ return t.ciRefTotal; }, null, 1)
+    );
+    html += tbl(
+      secHdr('#C0504D', 'ADMIN CANCELLATIONS TREND')
+      + thead('#C0504D', htCols)
+      + htRow('Admin Cancellations (Dashboard Cancellations &amp; Refunds Total)', function(t){ return t.psCxlTotal + t.ciCxlTotal; })
+      + htRow('Path Social', function(t){ return t.psCxlTotal; }, null, 1)
+      + htRow('Refunds', function(t){ return t.psRefundedCxlTotal; }, null, 2)
+      + htRow('Crowd Ignite', function(t){ return t.ciCxlTotal; }, null, 1)
+      + htRow('Refunds', function(t){ return t.ciRefundedCxlTotal; }, null, 2)
+    );
   }
 
   // ── NEEDS ATTENTION ──
@@ -2045,7 +2134,7 @@ function renderHighlights(d){
     var cbDesc=d.topCBReasons.slice(0,3).map(function(r){return r.reason+' ('+r.count+')';}).join(' · ');
     flagRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #fde68a;vertical-align:top;width:20px;font-size:13px">△</td>'
       +'<td style="padding:10px 12px;border-bottom:1px solid #fde68a">'
-      +'<div style="font-weight:700;font-size:13px;color:#b45309">'+d.cb+' CB/dispute threats — elevated volume</div>'
+      +'<div style="font-weight:700;font-size:13px;color:#b45309">'+d.cb+' chargebacks and dispute threats — elevated volume</div>'
       +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+cbDesc+'. Verify payment gateway and refund eligibility.</div>'
       +'</td></tr>';
   }
@@ -2939,7 +3028,11 @@ function renderAll(data){
     var psAllRows = data.psText ? parsePSAll(data.psText) : [];
     var ciAllRows = data.ciText ? parseCIAll(data.ciText) : [];
     var HL_TREND_N = period==='monthly' ? 3 : 4;
-    LAST_HIGHLIGHTS_TREND = computeHighlightsTrend(psAllRows, ciAllRows, data.volText||'', HL_TREND_N);
+    // Annual Refunds / Admin Cancellations trend rows (added 2026-09-17) need the same raw,
+    // unfiltered cancellations-sheet rows Section 8 parses below — parsed again here (cheap,
+    // pure function) so this trend computation doesn't have to wait on the second try-block.
+    var cancelAllRowsHT = data.cancelText ? parseCancelSheet(data.cancelText) : [];
+    LAST_HIGHLIGHTS_TREND = computeHighlightsTrend(psAllRows, ciAllRows, data.volText||'', HL_TREND_N, cancelAllRowsHT);
   }catch(e){
     console.error('[computeHighlightsTrend] error:',e);
     LAST_HIGHLIGHTS_TREND = null;
