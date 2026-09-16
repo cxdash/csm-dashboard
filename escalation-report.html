@@ -1523,6 +1523,22 @@ function compute(psRows, ciRows, volData, fcrData){
     .map(function(k){return {action:k,count:ciActionCounts[k]};});
   var ciWithAction=ciRows.filter(function(r){return (r.action||'').trim();}).length;
 
+  // Dev tickets — added 2026-09-16 (Round 9, 2nd change) per Lisa's clarification: "Escalation
+  // tickets created" means tickets filed to devs for issues outside CX's scope, tagged literally
+  // "Ticket Created" in the Action Taken column — NOT the raw total escalations handled (which
+  // is what this line was wrongly sourced from in Round 8). Checked across both trackers' action
+  // field, since either team can file one.
+  var devTicketsPSRows = psRows.filter(function(r){ return /ticket created/i.test(r.action||''); });
+  var devTicketsCIRows = ciRows.filter(function(r){ return /ticket created/i.test(r.action||''); });
+  var devTicketsTotal = devTicketsPSRows.length + devTicketsCIRows.length;
+  var devTicketReasonCounts = {};
+  devTicketsPSRows.concat(devTicketsCIRows).forEach(function(r){
+    var key=(r.reason||r.rootCause||r.category||'Other').trim()||'Other';
+    devTicketReasonCounts[key]=(devTicketReasonCounts[key]||0)+1;
+  });
+  var devTicketTopReasonKey = Object.keys(devTicketReasonCounts).sort(function(a,b){return devTicketReasonCounts[b]-devTicketReasonCounts[a];})[0]||null;
+  var devTicketTopReason = devTicketTopReasonKey ? {reason:devTicketTopReasonKey, count:devTicketReasonCounts[devTicketTopReasonKey]} : null;
+
   return {
     totalPS, resolvedPS, openPS, cb, refunds, cancellations, saves, saveRate, ciSaves, ciSaveRate,
     totalCI, resolvedCI, openCI, topCatCI,
@@ -1533,6 +1549,8 @@ function compute(psRows, ciRows, volData, fcrData){
     ciRefundRows, topCIRefundReasons, ciCBRows, topCICBReasons,
     ciRefunds, ciCB, ciCancellations, topCICategories,
     topCIActions, ciWithAction,
+    devTicketsPS: devTicketsPSRows.length, devTicketsCI: devTicketsCIRows.length,
+    devTicketsTotal, devTicketTopReason,
     volData,
     fcrData: fcrData||{}
   };
@@ -1968,11 +1986,15 @@ function renderHighlights(d){
   var saveRatePct = d.saveRate ? (d.saveRate*100).toFixed(1)+'%' : '—';
   var resRatePct  = d.totalPS  ? (d.resolvedPS/d.totalPS*100).toFixed(1)+'%' : '—';
 
-  // Added 2026-09-16 (Round 8) per Lisa's ask to surface total escalation tickets created,
-  // with a PS/CI split and the top reason driving them, at the top of Key Highlights.
-  var totalTicketsCreated = d.totalPS + d.totalCI;
-  var ticketsTopReason = (d.topReasonsAll && d.topReasonsAll[0]) ? d.topReasonsAll[0] : null;
-  var ticketsCreatedLine = totalTicketsCreated>0 ? 'Escalation tickets created: '+totalTicketsCreated+' this period (Path Social: '+d.totalPS+', Crowd Ignite: '+d.totalCI+').'+(ticketsTopReason?' Top reason: "'+ticketsTopReason.reason+'" ('+ticketsTopReason.count+').':'') : null;
+  // Added 2026-09-16 (Round 8) per Lisa's ask to surface escalation tickets created, with a
+  // PS/CI split and the top reason driving them, at the top of Key Highlights.
+  // CORRECTED 2026-09-16 (Round 9) per Lisa: "it's tagged as 'ticket created'" — this now counts
+  // only rows whose Action Taken is tagged "Ticket Created" (tickets filed to devs for issues
+  // outside CX's scope), via d.devTicketsPS/d.devTicketsCI/d.devTicketsTotal/d.devTicketTopReason
+  // (see compute()) — NOT the raw total escalations handled, which is what Round 8 wrongly used.
+  var totalTicketsCreated = d.devTicketsTotal||0;
+  var ticketsTopReason = d.devTicketTopReason||null;
+  var ticketsCreatedLine = totalTicketsCreated>0 ? 'Escalation tickets created: '+totalTicketsCreated+' this period (Path Social: '+(d.devTicketsPS||0)+', Crowd Ignite: '+(d.devTicketsCI||0)+').'+(ticketsTopReason?' Top reason: "'+ticketsTopReason.reason+'" ('+ticketsTopReason.count+').':'') : null;
 
   // ── Cancellations/Refunds/Fulfillment highlight — short summary pulled from Section 8's
   // data (LAST_CANCEL_SUMMARY), per Lisa's request to surface these in Key Highlights too.
