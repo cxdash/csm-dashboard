@@ -1104,8 +1104,21 @@ function parseFCR(text, monthOverride){
 }
 
 // ── SAVE ANALYSIS ─────────────────────────────────────────────────────────────
-// Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
-// Save actions per policy: applied discount, applied credit, free month, free addon, refund difference (downgrade)
+// CANONICAL save-action list, per Lisa 2026-09-18 (follow-up to the reason-widening fix same
+// day): "we're sure tho are the actions done, if it's a successful retention (saves), the
+// following actions should be tagged": Refunded DG Difference, Refunded Credit (Annual),
+// Applied Credit, Applied Credit + 1 Month Free, Applied 1 Month Free, Applied 1 Month Free
+// Addon, Applied Discount 50%x3/50%x1/20%x3/20%x1 (for Monthly), Downgraded Annual to Monthly,
+// Downgraded to Lower Annual, Refunded 50% + Downgrade. Notably NOT on this list: a bare
+// "Refunded" and "Retention Offer" — those remain handled by the older, narrower rules below
+// (bare "Refunded" only counts under the Manual Save/Refund DG Difference reason branches,
+// unchanged; "Retention Offer" only counts via the separate hiddenSaves bucket).
+// UPDATED 2026-09-18 (same day, 2nd follow-up) per Lisa: "please exclude these 2 as part of
+// save action: Downgraded Annual to Monthly / Downgraded to Lower Annual" — removed the bare
+// `downgraded` pattern below, so a plain downgrade (Annual→Monthly or to a lower Annual tier) no
+// longer counts as a converted save on its own. "Refunded 50% + Downgrade" still counts (it's
+// caught by the `refunded\s*\d+\s*%` pattern, matching the "Refunded 50%" portion), since Lisa
+// did not ask to exclude that one — only the two plain "Downgraded ..." actions.
 // Note: sheet uses both "Applied 1 Month Free" (month free) and "Applied Free Month" — match both orderings
 var SAVE_ACTION_RE = /applied discount|applied credit|free month|month free|free addon|refund.*difference|refunded credit|applied\s*\d+\s*%|refunded\s*\d+\s*%/i;
 // Save escalation reasons (exact values from sheet):
@@ -1174,6 +1187,20 @@ function analyzeSaves(rows, company){
       // only an explicit save-type action (not a bare "Refunded") converts it to a save.
       isEsc=true;
       if(!isTerminated && SAVE_ACTION_RE.test(action)) isSave=true;
+    }
+    // Action-based override — added 2026-09-18 (same day, follow-up), per Lisa: "I am most of
+    // the times confused too bec the escalations team are tagging it inconsistently" (the
+    // Reason column). She gave the canonical list of ACTIONS (see SAVE_ACTION_RE comment above)
+    // that always mean a successful save, regardless of what reason the row was filed under —
+    // the reason field isn't trustworthy, but the action taken is. So if the action itself is
+    // one of the canonical save actions (and the row isn't also a termination), it always counts
+    // as both a converted save AND a retention-eligible escalation, even under an unrelated
+    // reason like "Dashboard Issue" (this fixes real cases we saw: 2 "Applied Credit" rows were
+    // filed under "Dashboard Issue" reason in the PS week 9/7-9/13 pivot table Lisa shared, and
+    // would have been missed entirely without this override).
+    if(!isTerminated && SAVE_ACTION_RE.test(action)){
+      isEsc = true;
+      isSave = true;
     }
     if(/refund escalation/i.test(reason)&&/retention/i.test(action)&&!isTerminated){
       hiddenSaves.push(r);
