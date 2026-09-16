@@ -1940,6 +1940,10 @@ function renderHighlights(d){
   // "how many refunded, PS vs CI" breakdown in Key Highlights.
   var annualRefundTopDriver = null, annualRefundTopDriverCount = 0;
   var refundedBreakdownLine = null;
+  // Added 2026-09-18 per Lisa's ask ("how many here are refunded and how many are annuals —
+  // breakdown PS vs Crowd") — a second breakdown line, parallel to refundedBreakdownLine above,
+  // but for annual-plan cancellations instead of refunded ones.
+  var annualBreakdownLine = null;
   if(cs){
     var ccChecks=[
       {label:'Dashboard Cancellations', cur:cs.all.cur.cxlTotal, prev:cs.all.prev.cxlTotal},
@@ -1957,11 +1961,20 @@ function renderHighlights(d){
     }
     var refundedPS = cs.ps.cur.refundedCxlTotal, refundedCI = cs.ci.cur.refundedCxlTotal;
     refundedBreakdownLine = cs.all.cur.refundedCxlTotal+' cancellation'+(cs.all.cur.refundedCxlTotal===1?'':'s')+' refunded this '+cs.word+' — Path Social: '+refundedPS+', Crowd Ignite: '+refundedCI+'.';
+    var annualPS = cs.ps.cur.annualCxlTotal, annualCI = cs.ci.cur.annualCxlTotal;
+    annualBreakdownLine = cs.all.cur.annualCxlTotal+' annual-plan cancellation'+(cs.all.cur.annualCxlTotal===1?'':'s')+' this '+cs.word+' — Path Social: '+annualPS+', Crowd Ignite: '+annualCI+'.';
   }
 
+  // Added 2026-09-18 per Lisa: "there's already a breakdown of escalations handled on
+  // resolution rate — no need to add separate if crowd ignite has no escalation, instead just
+  // note it under." Previously "No Crowd Ignite escalations this period" was its own standalone
+  // wins line (see below); now it's folded into the Resolution Rate line as a trailing note.
   if(d.totalPS>0){
-    if(d.resolvedPS/d.totalPS>=0.90) wins.push('✅ Resolution rate at '+resRatePct+' — strong execution by escalation team');
-    else flags.push('⚠ Resolution rate at '+resRatePct+' — review open escalations for blockers');
+    if(d.resolvedPS/d.totalPS>=0.90) wins.push('✅ Resolution rate at '+resRatePct+' — strong execution by escalation team'+(d.totalCI===0?'. No Crowd Ignite escalations this period.':''));
+    else flags.push('⚠ Resolution rate at '+resRatePct+' — review open escalations for blockers'+(d.totalCI===0?' (No Crowd Ignite escalations this period.)':''));
+  } else if(d.totalCI===0){
+    // Fallback for the edge case where PS itself has no escalations either — nothing to attach the note to above.
+    wins.push('✅ No Crowd Ignite escalations this period');
   }
   if(d.saves.savesConverted.length>0 || d.ciSaves.savesConverted.length>0){
     var totalSaved = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
@@ -1970,16 +1983,23 @@ function renderHighlights(d){
   }
   if(d.cb>=20) flags.push('⚠ '+d.cb+' chargebacks and dispute threats — elevated; verify root cause and payment gateway');
   else if(d.cb>0&&d.cb<15) wins.push('✅ Chargebacks and dispute threats managed at '+d.cb+' cases');
-  if(d.totalCI===0) wins.push('✅ No Crowd Ignite escalations this period');
-  else if(d.openCI>0) flags.push('⚠ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open');
+  if(d.totalCI>0 && d.openCI>0) flags.push('⚠ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open');
 
   var topIssue = d.topReasons[0];
   if(topIssue&&topIssue.count>=20) flags.push('⚠ "'+topIssue.reason+'" leading at '+topIssue.count+' cases — investigate root cause trend');
 
   if(cs){
     wins.push('✅ '+cancelSummaryLine);
-    if(annualRefundTopDriver) wins.push('✅ Annual Refunds top driver: "'+annualRefundTopDriver+'" ('+annualRefundTopDriverCount+' case'+(annualRefundTopDriverCount===1?'':'s')+')');
+    // CHANGED 2026-09-18 per Lisa: "Annual sub refunds (category) top driver and how many are
+    // refunded (no need to mention the amount)" — now states the total Annual Sub Refunds count
+    // (cs.all.cur.refTotal, i.e. how many are refunded) instead of just the top reason's own
+    // count, and never mentions a dollar figure (unlike cancelSummaryLine above, which is a
+    // separate, pre-existing line covering dashboard cancellations broadly).
+    if(annualRefundTopDriver) wins.push('✅ Annual Sub Refunds top driver: "'+annualRefundTopDriver+'" — '+cs.all.cur.refTotal+' refunded this '+cs.word+'.');
     if(refundedBreakdownLine) wins.push('✅ '+refundedBreakdownLine);
+    // Added 2026-09-18 per Lisa's ask for an annual-cancellations breakdown, PS vs Crowd Ignite,
+    // parallel to the refunded breakdown directly above.
+    if(annualBreakdownLine) wins.push('✅ '+annualBreakdownLine);
     if(cancelFlagLines.length) flags.push('⚠ Up vs prior '+cs.word+': '+cancelFlagLines.join('; ')+' — see Section 8.');
   }
 
@@ -2029,7 +2049,7 @@ function renderHighlights(d){
       +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
       +'<div style="font-weight:700;font-size:13px;color:#15803d">'+resRatePct+' resolution rate — strong execution this period</div>'
       +'<div style="font-size:12px;color:#166534;margin-top:3px">'+d.resolvedPS+' of '+d.totalPS+' Path escalations resolved.'+(d.openPS?' '+d.openPS+' still monitoring.':'')+
-        (d.totalCI?' Crowd Ignite '+d.resolvedCI+'/'+d.totalCI+' resolved. '+(d.totalPS+d.totalCI-d.openPS-d.openCI)+' of '+(d.totalPS+d.totalCI)+' total resolved.':'')+
+        (d.totalCI?' Crowd Ignite '+d.resolvedCI+'/'+d.totalCI+' resolved. '+(d.totalPS+d.totalCI-d.openPS-d.openCI)+' of '+(d.totalPS+d.totalCI)+' total resolved.':' No Crowd Ignite escalations this period.')+
       '</div></td></tr>';
   }
   if(combinedSaved>0){
@@ -2053,27 +2073,34 @@ function renderHighlights(d){
       +(d.topCBReasons.length?'<div style="font-size:12px;color:#166534;margin-top:3px">Top root cause: '+d.topCBReasons[0].reason+' ('+d.topCBReasons[0].count+'). No critical spike.</div>':'')
       +'</td></tr>';
   }
-  if(d.totalCI===0){
-    winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
-      +'<td style="padding:10px 12px"><div style="font-weight:700;font-size:13px;color:#15803d">No Crowd Ignite escalations this period</div></td></tr>';
-  }
   if(cs){
     winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
       +'<td style="padding:10px 12px">'
       +'<div style="font-weight:700;font-size:13px;color:#15803d">'+cs.all.cur.cxlTotal+' cancellations · '+cs.all.cur.refTotal+' annual refunds this '+cs.word+'</div>'
       +'<div style="font-size:12px;color:#166534;margin-top:3px">$'+Math.round(cs.all.cur.refAmt).toLocaleString()+' refunded'+(cancelTopDriver?'. Top driver: '+cancelTopDriver:'')+'. Full breakdown in Section 8 below.</div>'
       +'</td></tr>';
+    // CHANGED 2026-09-18 per Lisa: "Annual sub refunds (category) top driver and how many are
+    // refunded (no need to mention the amount)" — now states the total Annual Sub Refunds count
+    // (cs.all.cur.refTotal) instead of just the top reason's own count, and never mentions $.
     if(annualRefundTopDriver){
       winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
         +'<td style="padding:10px 12px">'
-        +'<div style="font-weight:700;font-size:13px;color:#15803d">Annual Refunds top driver: "'+annualRefundTopDriver+'"</div>'
-        +'<div style="font-size:12px;color:#166534;margin-top:3px">'+annualRefundTopDriverCount+' case'+(annualRefundTopDriverCount===1?'':'s')+' this '+cs.word+'.</div>'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">Annual Sub Refunds top driver: "'+annualRefundTopDriver+'"</div>'
+        +'<div style="font-size:12px;color:#166534;margin-top:3px">'+cs.all.cur.refTotal+' refunded this '+cs.word+'.</div>'
         +'</td></tr>';
     }
     if(refundedBreakdownLine){
       winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
         +'<td style="padding:10px 12px">'
         +'<div style="font-weight:700;font-size:13px;color:#15803d">'+refundedBreakdownLine+'</div>'
+        +'</td></tr>';
+    }
+    // Added 2026-09-18 per Lisa's ask for an annual-cancellations breakdown, PS vs Crowd Ignite,
+    // parallel to the refunded breakdown directly above.
+    if(annualBreakdownLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualBreakdownLine+'</div>'
         +'</td></tr>';
     }
   }
@@ -2173,7 +2200,7 @@ function renderHighlights(d){
     flagRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #fde68a;vertical-align:top;width:20px;font-size:13px">△</td>'
       +'<td style="padding:10px 12px;border-bottom:1px solid #fde68a">'
       +'<div style="font-weight:700;font-size:13px;color:#b45309">Resolution rate at '+resRatePct+' — below 90% target</div>'
-      +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+d.openPS+' Path escalations still open. Review for blockers or pending specialist action.</div>'
+      +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+d.openPS+' Path escalations still open. Review for blockers or pending specialist action.'+(d.totalCI===0?' No Crowd Ignite escalations this period.':'')+'</div>'
       +'</td></tr>';
   }
   if(d.cb>=15){
