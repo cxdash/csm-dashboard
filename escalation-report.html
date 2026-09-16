@@ -776,7 +776,13 @@ function parseCancelSheet(text){
       reason:(f[10]||'').trim(),cf:(f[11]||'').trim(),
       amt:_cancelAmt(f[12]),
       status:(f[18]||'').trim(),dcrsn:(f[19]||'').trim(),
-      notes:(f[20]||'').trim(),issueType:(f[15]||'').trim()
+      notes:(f[20]||'').trim(),issueType:(f[15]||'').trim(),
+      // Added 2026-09-16 per Lisa's ask for a rebill/renewal insight on annual cancellations.
+      // Column J (f[9]) was confirmed live 2026-09-14 (see the header-mapping note above this
+      // function) to be headed "Initial/Rebill?" — not yet used anywhere until now. Reading it
+      // as-is (no assumed enum of values) so whatever text actually appears there is tallied
+      // honestly rather than guessed at.
+      initialRebill:(f[9]||'').trim()
     });
   }
   return rows;
@@ -864,6 +870,14 @@ function _cancelBucketStats(bucketRows){
     // _cancelIsAnnual).
     refReasons:tally(ref,function(r){return r.dcrsn||r.reason;}).slice(0,6),
     planTally:tally(cxl,function(r){return r.plan;}).slice(0,5),
+    // Added 2026-09-16 per Lisa's ask for a "plan tier / account-type" breakdown specifically on
+    // ANNUAL-plan cancellations (annualCxl) — distinct from planTally above, which tallies plan
+    // across ALL cancellations, not just the annual-plan subset.
+    annualPlanTally:tally(annualCxl,function(r){return r.plan;}).slice(0,5),
+    // Added 2026-09-16 per Lisa's ask for a rebill (renewal) vs. initial-term breakdown on
+    // annual-plan cancellations — tallies the raw Column J ("Initial/Rebill?") text as-is, so it
+    // reflects whatever values are actually entered there (not a guessed/assumed set of labels).
+    initialRebillTally:tally(annualCxl,function(r){return r.initialRebill||'(blank)';}).slice(0,5),
     fulfill:fulfill
   };
 }
@@ -1144,6 +1158,24 @@ var TERMINATE_ACTION_RE = /terminat/i;
 // i.e. the customer leaves — distinct from the Manual Save reason branch below, where a
 // bare "Refunded" specifically means a downgrade-refund-and-keep save.
 var SAVE_ELIGIBLE_REASON_EXT_RE = /refund escalation|dispute|chargeback/i;
+
+// Added 2026-09-16 per Lisa's ask for a "where the save is from" breakdown in Key Highlights,
+// specifically across these 3 buckets — Manual Saves, Refund Escalation, Chargeback/Dispute
+// Threats — plus an "Other" catch-all for saves that only counted via the action-based override
+// (e.g. an "Applied Credit" row filed under an unrelated reason like "Dashboard Issue"), so the
+// bucket counts always sum to the total saves converted.
+function saveReasonBucket(reason){
+  reason = reason||'';
+  if(/manual save|refund dg difference/i.test(reason)) return 'Manual Saves';
+  if(/refund escalation/i.test(reason)) return 'Refund Escalation';
+  if(/dispute|chargeback/i.test(reason)) return 'Chargeback/Dispute Threats';
+  return 'Other';
+}
+function tallySaveSources(savedRows){
+  var m={};
+  savedRows.forEach(function(r){ var b=saveReasonBucket(r.reason); m[b]=(m[b]||0)+1; });
+  return Object.entries(m).sort(function(a,b){return b[1]-a[1];});
+}
 
 // Normalize raw action field → clean display label for offer breakdown table
 function normalizeOfferLabel(action){
@@ -1944,6 +1976,12 @@ function renderHighlights(d){
   // breakdown PS vs Crowd") — a second breakdown line, parallel to refundedBreakdownLine above,
   // but for annual-plan cancellations instead of refunded ones.
   var annualBreakdownLine = null;
+  // Added 2026-09-16 per Lisa's ask for trend + root-cause + plan-tier context on annual
+  // cancellations specifically (not just the PS/CI count breakdown above).
+  var annualCxlTrendText = null, annualCxlTopDriver = null, annualCxlTopPlan = null, annualCxlInsightLine = null;
+  // Added 2026-09-16 per Lisa's ask for a rebill (renewal) vs. initial-term breakdown on annual
+  // cancellations — Column J ("Initial/Rebill?", confirmed live 2026-09-14) tallied as-is.
+  var initialRebillLine = null;
   if(cs){
     var ccChecks=[
       {label:'Dashboard Cancellations', cur:cs.all.cur.cxlTotal, prev:cs.all.prev.cxlTotal},
@@ -1963,6 +2001,28 @@ function renderHighlights(d){
     refundedBreakdownLine = cs.all.cur.refundedCxlTotal+' cancellation'+(cs.all.cur.refundedCxlTotal===1?'':'s')+' refunded this '+cs.word+' — Path Social: '+refundedPS+', Crowd Ignite: '+refundedCI+'.';
     var annualPS = cs.ps.cur.annualCxlTotal, annualCI = cs.ci.cur.annualCxlTotal;
     annualBreakdownLine = cs.all.cur.annualCxlTotal+' annual-plan cancellation'+(cs.all.cur.annualCxlTotal===1?'':'s')+' this '+cs.word+' — Path Social: '+annualPS+', Crowd Ignite: '+annualCI+'.';
+    // Added 2026-09-16 per Lisa's ask for more meaningful context on annual cancellations —
+    // a trend vs. prior period, the top root-cause reason (annualReasons was already computed
+    // for Section 8's on-page insight box, just not surfaced in Key Highlights until now), and
+    // the most-affected plan tier (new annualPlanTally, added alongside this).
+    var annualCxlCur = cs.all.cur.annualCxlTotal, annualCxlPrev = cs.all.prev.annualCxlTotal;
+    if(annualCxlPrev>0){
+      var annualCxlPct = Math.round((annualCxlCur-annualCxlPrev)/annualCxlPrev*100);
+      annualCxlTrendText = (annualCxlPct>=0?'up ':'down ')+Math.abs(annualCxlPct)+'% vs prior '+cs.word+' ('+annualCxlPrev+')';
+    } else {
+      annualCxlTrendText = annualCxlCur>0 ? 'new this '+cs.word+' (none prior)' : 'flat vs prior '+cs.word;
+    }
+    if(cs.all.cur.annualReasons && cs.all.cur.annualReasons[0]) annualCxlTopDriver = cs.all.cur.annualReasons[0][0];
+    if(cs.all.cur.annualPlanTally && cs.all.cur.annualPlanTally[0]) annualCxlTopPlan = cs.all.cur.annualPlanTally[0][0];
+    if(annualCxlTopDriver){
+      annualCxlInsightLine = 'Annual-Plan Cancellations trend: '+annualCxlTrendText+' — top driver: "'+annualCxlTopDriver+'"'+(annualCxlTopPlan?' · most-affected plan: '+annualCxlTopPlan:'')+'.';
+    }
+    // Added 2026-09-16 — Initial vs. Rebill (Renewal) breakdown for annual cancellations, from
+    // Column J. Shown as-is (whatever text values actually appear) rather than assuming a fixed
+    // "Initial"/"Rebill" pair, since the exact live values haven't been eyeballed this round.
+    if(cs.all.cur.initialRebillTally && cs.all.cur.initialRebillTally.length){
+      initialRebillLine = 'Initial vs. Rebill (Renewal) — annual cancellations: '+cs.all.cur.initialRebillTally.map(function(e){return e[0]+' '+e[1];}).join(' · ')+'.';
+    }
   }
 
   // Added 2026-09-18 per Lisa: "there's already a breakdown of escalations handled on
@@ -1980,6 +2040,15 @@ function renderHighlights(d){
     var totalSaved = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
     var totalEscs  = d.totalPS + d.totalCI;
     wins.push('✅ '+totalSaved+' saves converted — '+(d.totalPS?'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+saveRatePct+')':'')+(d.totalCI?' · CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+(d.ciSaveRate*100).toFixed(1)+'%)':''));
+    // Added 2026-09-16 per Lisa's ask for context on where saves are coming from — a breakdown
+    // across Manual Saves / Refund Escalation / Chargeback-Dispute Threats (plus "Other" for the
+    // action-based-override saves that don't fall under any of those 3 reasons), with the top
+    // source called out.
+    var saveSourceTally = tallySaveSources(d.saves.savesConverted.concat(d.ciSaves.savesConverted));
+    if(saveSourceTally.length){
+      var saveSourceTop = saveSourceTally[0];
+      wins.push('✅ Where saves came from: '+saveSourceTally.map(function(e){return e[0]+' '+e[1];}).join(' · ')+' — top driver: '+saveSourceTop[0]+' ('+saveSourceTop[1]+').');
+    }
   }
   if(d.cb>=20) flags.push('⚠ '+d.cb+' chargebacks and dispute threats — elevated; verify root cause and payment gateway');
   else if(d.cb>0&&d.cb<15) wins.push('✅ Chargebacks and dispute threats managed at '+d.cb+' cases');
@@ -2000,6 +2069,11 @@ function renderHighlights(d){
     // Added 2026-09-18 per Lisa's ask for an annual-cancellations breakdown, PS vs Crowd Ignite,
     // parallel to the refunded breakdown directly above.
     if(annualBreakdownLine) wins.push('✅ '+annualBreakdownLine);
+    // Added 2026-09-16 per Lisa's ask for more meaningful annual-cancellations context — trend
+    // vs prior period, top root-cause reason, and most-affected plan tier, all in one line.
+    if(annualCxlInsightLine) wins.push('✅ '+annualCxlInsightLine);
+    // Added 2026-09-16 — Initial vs. Rebill (Renewal) breakdown for annual cancellations.
+    if(initialRebillLine) wins.push('✅ '+initialRebillLine);
     if(cancelFlagLines.length) flags.push('⚠ Up vs prior '+cs.word+': '+cancelFlagLines.join('; ')+' — see Section 8.');
   }
 
@@ -2063,11 +2137,27 @@ function renderHighlights(d){
       var oKeys=Object.keys(d.saves.offerCounts).sort(function(a,b){return d.saves.offerCounts[b]-d.saves.offerCounts[a];});
       if(oKeys.length) topOffer=' Top offer: '+oKeys[0]+' ('+d.saves.offerCounts[oKeys[0]]+').';
     }
+    // Reworded 2026-09-16 per Lisa's question about the denominator — "X of Y saves converted"
+    // read ambiguously (as if Y were save attempts). Y (combinedTotal = d.totalPS + d.totalCI)
+    // was already the combined TOTAL escalations handled — same figure used for resolution rate
+    // above — so the math wasn't changing, just the wording, to say that explicitly.
     winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
       +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
-      +'<div style="font-weight:700;font-size:13px;color:#15803d">Save conversion '+saveRatePctFull+' — '+combinedSaved+' of '+combinedTotal+' saves converted</div>'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">Save conversion '+saveRatePctFull+' — '+combinedSaved+' saves converted out of '+combinedTotal+' total escalations handled</div>'
       +'<div style="font-size:12px;color:#166534;margin-top:3px">'+topOffer+' PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+psSR2+').'+(d.totalCI?' CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+ciSR2+').':'')+(d.saves.hiddenSaves.length?' +'+d.saves.hiddenSaves.length+' hidden retention saves.':'')+'</div>'
       +'</td></tr>';
+    // Added 2026-09-16 per Lisa's ask for a "where the save is from" breakdown — Manual Saves /
+    // Refund Escalation / Chargeback-Dispute Threats (+ "Other" for action-override saves) —
+    // with the top source called out, mirroring the on-page version added alongside this.
+    var saveSourceTallyEmail = tallySaveSources(d.saves.savesConverted.concat(d.ciSaves.savesConverted));
+    if(saveSourceTallyEmail.length){
+      var saveSourceTopEmail = saveSourceTallyEmail[0];
+      winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">Where saves came from: '+saveSourceTallyEmail.map(function(e){return e[0]+' '+e[1];}).join(' · ')+'</div>'
+        +'<div style="font-size:12px;color:#166534;margin-top:3px">Top driver: '+saveSourceTopEmail[0]+' ('+saveSourceTopEmail[1]+').</div>'
+        +'</td></tr>';
+    }
   }
   if(d.cb>0&&d.cb<15){
     winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
@@ -2104,6 +2194,23 @@ function renderHighlights(d){
       winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
         +'<td style="padding:10px 12px">'
         +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualBreakdownLine+'</div>'
+        +'</td></tr>';
+    }
+    // Added 2026-09-16 per Lisa's ask for more meaningful annual-cancellations context — trend
+    // vs prior period, top root-cause reason, and most-affected plan tier — mirroring the
+    // on-page version added alongside this.
+    if(annualCxlInsightLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualCxlInsightLine+'</div>'
+        +'</td></tr>';
+    }
+    // Added 2026-09-16 — Initial vs. Rebill (Renewal) breakdown for annual cancellations,
+    // mirroring the on-page version added alongside this.
+    if(initialRebillLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+initialRebillLine+'</div>'
         +'</td></tr>';
     }
   }
