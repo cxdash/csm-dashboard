@@ -1117,6 +1117,20 @@ var SAVE_REASON_RE = /manual save|refund dg difference/i;
 // SAVE_ACTION_RE's `refunded\s*\d+\s*%` pattern (or the hidden-saves "retention" text match
 // below) on its own. Any action mentioning termination overrides those matches to "not saved".
 var TERMINATE_ACTION_RE = /terminat/i;
+// Added 2026-09-18 per Lisa: manually verified PS week 9/7-9/13 converted saves as 17
+// (8 of 10 Manual Save – Monthly + all 5 Manual Save – Annual + 4 of 19 Refund Escalation:
+// 3 "Refunded Credit (Annual)" + 1 "Refunded 50% + Downgrade") and confirmed via context
+// that Refund Escalation and Chargeback/Dispute Threats reasons can ALSO yield a genuine
+// save when a real retention/refund-and-keep action is taken — not just when the literal
+// "Retention Offer" action is logged (that stays tracked separately via hiddenSaves, since
+// most Refund Escalation "Retention Offer" cases are still pending/inconsistent outcomes
+// per Lisa, and Chargeback/Dispute Threats "Retention Offer" cases aren't yet verified).
+// A bare "Refunded" (full refund, no % or difference/credit signal) under these two reasons
+// is deliberately NOT treated as a save — Lisa: refund escalations and chargeback/dispute
+// threats are "most of the time" pushed back, fully refunded, or refunded 50%+terminate,
+// i.e. the customer leaves — distinct from the Manual Save reason branch below, where a
+// bare "Refunded" specifically means a downgrade-refund-and-keep save.
+var SAVE_ELIGIBLE_REASON_EXT_RE = /refund escalation|dispute|chargeback/i;
 
 // Normalize raw action field → clean display label for offer breakdown table
 function normalizeOfferLabel(action){
@@ -1154,6 +1168,12 @@ function analyzeSaves(rows, company){
         // Reason = "Manual Save – Monthly/Annual" → applied discount/credit/free month/etc. OR Refunded (downgrade save)
         if(!isTerminated && (SAVE_ACTION_RE.test(action) || /^refunded$/i.test(action.trim()))) isSave=true;
       }
+    } else if(SAVE_ELIGIBLE_REASON_EXT_RE.test(reason)){
+      // Refund Escalation / Chargeback & Dispute Threats — added 2026-09-18, see note above.
+      // Whole reason bucket counts toward Retention Escs (it's an at-risk-of-churn opportunity);
+      // only an explicit save-type action (not a bare "Refunded") converts it to a save.
+      isEsc=true;
+      if(!isTerminated && SAVE_ACTION_RE.test(action)) isSave=true;
     }
     if(/refund escalation/i.test(reason)&&/retention/i.test(action)&&!isTerminated){
       hiddenSaves.push(r);
