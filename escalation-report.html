@@ -2698,7 +2698,20 @@ function renderHighlights(d){
       +volRows+'</table>';
   }
 
-  html += '<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px;font-size:13px;color:#334155">Full report attached.</div>';
+  // id="email-full-report-line" added 2026-09-16 (Round 9) — "Full report attached" only makes
+  // sense in the email body (referring to the PDF attached alongside it); it's meaningless
+  // inside the PDF itself, so it's hidden under @media print the same way email-greeting-line/
+  // email-signoff-line are, and replaced there by #pdf-footer-line below.
+  html += '<div id="email-full-report-line" style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px;font-size:13px;color:#334155">Full report attached.</div>';
+  // id="pdf-footer-line" added 2026-09-16 (Round 9) per Lisa's ask — replaces "Full report
+  // attached" in the printed/PDF output with a "Prepared by" credit line plus a data-source
+  // line, styled after the monthly report's locked footer format (see
+  // feedback_monthly_report_html_styling.md item 10). Hidden by default; shown only under
+  // @media print (see the print-only CSS rule added alongside this).
+  html += '<div id="pdf-footer-line" style="display:none;border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px;font-size:11px;color:#64748b;line-height:1.6">'
+    +'Prepared by: Lisa Magsino, CX Manager<br>'
+    +'Sources: Escalations Team Tracker (Google Sheet) &middot; Crowd Ignite Escalations Tracker (Google Sheet) &middot; Cancellations &amp; Refunds Tracker (Form Responses 14, Google Sheet) &middot; ContactExport Volume/SLA (Google Sheet, row-level data)'
+    +'</div>';
   // id="email-signoff-line" added 2026-09-16 (Round 5) — paired with email-greeting-line above,
   // hidden by the Print-to-PDF flow so a PDF attachment doesn't carry an email sign-off.
   html += '<p id="email-signoff-line" style="font-size:13px;color:#334155;margin-top:8px">Best,<br>Lisa</p></div>';
@@ -2747,7 +2760,8 @@ function openGmailDraft(){
     +'#email-body-print{display:none}'
     +'@media print{ #toolbar,#edit-banner,#email-body{display:none !important} '
     +'#email-body-print{display:block !important;box-shadow:none;padding:0} '
-    +'#email-greeting-line,#email-signoff-line{display:none !important} '
+    +'#email-greeting-line,#email-signoff-line,#email-full-report-line{display:none !important} '
+    +'#pdf-footer-line{display:block !important} '
     +'body{padding:0;background:#fff} }'
     +'</style></head><body>'
     +'<div id="toolbar">'
