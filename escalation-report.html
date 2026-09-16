@@ -846,6 +846,11 @@ function _cancelBucketStats(bucketRows){
   var refundedCxl=cxl.filter(function(r){ return _cancelStatus(r)==='ref'; });
   var annualCxl=cxl.filter(function(r){ return _cancelIsAnnual(r.plan); });
   var refAmt=0; ref.forEach(function(r){ refAmt+=r.amt; });
+  // Added 2026-09-16 (Round 8) per Lisa's ask to break out Annual Sub Refunds specifically
+  // tied to rebill/renewal-time cancellations (Column J = "Rebill"), with the top driver
+  // among just those rows -- narrower and more actionable than the ref bucket's overall
+  // top driver (refReasons below).
+  var refRebill=ref.filter(function(r){ return /rebill/i.test(r.initialRebill||''); });
   function tally(arr,keyFn){
     var m={}; arr.forEach(function(x){ var k=keyFn(x)||'-'; m[k]=(m[k]||0)+1; });
     return Object.entries(m).sort(function(a,b){return b[1]-a[1];});
@@ -869,6 +874,8 @@ function _cancelBucketStats(bucketRows){
     // above (which is annual-PLAN cancellations, a different category — see _cancelIsRef vs
     // _cancelIsAnnual).
     refReasons:tally(ref,function(r){return r.dcrsn||r.reason;}).slice(0,6),
+    refRebillCount:refRebill.length,
+    refRebillTopReason:tally(refRebill,function(r){return r.dcrsn||r.reason;}).slice(0,1),
     planTally:tally(cxl,function(r){return r.plan;}).slice(0,5),
     // Added 2026-09-16 per Lisa's ask for a "plan tier / account-type" breakdown specifically on
     // ANNUAL-plan cancellations (annualCxl) — distinct from planTally above, which tallies plan
@@ -1615,7 +1622,7 @@ function render(d){
   // ── Section 4: Saves ──
   document.getElementById('sv1').textContent = d.totalPS;
   document.getElementById('sv2').textContent = d.saves.saveEscs.length;
-  document.getElementById('sv3').textContent = d.saves.savesConverted.length + (d.saves.hiddenSaves.length?' + '+d.saves.hiddenSaves.length+' hidden':'');
+  document.getElementById('sv3').textContent = d.saves.savesConverted.length;
   document.getElementById('sv4').textContent = saveRatePct;
 
   // Per-company breakdown table: saves converted / total escs (Option B)
@@ -1661,9 +1668,6 @@ function render(d){
       var isHighValue = /annual|free month|free addon/i.test(lbl);
       return {lbl:lbl||'(no action recorded)', cnt:cnt, pct:((cnt/totalSaves)*100).toFixed(1)+'%', highValue:isHighValue};
     });
-  if(d.saves.hiddenSaves.length){
-    offerRows.push({lbl:'Retention (within Refund Escalation)',cnt:d.saves.hiddenSaves.length,pct:(d.saves.hiddenSaves.length/totalSaves*100).toFixed(1)+'%',highValue:false});
-  }
   var grandTotal = offerRows.reduce(function(s,r){return s+r.cnt;},0);
   document.getElementById('offerBody').innerHTML = (offerRows.length ?
     offerRows.map(function(r){return '<tr><td>'+r.lbl+(r.highValue?' <span style="font-size:10px;background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px">high value</span>':'')+'</td><td class="r">'+r.cnt+'</td><td class="r">'+r.pct+'</td></tr>';}).join('') :
@@ -1964,24 +1968,25 @@ function renderHighlights(d){
   var saveRatePct = d.saveRate ? (d.saveRate*100).toFixed(1)+'%' : '—';
   var resRatePct  = d.totalPS  ? (d.resolvedPS/d.totalPS*100).toFixed(1)+'%' : '—';
 
+  // Added 2026-09-16 (Round 8) per Lisa's ask to surface total escalation tickets created,
+  // with a PS/CI split and the top reason driving them, at the top of Key Highlights.
+  var totalTicketsCreated = d.totalPS + d.totalCI;
+  var ticketsTopReason = (d.topReasonsAll && d.topReasonsAll[0]) ? d.topReasonsAll[0] : null;
+  var ticketsCreatedLine = totalTicketsCreated>0 ? 'Escalation tickets created: '+totalTicketsCreated+' this period (Path Social: '+d.totalPS+', Crowd Ignite: '+d.totalCI+').'+(ticketsTopReason?' Top reason: "'+ticketsTopReason.reason+'" ('+ticketsTopReason.count+').':'') : null;
+
   // ── Cancellations/Refunds/Fulfillment highlight — short summary pulled from Section 8's
   // data (LAST_CANCEL_SUMMARY), per Lisa's request to surface these in Key Highlights too.
+  // Reorganized 2026-09-16 (Round 8) per Lisa's ask: Annual Sub Refunds first (total with PS/CI
+  // split, top driver, rebill-at-renewal count and top driver), then Dashboard Cancellations
+  // (total with PS/CI split, refunded count and top driver, annual-plan cancellation count/
+  // trend/top driver) — and no em dashes anywhere in the visible highlight text (periods used
+  // as separators instead, per Lisa's ask).
   var cs = LAST_CANCEL_SUMMARY;
-  var cancelFlagLines = [], cancelSummaryLine = null, cancelTopDriver = null;
-  // Added 2026-09-17 per Lisa's ask for a dedicated Annual Refunds top-driver insight and a
-  // "how many refunded, PS vs CI" breakdown in Key Highlights.
-  var annualRefundTopDriver = null, annualRefundTopDriverCount = 0;
-  var refundedBreakdownLine = null;
-  // Added 2026-09-18 per Lisa's ask ("how many here are refunded and how many are annuals —
-  // breakdown PS vs Crowd") — a second breakdown line, parallel to refundedBreakdownLine above,
-  // but for annual-plan cancellations instead of refunded ones.
-  var annualBreakdownLine = null;
-  // Added 2026-09-16 per Lisa's ask for trend + root-cause + plan-tier context on annual
-  // cancellations specifically (not just the PS/CI count breakdown above).
-  var annualCxlTrendText = null, annualCxlTopDriver = null, annualCxlTopPlan = null, annualCxlInsightLine = null;
-  // Added 2026-09-16 per Lisa's ask for a rebill (renewal) vs. initial-term breakdown on annual
-  // cancellations — Column J ("Initial/Rebill?", confirmed live 2026-09-14) tallied as-is.
-  var initialRebillLine = null;
+  var cancelFlagLines = [], cancelTopDriver = null;
+  var annualRefundTopDriver = null;
+  var annualSubRefundsHeaderLine = null, annualRefundTopDriverLine = null, refRebillLine = null;
+  var refundedBreakdownLine = null, annualBreakdownLine = null, dashboardCancellationsHeaderLine = null;
+  var annualCxlTrendText = null, annualCxlTopDriver = null;
   if(cs){
     var ccChecks=[
       {label:'Dashboard Cancellations', cur:cs.all.cur.cxlTotal, prev:cs.all.prev.cxlTotal},
@@ -1991,20 +1996,29 @@ function renderHighlights(d){
       {label:'Targeting issues', cur:cs.all.cur.fulfill.Targeting.count, prev:cs.all.prev.fulfill.Targeting.count}
     ];
     ccChecks.forEach(function(c){ if(c.cur>c.prev) cancelFlagLines.push(c.label+' up to '+c.cur+' (from '+c.prev+')'); });
-    cancelTopDriver = (cs.all.cur.refundedReasons && cs.all.cur.refundedReasons[0]) ? cs.all.cur.refundedReasons[0][0] : null;
-    cancelSummaryLine = cs.all.cur.cxlTotal+' dashboard cancellations · '+cs.all.cur.refTotal+' annual refunds ($'+Math.round(cs.all.cur.refAmt).toLocaleString()+') this '+cs.word+(cancelTopDriver?' — top refund driver: "'+cancelTopDriver+'"':'')+'.';
+
+    // 1) Annual Sub Refunds — header (total + PS/CI split), top driver, then a rebill/renewal
+    // sub-breakdown (count of Annual Sub Refunds tagged "Rebill" in Column J, and the top driver
+    // among just those rows) — per Lisa's correction that the rebill breakdown belongs here,
+    // not under annual-plan cancellations where it first landed.
+    var refPS = cs.ps.cur.refTotal, refCI = cs.ci.cur.refTotal;
+    annualSubRefundsHeaderLine = 'Annual Sub Refunds: '+cs.all.cur.refTotal+' this '+cs.word+' (Path Social: '+refPS+', Crowd Ignite: '+refCI+').';
     if(cs.all.cur.refReasons && cs.all.cur.refReasons[0]){
       annualRefundTopDriver = cs.all.cur.refReasons[0][0];
-      annualRefundTopDriverCount = cs.all.cur.refReasons[0][1];
+      annualRefundTopDriverLine = 'Annual Sub Refunds top driver: "'+annualRefundTopDriver+'".';
     }
+    if(cs.all.cur.refRebillCount>0){
+      var refRebillTop = (cs.all.cur.refRebillTopReason && cs.all.cur.refRebillTopReason[0]) ? cs.all.cur.refRebillTopReason[0][0] : null;
+      refRebillLine = 'Annual Sub Refunds at rebill/renewal: '+cs.all.cur.refRebillCount+' of '+cs.all.cur.refTotal+' this '+cs.word+(refRebillTop?'. Top driver: "'+refRebillTop+'"':'')+'.';
+    }
+
+    // 2) Dashboard Cancellations — header (total + PS/CI split), refunded count + top driver,
+    // annual-plan cancellation count + trend + top driver.
+    dashboardCancellationsHeaderLine = 'Dashboard Cancellations: '+cs.all.cur.cxlTotal+' this '+cs.word+' (Path Social: '+cs.ps.cur.cxlTotal+', Crowd Ignite: '+cs.ci.cur.cxlTotal+').';
+    cancelTopDriver = (cs.all.cur.refundedReasons && cs.all.cur.refundedReasons[0]) ? cs.all.cur.refundedReasons[0][0] : null;
     var refundedPS = cs.ps.cur.refundedCxlTotal, refundedCI = cs.ci.cur.refundedCxlTotal;
-    refundedBreakdownLine = cs.all.cur.refundedCxlTotal+' cancellation'+(cs.all.cur.refundedCxlTotal===1?'':'s')+' refunded this '+cs.word+' — Path Social: '+refundedPS+', Crowd Ignite: '+refundedCI+'.';
+    refundedBreakdownLine = 'Refunded cancellations: '+cs.all.cur.refundedCxlTotal+' this '+cs.word+' (Path Social: '+refundedPS+', Crowd Ignite: '+refundedCI+')'+(cancelTopDriver?'. Top driver: "'+cancelTopDriver+'"':'')+'.';
     var annualPS = cs.ps.cur.annualCxlTotal, annualCI = cs.ci.cur.annualCxlTotal;
-    annualBreakdownLine = cs.all.cur.annualCxlTotal+' annual-plan cancellation'+(cs.all.cur.annualCxlTotal===1?'':'s')+' this '+cs.word+' — Path Social: '+annualPS+', Crowd Ignite: '+annualCI+'.';
-    // Added 2026-09-16 per Lisa's ask for more meaningful context on annual cancellations —
-    // a trend vs. prior period, the top root-cause reason (annualReasons was already computed
-    // for Section 8's on-page insight box, just not surfaced in Key Highlights until now), and
-    // the most-affected plan tier (new annualPlanTally, added alongside this).
     var annualCxlCur = cs.all.cur.annualCxlTotal, annualCxlPrev = cs.all.prev.annualCxlTotal;
     if(annualCxlPrev>0){
       var annualCxlPct = Math.round((annualCxlCur-annualCxlPrev)/annualCxlPrev*100);
@@ -2013,72 +2027,61 @@ function renderHighlights(d){
       annualCxlTrendText = annualCxlCur>0 ? 'new this '+cs.word+' (none prior)' : 'flat vs prior '+cs.word;
     }
     if(cs.all.cur.annualReasons && cs.all.cur.annualReasons[0]) annualCxlTopDriver = cs.all.cur.annualReasons[0][0];
-    if(cs.all.cur.annualPlanTally && cs.all.cur.annualPlanTally[0]) annualCxlTopPlan = cs.all.cur.annualPlanTally[0][0];
-    if(annualCxlTopDriver){
-      annualCxlInsightLine = 'Annual-Plan Cancellations trend: '+annualCxlTrendText+' — top driver: "'+annualCxlTopDriver+'"'+(annualCxlTopPlan?' · most-affected plan: '+annualCxlTopPlan:'')+'.';
-    }
-    // Added 2026-09-16 — Initial vs. Rebill (Renewal) breakdown for annual cancellations, from
-    // Column J. Shown as-is (whatever text values actually appear) rather than assuming a fixed
-    // "Initial"/"Rebill" pair, since the exact live values haven't been eyeballed this round.
-    if(cs.all.cur.initialRebillTally && cs.all.cur.initialRebillTally.length){
-      initialRebillLine = 'Initial vs. Rebill (Renewal) — annual cancellations: '+cs.all.cur.initialRebillTally.map(function(e){return e[0]+' '+e[1];}).join(' · ')+'.';
-    }
+    annualBreakdownLine = 'Annual-plan cancellations: '+annualCxlCur+' this '+cs.word+' (Path Social: '+annualPS+', Crowd Ignite: '+annualCI+'). Trend: '+annualCxlTrendText+(annualCxlTopDriver?'. Top driver: "'+annualCxlTopDriver+'"':'')+'.';
   }
 
+  // Added 2026-09-16 (Round 8) per Lisa's ask — escalation tickets created leads the list,
+  // ahead of resolution rate, as the top-of-funnel figure.
+  if(ticketsCreatedLine) wins.push('✅ '+ticketsCreatedLine);
+
   // Added 2026-09-18 per Lisa: "there's already a breakdown of escalations handled on
-  // resolution rate — no need to add separate if crowd ignite has no escalation, instead just
+  // resolution rate. No need to add separate if crowd ignite has no escalation, instead just
   // note it under." Previously "No Crowd Ignite escalations this period" was its own standalone
   // wins line (see below); now it's folded into the Resolution Rate line as a trailing note.
   if(d.totalPS>0){
-    if(d.resolvedPS/d.totalPS>=0.90) wins.push('✅ Resolution rate at '+resRatePct+' — strong execution by escalation team'+(d.totalCI===0?'. No Crowd Ignite escalations this period.':''));
-    else flags.push('⚠ Resolution rate at '+resRatePct+' — review open escalations for blockers'+(d.totalCI===0?' (No Crowd Ignite escalations this period.)':''));
+    if(d.resolvedPS/d.totalPS>=0.90) wins.push('✅ Resolution rate at '+resRatePct+'. Strong execution by escalation team'+(d.totalCI===0?'. No Crowd Ignite escalations this period.':'.'));
+    else flags.push('⚠ Resolution rate at '+resRatePct+'. Review open escalations for blockers'+(d.totalCI===0?' (No Crowd Ignite escalations this period.)':''));
   } else if(d.totalCI===0){
-    // Fallback for the edge case where PS itself has no escalations either — nothing to attach the note to above.
+    // Fallback for the edge case where PS itself has no escalations either. Nothing to attach the note to above.
     wins.push('✅ No Crowd Ignite escalations this period');
   }
   if(d.saves.savesConverted.length>0 || d.ciSaves.savesConverted.length>0){
     var totalSaved = d.saves.savesConverted.length + d.ciSaves.savesConverted.length;
     var totalEscs  = d.totalPS + d.totalCI;
-    wins.push('✅ '+totalSaved+' saves converted — '+(d.totalPS?'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+saveRatePct+')':'')+(d.totalCI?' · CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+(d.ciSaveRate*100).toFixed(1)+'%)':''));
-    // Added 2026-09-16 per Lisa's ask for context on where saves are coming from — a breakdown
+    wins.push('✅ '+totalSaved+' saves converted. '+(d.totalPS?'PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+saveRatePct+')':'')+(d.totalCI?' · CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+(d.ciSaveRate*100).toFixed(1)+'%)':''));
+    // Added 2026-09-16 per Lisa's ask for context on where saves are coming from. A breakdown
     // across Manual Saves / Refund Escalation / Chargeback-Dispute Threats (plus "Other" for the
     // action-based-override saves that don't fall under any of those 3 reasons), with the top
     // source called out.
     var saveSourceTally = tallySaveSources(d.saves.savesConverted.concat(d.ciSaves.savesConverted));
     if(saveSourceTally.length){
       var saveSourceTop = saveSourceTally[0];
-      wins.push('✅ Where saves came from: '+saveSourceTally.map(function(e){return e[0]+' '+e[1];}).join(' · ')+' — top driver: '+saveSourceTop[0]+' ('+saveSourceTop[1]+').');
+      wins.push('✅ Where saves came from: '+saveSourceTally.map(function(e){return e[0]+' '+e[1];}).join(' · ')+'. Top driver: '+saveSourceTop[0]+' ('+saveSourceTop[1]+').');
     }
   }
-  if(d.cb>=20) flags.push('⚠ '+d.cb+' chargebacks and dispute threats — elevated; verify root cause and payment gateway');
+  if(d.cb>=20) flags.push('⚠ '+d.cb+' chargebacks and dispute threats. Elevated, verify root cause and payment gateway.');
   else if(d.cb>0&&d.cb<15) wins.push('✅ Chargebacks and dispute threats managed at '+d.cb+' cases');
   if(d.totalCI>0 && d.openCI>0) flags.push('⚠ '+d.openCI+' Crowd Ignite escalation'+(d.openCI>1?'s':'')+' still open');
 
   var topIssue = d.topReasons[0];
-  if(topIssue&&topIssue.count>=20) flags.push('⚠ "'+topIssue.reason+'" leading at '+topIssue.count+' cases — investigate root cause trend');
+  if(topIssue&&topIssue.count>=20) flags.push('⚠ "'+topIssue.reason+'" leading at '+topIssue.count+' cases. Investigate root cause trend.');
 
   if(cs){
-    wins.push('✅ '+cancelSummaryLine);
-    // CHANGED 2026-09-18 per Lisa: "Annual sub refunds (category) top driver and how many are
-    // refunded (no need to mention the amount)" — now states the total Annual Sub Refunds count
-    // (cs.all.cur.refTotal, i.e. how many are refunded) instead of just the top reason's own
-    // count, and never mentions a dollar figure (unlike cancelSummaryLine above, which is a
-    // separate, pre-existing line covering dashboard cancellations broadly).
-    if(annualRefundTopDriver) wins.push('✅ Annual Sub Refunds top driver: "'+annualRefundTopDriver+'" — '+cs.all.cur.refTotal+' refunded this '+cs.word+'.');
+    // Reorganized 2026-09-16 (Round 8) per Lisa's ask: Annual Sub Refunds first (total, top
+    // driver, rebill-at-renewal count and top driver), then Dashboard Cancellations (total,
+    // refunded count and top driver, annual-plan cancellation count/trend/top driver). No em
+    // dashes in the visible text.
+    if(annualSubRefundsHeaderLine) wins.push('✅ '+annualSubRefundsHeaderLine);
+    if(annualRefundTopDriverLine) wins.push('✅ '+annualRefundTopDriverLine);
+    if(refRebillLine) wins.push('✅ '+refRebillLine);
+    if(dashboardCancellationsHeaderLine) wins.push('✅ '+dashboardCancellationsHeaderLine);
     if(refundedBreakdownLine) wins.push('✅ '+refundedBreakdownLine);
-    // Added 2026-09-18 per Lisa's ask for an annual-cancellations breakdown, PS vs Crowd Ignite,
-    // parallel to the refunded breakdown directly above.
     if(annualBreakdownLine) wins.push('✅ '+annualBreakdownLine);
-    // Added 2026-09-16 per Lisa's ask for more meaningful annual-cancellations context — trend
-    // vs prior period, top root-cause reason, and most-affected plan tier, all in one line.
-    if(annualCxlInsightLine) wins.push('✅ '+annualCxlInsightLine);
-    // Added 2026-09-16 — Initial vs. Rebill (Renewal) breakdown for annual cancellations.
-    if(initialRebillLine) wins.push('✅ '+initialRebillLine);
-    if(cancelFlagLines.length) flags.push('⚠ Up vs prior '+cs.word+': '+cancelFlagLines.join('; ')+' — see Section 8.');
+    if(cancelFlagLines.length) flags.push('⚠ Up vs prior '+cs.word+': '+cancelFlagLines.join('; ')+'. See Section 8.');
   }
 
   if(!wins.length) wins.push('No notable wins to report this period.');
-  if(!flags.length) flags.push('No critical flags — all metrics within acceptable range.');
+  if(!flags.length) flags.push('No critical flags. All metrics within acceptable range.');
 
   document.getElementById('hlWins').innerHTML = wins.map(function(w){return '<div class="hl-item">'+w+'</div>';}).join('');
   document.getElementById('hlFlags').innerHTML = flags.map(function(f){return '<div class="hl-item">'+f+'</div>';}).join('');
@@ -2120,11 +2123,19 @@ function renderHighlights(d){
 
   // ── WINS ──
   var winRows = '';
+  // Added 2026-09-16 (Round 8) per Lisa's ask — escalation tickets created leads the list,
+  // ahead of resolution rate, as the top-of-funnel figure, mirroring the on-page version.
+  if(ticketsCreatedLine){
+    winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
+      +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">'+ticketsCreatedLine+'</div>'
+      +'</td></tr>';
+  }
   if(d.totalPS>0 && d.resolvedPS/d.totalPS>=0.90){
     var psSaveRatePct2 = d.totalPS?(d.saves.savesConverted.length/d.totalPS*100).toFixed(1)+'%':'—';
     winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
       +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
-      +'<div style="font-weight:700;font-size:13px;color:#15803d">'+resRatePct+' resolution rate — strong execution this period</div>'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">'+resRatePct+' resolution rate. Strong execution this period</div>'
       +'<div style="font-size:12px;color:#166534;margin-top:3px">'+d.resolvedPS+' of '+d.totalPS+' Path escalations resolved.'+(d.openPS?' '+d.openPS+' still monitoring.':'')+
         (d.totalCI?' Crowd Ignite '+d.resolvedCI+'/'+d.totalCI+' resolved. '+(d.totalPS+d.totalCI-d.openPS-d.openCI)+' of '+(d.totalPS+d.totalCI)+' total resolved.':' No Crowd Ignite escalations this period.')+
       '</div></td></tr>';
@@ -2143,8 +2154,8 @@ function renderHighlights(d){
     // above — so the math wasn't changing, just the wording, to say that explicitly.
     winRows += '<tr><td style="padding:10px 12px;border-bottom:1px solid #bbf7d0;vertical-align:top;width:20px;font-size:14px">☑</td>'
       +'<td style="padding:10px 12px;border-bottom:1px solid #bbf7d0">'
-      +'<div style="font-weight:700;font-size:13px;color:#15803d">Save conversion '+saveRatePctFull+' — '+combinedSaved+' saves converted out of '+combinedTotal+' total escalations handled</div>'
-      +'<div style="font-size:12px;color:#166534;margin-top:3px">'+topOffer+' PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+psSR2+').'+(d.totalCI?' CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+ciSR2+').':'')+(d.saves.hiddenSaves.length?' +'+d.saves.hiddenSaves.length+' hidden retention saves.':'')+'</div>'
+      +'<div style="font-weight:700;font-size:13px;color:#15803d">Save conversion '+saveRatePctFull+'. '+combinedSaved+' saves converted out of '+combinedTotal+' total escalations handled</div>'
+      +'<div style="font-size:12px;color:#166534;margin-top:3px">'+topOffer+' PS: '+d.saves.savesConverted.length+'/'+d.totalPS+' ('+psSR2+').'+(d.totalCI?' CI: '+d.ciSaves.savesConverted.length+'/'+d.totalCI+' ('+ciSR2+').':'')+'</div>'
       +'</td></tr>';
     // Added 2026-09-16 per Lisa's ask for a "where the save is from" breakdown — Manual Saves /
     // Refund Escalation / Chargeback-Dispute Threats (+ "Other" for action-override saves) —
@@ -2167,19 +2178,32 @@ function renderHighlights(d){
       +'</td></tr>';
   }
   if(cs){
-    winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
-      +'<td style="padding:10px 12px">'
-      +'<div style="font-weight:700;font-size:13px;color:#15803d">'+cs.all.cur.cxlTotal+' cancellations · '+cs.all.cur.refTotal+' annual refunds this '+cs.word+'</div>'
-      +'<div style="font-size:12px;color:#166534;margin-top:3px">$'+Math.round(cs.all.cur.refAmt).toLocaleString()+' refunded'+(cancelTopDriver?'. Top driver: '+cancelTopDriver:'')+'. Full breakdown in Section 8 below.</div>'
-      +'</td></tr>';
-    // CHANGED 2026-09-18 per Lisa: "Annual sub refunds (category) top driver and how many are
-    // refunded (no need to mention the amount)" — now states the total Annual Sub Refunds count
-    // (cs.all.cur.refTotal) instead of just the top reason's own count, and never mentions $.
-    if(annualRefundTopDriver){
+    // Reorganized 2026-09-16 (Round 8) per Lisa's ask: Annual Sub Refunds first (total, top
+    // driver, rebill-at-renewal count and top driver), then Dashboard Cancellations (total,
+    // refunded count and top driver, annual-plan cancellation count/trend/top driver). No em
+    // dashes in the visible text, mirroring the on-page version added alongside this.
+    if(annualSubRefundsHeaderLine){
       winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
         +'<td style="padding:10px 12px">'
-        +'<div style="font-weight:700;font-size:13px;color:#15803d">Annual Sub Refunds top driver: "'+annualRefundTopDriver+'"</div>'
-        +'<div style="font-size:12px;color:#166534;margin-top:3px">'+cs.all.cur.refTotal+' refunded this '+cs.word+'.</div>'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualSubRefundsHeaderLine+'</div>'
+        +'</td></tr>';
+    }
+    if(annualRefundTopDriverLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualRefundTopDriverLine+'</div>'
+        +'</td></tr>';
+    }
+    if(refRebillLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+refRebillLine+'</div>'
+        +'</td></tr>';
+    }
+    if(dashboardCancellationsHeaderLine){
+      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
+        +'<td style="padding:10px 12px">'
+        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+dashboardCancellationsHeaderLine+'</div>'
         +'</td></tr>';
     }
     if(refundedBreakdownLine){
@@ -2188,29 +2212,10 @@ function renderHighlights(d){
         +'<div style="font-weight:700;font-size:13px;color:#15803d">'+refundedBreakdownLine+'</div>'
         +'</td></tr>';
     }
-    // Added 2026-09-18 per Lisa's ask for an annual-cancellations breakdown, PS vs Crowd Ignite,
-    // parallel to the refunded breakdown directly above.
     if(annualBreakdownLine){
       winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
         +'<td style="padding:10px 12px">'
         +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualBreakdownLine+'</div>'
-        +'</td></tr>';
-    }
-    // Added 2026-09-16 per Lisa's ask for more meaningful annual-cancellations context — trend
-    // vs prior period, top root-cause reason, and most-affected plan tier — mirroring the
-    // on-page version added alongside this.
-    if(annualCxlInsightLine){
-      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
-        +'<td style="padding:10px 12px">'
-        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+annualCxlInsightLine+'</div>'
-        +'</td></tr>';
-    }
-    // Added 2026-09-16 — Initial vs. Rebill (Renewal) breakdown for annual cancellations,
-    // mirroring the on-page version added alongside this.
-    if(initialRebillLine){
-      winRows += '<tr><td style="padding:10px 12px;vertical-align:top;width:20px;font-size:14px">☑</td>'
-        +'<td style="padding:10px 12px">'
-        +'<div style="font-weight:700;font-size:13px;color:#15803d">'+initialRebillLine+'</div>'
         +'</td></tr>';
     }
   }
@@ -2382,7 +2387,7 @@ function renderHighlights(d){
       +'<div style="font-size:12px;color:#92400e;margin-top:3px">'+cancelFlagLines.join('; ')+'. See Section 8 for details.</div>'
       +'</td></tr>';
   }
-  if(!hasFlag2) flagRows='<tr><td colspan="2" style="padding:10px 12px;color:#64748b;font-size:12px">No critical flags — all metrics within acceptable range.</td></tr>';
+  if(!hasFlag2) flagRows='<tr><td colspan="2" style="padding:10px 12px;color:#64748b;font-size:12px">No critical flags. All metrics within acceptable range.</td></tr>';
 
   html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px">'
     +'<tr><td colspan="2" style="background:#92400e;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;text-transform:uppercase">⚠ NEEDS ATTENTION</td></tr>'
@@ -2426,7 +2431,6 @@ function renderHighlights(d){
 
   var allOffersE=Object.assign({},d.saves.offerCounts);
   Object.keys(d.ciSaves.offerCounts||{}).forEach(function(k){allOffersE[k]=(allOffersE[k]||0)+d.ciSaves.offerCounts[k];});
-  if(d.saves.hiddenSaves.length) allOffersE['Retention (within Refund Escalation)']=d.saves.hiddenSaves.length;
   var oKeysE=Object.keys(allOffersE).sort(function(a,b){return allOffersE[b]-allOffersE[a];});
   if(oKeysE.length){
     svRows += '<tr><td colspan="5" style="padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.05em;color:#64748b;text-transform:uppercase;border-bottom:1px solid #e2e8f0">Offer Breakdown</td></tr>';
