@@ -743,19 +743,31 @@ function _reRenderMain(){
         D.agents=JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
         D.agents12m=JSON.parse(JSON.stringify(DEFAULT_DATA.agents12m));
         var PF=['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
-        function _mergeAgMain(liveArr,defArr){
+        function _mergeAgMain(liveArr,defArr,clearOnMiss){
           if(!liveArr||!liveArr.length||!defArr) return;
+          var matched={};
           liveArr.forEach(function(live){
             var ll=normName(live.name).toLowerCase(), lf=ll.split(' ')[0], rl=resolveSheetName(normName(live.name));
             var def=defArr.find(function(a){var dl=normName(a.name).toLowerCase();return dl===ll||dl.startsWith(lf+' ')||normName(a.name)===rl;});
-            if(def){PF.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});}
+            if(def){PF.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});def.noActivity=false;matched[normName(def.name)]=true;}
           });
+          // Same "no activity this period" treatment as the initial-load merge — see
+          // loadFromSheets() for the full rationale. Only clears on the MTD target.
+          if(clearOnMiss){
+            defArr.forEach(function(def){
+              if(!matched[normName(def.name)]){
+                def.noActivity=true;
+                PF.forEach(function(f){def[f]=null;});
+                def.fcr=null; def.qa=null; def.lowHours=false;
+              }
+            });
+          }
         }
-        _mergeAgMain(_agP.mtd,D.agents); _mergeAgMain(_agP.all,D.agents12m);
+        _mergeAgMain(_agP.mtd,D.agents,true); _mergeAgMain(_agP.all,D.agents12m,false);
         if(!_agP.mtd.length&&!_agP.all.length){
           var pm=tgt.month-1<1?12:tgt.month-1, py=tgt.month-1<1?tgt.year-1:tgt.year;
           var _ag2=parseGladlyCSV(RAW_TEXTS.agent,{year:py,month:pm});
-          if(_ag2){_mergeAgMain(_ag2.mtd,D.agents);_mergeAgMain(_ag2.all,D.agents12m);}
+          if(_ag2){_mergeAgMain(_ag2.mtd,D.agents,true);_mergeAgMain(_ag2.all,D.agents12m,false);}
           if(note) note.textContent='No '+MONTH_NAMES[tgt.month-1]+' '+tgt.year+' data — showing '+MONTH_NAMES[pm-1]+' '+py;
         }
       }
@@ -764,7 +776,7 @@ function _reRenderMain(){
       _fr.agents.forEach(function(lv){var r=resolveSheetName(lv.name);
         var d=D.agents.find(function(a){return normName(a.name)===r;});
         var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
-        if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;if(d2&&lv.fcr12m!==null)d2.fcr=lv.fcr12m;
+        if(d&&!d.noActivity&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;if(d2&&lv.fcr12m!==null)d2.fcr=lv.fcr12m;
       });
       var _lobFcrRr=parseFCRByLOB(RAW_TEXTS.fcr,tgt);
       D.sla.forEach(function(ls){
@@ -780,7 +792,7 @@ function _reRenderMain(){
       _qa.forEach(function(lv){var r=resolveSheetName(lv.name);
         var d=D.agents.find(function(a){return normName(a.name)===r;});
         var d2=D.agents12m&&D.agents12m.find(function(a){return normName(a.name)===r;});
-        if(d&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
+        if(d&&!d.noActivity&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
         if(d2&&lv.qa12m!==null){d2.qa=lv.qa12m;d2.ztpFlag=lv.ztpFlag;}
       });
     }}
@@ -829,10 +841,20 @@ function _reRenderAgent(){
       var _agP2=parseGladlyCSV(RAW_TEXTS.agent,tgt);
       if(_agP2&&_agP2.mtd&&_agP2.mtd.length){
         var PF2=['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
+        var matched3={};
         _agP2.mtd.forEach(function(live){
           var ll=normName(live.name).toLowerCase(), lf=ll.split(' ')[0], rl=resolveSheetName(normName(live.name));
           var def=D.agents.find(function(a){var dl=normName(a.name).toLowerCase();return dl===ll||dl.startsWith(lf+' ')||normName(a.name)===rl;});
-          if(def){PF2.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});}
+          if(def){PF2.forEach(function(f){if(live[f]!==undefined)def[f]=live[f];});def.noActivity=false;matched3[normName(def.name)]=true;}
+        });
+        // Same "no activity this period" treatment as the Section 1 / initial-load
+        // merges — see loadFromSheets() for the full rationale.
+        D.agents.forEach(function(def){
+          if(!matched3[normName(def.name)]){
+            def.noActivity=true;
+            PF2.forEach(function(f){def[f]=null;});
+            def.fcr=null; def.qa=null; def.lowHours=false;
+          }
         });
       } else if(note) {
         note.textContent='No data for '+MONTH_NAMES[SEL_AGENT_MONTH-1]+' — showing previous month';
@@ -841,13 +863,13 @@ function _reRenderAgent(){
     if(RAW_TEXTS.fcr){var _fr2=parseFCRSheetIdx(RAW_TEXTS.fcr,tgt);if(_fr2&&_fr2.agents){
       _fr2.agents.forEach(function(lv){var r=resolveSheetName(lv.name);
         var d=D.agents.find(function(a){return normName(a.name)===r;});
-        if(d&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;
+        if(d&&!d.noActivity&&lv.fcrMTD!==null)d.fcr=lv.fcrMTD;
       });
     }}
     if(RAW_TEXTS.qa||RAW_TEXTS.qa2||RAW_TEXTS.qa3){var _qa2=parseQASheetIdx(RAW_TEXTS.qa||'',RAW_TEXTS.qa2||'',RAW_TEXTS.qa3||'',tgt);if(_qa2){
       _qa2.forEach(function(lv){var r=resolveSheetName(lv.name);
         var d=D.agents.find(function(a){return normName(a.name)===r;});
-        if(d&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
+        if(d&&!d.noActivity&&lv.qaMTD!==null){d.qa=lv.qaMTD;d.ztpFlag=lv.ztpFlag;}
       });
     }}
   }
@@ -2121,8 +2143,9 @@ async function loadFromSheets(){
       var _agParsed = parseGladlyCSV(_rawAgentText);
       if(_agParsed){
         var PROD_FIELDS = ['avgCustDay','handleCust','chatAHT','missedChats','avgLogin','loginUtil','productivity','fulfilledByResp'];
-        function mergeAgents(liveArr, defArr){
+        function mergeAgents(liveArr, defArr, clearOnMiss){
           if(!liveArr.length || !defArr) return;
+          var matched = {};
           liveArr.forEach(function(live){
             var liveLower = normName(live.name).toLowerCase();
             var liveFirst = liveLower.split(' ')[0];
@@ -2135,11 +2158,31 @@ async function loadFromSheets(){
               // Populate email cache now — FCR & QA will use email as primary key
               if(live.email) _emailCache[live.email.toLowerCase().trim()] = normName(def.name);
               PROD_FIELDS.forEach(function(f){ if(live[f]!==undefined) def[f]=live[f]; });
+              def.noActivity = false;
+              matched[normName(def.name)] = true;
             }
           });
+          // A roster agent with zero matching live rows this period genuinely had no
+          // activity (on leave, departed, etc.) — show "no activity" instead of silently
+          // carrying forward her last real numbers. Only applies to the current-period
+          // (MTD) merge when the period overall DOES have live data for other agents —
+          // liveArr.length is already checked above, so a whole-month data gap (nobody
+          // has rows yet) never reaches here and the existing month-rollover fallback
+          // handles that case instead. The 12-month trailing merge (clearOnMiss=false)
+          // is an aggregate across many months, so missing just the current month
+          // shouldn't blank it.
+          if(clearOnMiss){
+            defArr.forEach(function(def){
+              if(!matched[normName(def.name)]){
+                def.noActivity = true;
+                PROD_FIELDS.forEach(function(f){ def[f] = null; });
+                def.fcr = null; def.qa = null; def.lowHours = false;
+              }
+            });
+          }
         }
-        mergeAgents(_agParsed.mtd, D.agents);
-        mergeAgents(_agParsed.all, D.agents12m);
+        mergeAgents(_agParsed.mtd, D.agents, true);
+        mergeAgents(_agParsed.all, D.agents12m, false);
       }
     }
 
@@ -2201,7 +2244,7 @@ async function loadFromSheets(){
         var def   = findAgent(D.agents);
         var def12 = findAgent(D.agents12m);
         if(def){
-          if(lv.fcrMTD!==null) def.fcr=lv.fcrMTD;
+          if(!def.noActivity && lv.fcrMTD!==null) def.fcr=lv.fcrMTD;
           if(emailKey) _emailCache[emailKey]=normName(def.name);
         }
         if(def12 && lv.fcr12m!==null) def12.fcr=lv.fcr12m;
@@ -2236,8 +2279,8 @@ async function loadFromSheets(){
         var def   = findAgent(D.agents);
         var def12 = findAgent(D.agents12m);
         if(def){
-          if(lv.qaMTD!==null) def.qa=lv.qaMTD;
-          def.ztpFlag=lv.ztpFlag;
+          if(!def.noActivity && lv.qaMTD!==null) def.qa=lv.qaMTD;
+          if(!def.noActivity) def.ztpFlag=lv.ztpFlag;
           if(emailKey) _emailCache[emailKey]=normName(def.name);
         }
         if(def12){
@@ -2684,12 +2727,13 @@ function renderAgents(){
     var qaMet=a.qa!==null&&a.qa!==undefined&&a.qa>=(a.qaTgt||0.90);
     var ahtMet=a.aht&&a.ahtTgt?a.aht<=a.ahtTgt:null;
     var code=getAgentCode(a.name);
+    var dotColor = a.noActivity ? '#94a3b8' : (qaMet?'#16a34a':'#dc2626');
     return '<tr>'
-      +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(qaMet?'#16a34a':'#dc2626')+';margin-right:6px;vertical-align:middle"></span>'+a.name+'</td>'
+      +'<td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+dotColor+';margin-right:6px;vertical-align:middle"></span>'+a.name+(a.noActivity?' <span style="color:var(--text3);font-size:9px;font-weight:700;background:var(--bg2);border-radius:8px;padding:1px 6px;margin-left:4px" title="No activity found for this agent in this period">No activity</span>':'')+'</td>'
       +'<td class="r"><code style="font-size:10px;color:var(--text3)">'+code+'</code></td>'
       +'<td><span style="'+pillClass(a.lob)+'">'+a.lob+'</span></td>'
       +'<td class="r">'+nullVal(a.avgCustDay,true)+'</td>'
-      +'<td class="r" style="color:'+(ahtMet===null?'var(--text1)':ahtMet?'var(--green)':'var(--red)')+'">'+((a.handleCust)||'—')+'</td>'
+      +'<td class="r" style="color:'+(a.noActivity?'var(--text3)':(ahtMet===null?'var(--text1)':ahtMet?'var(--green)':'var(--red)'))+'">'+((a.handleCust)||'—')+'</td>'
       +'<td class="r">'+((a.chatAHT)||'—')+'</td>'
       +'<td class="r" style="color:'+((a.missedChats||0)===0?'var(--green)':((a.missedChats||0)<=5?'var(--text1)':'var(--red)'))+'">'+((a.missedChats!==null&&a.missedChats!==undefined)?a.missedChats:'—')+'</td>'
       +'<td class="r"'+(a.lowHours?' style="color:var(--red);font-weight:700" title="Under 8h logged-in/active, or over 1h Away — below the ~8h expected after a 9h Goread shift with lunch/breaks"':'')+'>'+((a.avgLogin)||'—')+(a.lowHours?' ⚠':'')+'</td>'
