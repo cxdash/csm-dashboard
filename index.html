@@ -245,10 +245,9 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 .vs-trend-desc{font-size:11px;color:var(--text3);margin:-4px 0 10px}
 .vs-subhdr{display:flex;align-items:center;gap:8px;margin:18px 0 10px}
 .vs-subhdr-title{font-size:13px;font-weight:700;color:var(--text)}
-.vs-footnote{font-size:11.5px;color:var(--text2);line-height:1.65}
-.vs-footnote p{margin:0 0 7px}
-.vs-footnote b{color:var(--text)}
-.vs-footnote .vs-lobpill{display:inline-block;padding:0 7px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff;margin:0 2px 2px 0}
+.vs-footnote{font-size:11px;color:#4B4D5C;line-height:1.6;padding:12px 18px 14px}
+.vs-footnote b{color:var(--text);font-weight:700}
+.vs-footnote .vs-lobpill{display:inline-block;background:#F6E4EC;color:#C81E5C;border-radius:6px;padding:1px 7px;font-weight:600;font-size:10.5px;margin:0 2px;line-height:1.4}
 /* Agent login codes: admin only (2026-10-08) */
 .ag-code-col{display:none}
 body.is-admin .ag-code-col{display:table-cell}
@@ -3048,18 +3047,18 @@ function vsRenderTrends(agg, P){
 }
 function vsRenderFootnote(agg){
   var el = document.getElementById('vsFootnote'); if(!el) return;
-  function pill(l){ return '<span class="vs-lobpill" style="background:'+VS_COLORS[l]+'">'+l+'</span>'; }
+  function pill(l){ return '<span class="vs-lobpill">'+l+'</span>'; }
   var map = VS_LOBS.map(function(l){ return pill(l)+' '+VS_LOB_MAP[l].join(' / '); }).join(', ');
   var range = agg ? (vsShort(agg.minDate)+', '+agg.minDate.slice(0,4)+' through '+vsShort(agg.maxDate)+', '+agg.maxDate.slice(0,4)) : 'loading…';
   el.innerHTML =
-    '<p><b>Source:</b> Gladly ContactExport (row-level), the same data behind the Volume &amp; SLA Heatmap. Counted: <b>inbound email + chat</b> contacts that carry an SLA target. Volume is bucketed by <b>Queued At</b> (when the contact arrived), not when it was closed — that is what drives staffing.</p>'
-   +'<p><b>SLA %</b> = contacts flagged "Within SLA" ÷ all counted contacts. <b>Target 90%</b>, <b>benchmark 80%</b>; a LOB below 80% is flagged. <b>Avg wait</b> = Queued-to-Fulfilled (time from arrival until the contact is answered); a LOB averaging <b>12h+</b> is flagged. (The heatmap\'s wait column is Queued-to-Accepted, so its numbers run lower.)</p>'
-   +'<p><b>FCR:</b> a LOB\'s FCR is measured on that LOB\'s own inboxes, whoever handled them — the combined FCR of the agents assigned to those inboxes that month (an exact per-inbox FCR export is used automatically if added to FCR Data). An agent\'s FCR in Agent Productivity is their overall FCR across every inbox they worked. Overall/category FCR is volume-weighted across LOBs. Target 75%.</p>'
-   +'<p><b>Shares:</b> on each LOB row, Volume share and SLA miss share are measured against the LOB\'s own category; on category rows, against all LOBs. <b>SLA miss share</b> = the LOB\'s share of its category\'s missed-SLA contacts (who is pulling the category down).</p>'
-   +'<p><b>Period:</b> follows the Viewing period buttons. Month-to-date is compared with the same days of the previous month; a full month with the full previous month. Trends: Daily = last 14 days, Weekly = last 8 weeks (Mon–Sun), Monthly = trailing 6 months; partial weeks/months are marked.</p>'
-   +'<p><b>LOBs are mapped from inbox names:</b> '+map+'. <b>Categories:</b> Socials = Path Social, Crowd Ignite, High Social+Cloutify, Plixi, Goread; Deleter = Subdelete, Tweet Delete, Tweet Deleter, Tweet Eraser; Follows = FollowSpy + Recent Follow.</p>'
-   +'<p>Inboxes outside these ten LOBs (Admin Automations, Plixi / Cloutify / High Social Onboarding Insights, Plixi Billing, Crowd Ignite Admin / Facebook / Discovery Network, Path Facebook / Instagram, ViralPush, GeoPlugin, Pageflows, Mapize, BoldNotes, X Deleter, All The Picks) are not assigned to a LOB and are excluded — flag if any should roll into a LOB.</p>'
-   +'<p>Contact data covers '+range+'. Agents\' teams come from the CS Team roster.</p>';
+    '<b>Source:</b> Gladly ContactExport (row-level), the same data behind the Volume &amp; SLA Heatmap. Counted: <b>inbound email + chat</b> contacts that carry an SLA target. Volume is bucketed by <b>Queued At</b> (when the contact arrived), not when it was closed — that is what drives staffing.  '
+   +'<b>SLA %</b> = contacts flagged "Within SLA" ÷ all counted contacts. <b>Target 90%</b>, <b>benchmark 80%</b>; a LOB below 80% is flagged. <b>Avg wait</b> = Queued-to-Fulfilled (time from arrival until the contact is answered); a LOB averaging <b>12h+</b> is flagged. (The heatmap\'s wait column is Queued-to-Accepted, so its numbers run lower.)  '
+   +'<b>FCR:</b> a LOB\'s FCR is measured on that LOB\'s own inboxes, whoever handled them — the combined FCR of the agents assigned to those inboxes that month (an exact per-inbox FCR export is used automatically if added to FCR Data). An agent\'s FCR in Agent Productivity is their overall FCR across every inbox they worked. Overall/category FCR is volume-weighted across LOBs. Target 75%.  '
+   +'<b>Shares:</b> on each LOB row, Volume share and SLA miss share are measured against the LOB\'s own category; on category rows, against all LOBs. <b>SLA miss share</b> = the LOB\'s share of its category\'s missed-SLA contacts (who is pulling the category down).  '
+   +'<b>Period:</b> follows the Viewing period buttons. Month-to-date is compared with the same days of the previous month; a full month with the full previous month. Trends: Daily = last 14 days, Weekly = last 8 weeks (Mon–Sun), Monthly = trailing 6 months; partial weeks/months are marked.  '
+   +'<b>LOBs are mapped from inbox names:</b> '+map+'. <b>Categories:</b> Socials = Path Social, Crowd Ignite, High Social+Cloutify, Plixi, Goread; Deleter = Subdelete, Tweet Delete, Tweet Deleter, Tweet Eraser; Follows = FollowSpy + Recent Follow.  '
+   +'Inboxes outside these ten LOBs (Admin Automations, Plixi / Cloutify / High Social Onboarding Insights, Plixi Billing, Crowd Ignite Admin / Facebook / Discovery Network, Path Facebook / Instagram, ViralPush, GeoPlugin, Pageflows, Mapize, BoldNotes, X Deleter, All The Picks) are not assigned to a LOB and are excluded — flag if any should roll into a LOB.  '
+   +'Contact data covers '+range+'. Agents\' teams come from the CS Team roster.  ';
 }
 function vsSetMode(m){
   VS_STATE.mode = m;
