@@ -274,7 +274,7 @@ body.is-admin .ag-code-col{display:table-cell}
     </div>
   </div>
   <div class="hdr-right">
-    <span class="period-pill" id="periodPill">No data loaded</span>
+    <span class="period-pill" id="periodPill" title="Today's date">—</span>
     <span class="chip wait" id="sheetStatusChip" style="margin-top:0;font-size:10px">⏳ Loading…</span>
     <button id="refreshBtn" onclick="manualRefresh()" title="Re-fetch live data from Sheets" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:13px;color:var(--text3)">🔄</button>
     <button id="adminBtn" onclick="toggleAdmin()" title="Admin access" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:13px;color:var(--text3)">🔒</button>
@@ -3221,7 +3221,10 @@ function render(){
     var _pmTag=_parsedMonth(_PICKER_VALS.main);
     if(_pmTag) _dynPeriod=MONTH_NAMES[_pmTag.month-1]+' '+_pmTag.year;
   }
-  document.getElementById('periodPill').textContent=_dynPeriod;
+  // Header pill = today's date only (2026-10-08, per Lisa). Purely a label — the data shown is
+  // still driven by the Viewing period buttons / month-rollover logic, not by this pill.
+  var _today=new Date();
+  document.getElementById('periodPill').textContent=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][_today.getDay()]+', '+MONTHS[_today.getMonth()]+' '+_today.getDate()+', '+_today.getFullYear();
   document.getElementById('periodTag').textContent=_dynPeriod;
   document.getElementById('footerSource').textContent = D._filename || 'Loaded data';
   // Always restore picker active states after any full render
