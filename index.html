@@ -195,6 +195,56 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
 @media(max-width:1200px){.lob-grid{grid-template-columns:repeat(3,1fr)}.staff-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:960px){.two-col,.three-col{grid-template-columns:1fr}.esc-layout{grid-template-columns:1fr}.lob-grid{grid-template-columns:repeat(2,1fr)}.staff-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.main,.upload-zone{padding:12px}.kpi-strip{grid-template-columns:repeat(2,1fr)}.lob-grid{grid-template-columns:1fr}.staff-grid{grid-template-columns:1fr}}
+/* ══ VOLUME & SLA OVERVIEW — Sections 1–3 (rebuilt 2026-10-08) ══ */
+.vs-link{margin-left:auto;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid #bfdbfe;background:#eff6ff;padding:4px 11px;border-radius:6px;white-space:nowrap}
+.vs-link:hover{background:#dbeafe}
+.vs-meta{font-size:11px;color:var(--text3);margin:-4px 0 10px}
+.vs-meta b{color:var(--text2)}
+.vs-meta .warn{color:var(--amber);font-weight:600}
+.vs-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.vs-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.vs-card-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+.vs-card-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.vs-card-val{font-size:28px;font-weight:800;line-height:1;color:var(--text)}
+.vs-delta{font-size:11px;font-weight:700}
+.vs-delta.good{color:var(--green)}.vs-delta.bad{color:var(--red)}.vs-delta.flat{color:var(--text3)}
+.vs-card-sub{font-size:10px;color:var(--text3);margin-top:-4px}
+.vs-brk{border-top:1px solid var(--border);padding-top:9px;display:flex;flex-direction:column;gap:7px}
+.vs-brk-row{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;row-gap:3px;font-size:12px}
+.vs-brk-name{display:flex;align-items:center;gap:6px;color:var(--text2);font-weight:600}
+.vs-brk-val{font-weight:700;text-align:right;color:var(--text)}
+.vs-brk-val small{font-weight:500;color:var(--text3);font-size:10px;margin-left:4px}
+.vs-brk-bar{grid-column:1/-1;height:4px;background:#eef2f7;border-radius:99px;overflow:hidden}
+.vs-brk-bar>span{display:block;height:100%;border-radius:99px}
+.vs-flags{display:flex;flex-wrap:wrap;gap:4px;border-top:1px dashed var(--border);padding-top:8px}
+.vs-flag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--red-bg);color:var(--red);border:1px solid #fecaca}
+.vs-ok{font-size:10px;font-weight:700;color:var(--green)}
+.vs-g{color:var(--green)!important}.vs-w{color:var(--amber)!important}.vs-r{color:var(--red)!important}
+.vs-tbl td,.vs-tbl th{white-space:nowrap}
+.vs-tbl thead th{cursor:default}
+.vs-tbl thead th:hover{color:var(--text3)}
+.vs-tbl tr.vs-cat td{background:#f8fafc;font-weight:800;color:var(--text);border-top:1px solid var(--border)}
+.vs-tbl tr.vs-total td{background:var(--navy);color:#fff;font-weight:800}
+.vs-tbl tr.vs-total td .vs-sub,.vs-tbl tr.vs-total td .vs-dim{color:rgba(255,255,255,.6)}
+.vs-tbl td.vs-lob{padding-left:24px}
+.vs-sub{font-size:10px;color:var(--text3);font-weight:500;margin-left:4px}
+.vs-dim{color:var(--text3)}
+.vs-bar{display:flex;align-items:center;gap:7px;justify-content:flex-end}
+.vs-trk{position:relative;width:64px;height:6px;background:#eef2f7;border-radius:99px;overflow:visible}
+.vs-trk>span{position:absolute;left:0;top:0;bottom:0;border-radius:99px}
+.vs-trk>i{position:absolute;top:-3px;bottom:-3px;width:1.5px;background:#475569}
+.vs-trk>i.b{background:#d97706}
+.vs-pill{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700}
+.vs-pill.g{background:var(--green-bg);color:var(--green)}
+.vs-pill.w{background:var(--amber-bg);color:var(--amber)}
+.vs-pill.r{background:var(--red-bg);color:var(--red)}
+.vs-team{font-size:9px;font-weight:700;color:var(--text3);background:#f1f5f9;border-radius:3px;padding:1px 4px;margin-left:4px;text-transform:uppercase}
+.vs-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--text3);padding:9px 18px;border-top:1px solid var(--border)}
+.vs-legend b{color:var(--text2)}
+.vs-chart{position:relative;height:300px}
+.vs-trend-desc{font-size:11px;color:var(--text3);margin:-4px 0 10px}
+@media(max-width:1200px){.vs-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.vs-cards{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -204,7 +254,7 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="logo">CX</div>
     <div>
       <div class="hdr-title">CSM KPI Dashboard</div>
-      <div class="hdr-sub">Path Social &nbsp;·&nbsp; Crowd Ignite &nbsp;·&nbsp; High Social &nbsp;·&nbsp; Plixi &nbsp;·&nbsp; Goread &nbsp;·&nbsp; Follows — Email Support</div>
+      <div class="hdr-sub">Socials &nbsp;·&nbsp; Deleter &nbsp;·&nbsp; Follows &nbsp;(10 LOBs) — Email &amp; Chat Support</div>
     </div>
   </div>
   <div class="hdr-right">
@@ -244,12 +294,77 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <span id="monthNoteMain" style="font-size:11px;color:var(--amber)"></span>
   </div>
 
-  <!-- ══ 1 — TEAM OVERVIEW ══ -->
+  <!-- ══ 1 — TEAM OVERVIEW · VOLUME & SLA (rebuilt 2026-10-08) ══
+       Driven by the row-level ContactExport (RAW_TEXTS.contact) via renderVolSla().
+       LOBs / inbox mapping / categories / colors mirror the CX Volume & SLA Heatmap Tracker. -->
   <div class="sec-hdr">
     <div class="sec-bar" style="background:#0ea5e9"></div>
-    <div class="sec-label">1 — Team Overview</div>
+    <div class="sec-label">1 — Team Overview · Volume &amp; SLA</div>
     <div class="sec-tag" id="periodTag"></div>
+    <a class="vs-link" href="https://claude.ai/artifact/XhrVh5MsFYPEGYLc5v6Jcp" target="_blank" rel="noopener">Open full report · Volume &amp; SLA Heatmap ↗</a>
   </div>
+  <div class="vs-meta" id="vsMeta">⏳ Loading live contact data…</div>
+  <div class="vs-cards" id="vsCards">
+    <div class="vs-card"><div class="vs-card-lbl">Overall Volume</div><div class="vs-card-val">—</div></div>
+    <div class="vs-card"><div class="vs-card-lbl">Overall SLA</div><div class="vs-card-val">—</div></div>
+    <div class="vs-card"><div class="vs-card-lbl">Overall Avg Wait Time</div><div class="vs-card-val">—</div></div>
+    <div class="vs-card"><div class="vs-card-lbl">Overall FCR</div><div class="vs-card-val">—</div></div>
+  </div>
+
+  <!-- ══ 2 — LOB PERFORMANCE ══ -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:var(--accent)"></div>
+    <div class="sec-label">2 — LOB Performance</div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><div><div class="card-title">Performance by LOB</div><div class="card-sub" id="vsTblSub">Grouped by category · shares are within each category</div></div></div>
+    <div class="card-body no-pad" style="overflow-x:auto" id="vsTable"><div class="empty"><strong>Loading…</strong></div></div>
+    <div class="vs-legend">
+      <span><b>SLA:</b> target ≥ 90% · benchmark 80% · <span class="vs-r">⚠ flagged below 80%</span></span>
+      <span><b>Avg wait:</b> Queued → Fulfilled · <span class="vs-r">⚠ flagged at 12h+</span></span>
+      <span><b>SLA miss share:</b> the LOB's share of its category's missed-SLA contacts</span>
+      <span><b>FCR:</b> target ≥ 75% · LOB FCR = conversations on that LOB's inboxes (by agents assigned to the inbox until an inbox-level FCR export is added) · agent FCR in Section 4 = each agent's overall FCR</span>
+    </div>
+  </div>
+
+  <!-- ══ 3 — VOLUME & SLA TRENDS ══ -->
+  <div class="sec-hdr">
+    <div class="sec-bar" style="background:#8b5cf6"></div>
+    <div class="sec-label">3 — Volume &amp; SLA Trends</div>
+    <div class="view-toggle" style="margin-left:auto">
+      <button class="view-btn on" id="vsModeCount" onclick="vsSetMode('count')">Count</button>
+      <button class="view-btn" id="vsModeShare" onclick="vsSetMode('share')">Share %</button>
+    </div>
+  </div>
+  <div class="vs-trend-desc" id="vsTrendDesc">Count: volume stacked by LOB, with the combined SLA % line. Hover a slice for its % of all LOBs.</div>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-hdr"><div><div class="card-title">Daily trend</div><div class="card-sub">Last 14 days, ending the last day of the viewing period with data</div></div></div>
+      <div class="card-body"><div class="vs-chart"><canvas id="vsDaily"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><div><div class="card-title">Weekly trend</div><div class="card-sub">Past 8 weeks (Mon–Sun), ending with the period's last week</div></div></div>
+      <div class="card-body"><div class="vs-chart"><canvas id="vsWeekly"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><div><div class="card-title">Monthly trend</div><div class="card-sub">Trailing 6 months, ending with the viewing period (partial months are marked)</div></div></div>
+      <div class="card-body"><div class="vs-chart"><canvas id="vsMonthly"></canvas></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <div><div class="card-title">SLA % trend by LOB</div><div class="card-sub" id="vsSlaLobSub">One line per LOB; dashed black = all LOBs combined. Green band = 90% target and above; amber dashed = 80% benchmark.</div></div>
+      <div class="view-toggle">
+        <button class="view-btn" id="vsGranDaily" onclick="vsSetGran('daily')">Daily</button>
+        <button class="view-btn" id="vsGranWeekly" onclick="vsSetGran('weekly')">Weekly</button>
+        <button class="view-btn on" id="vsGranMonthly" onclick="vsSetGran('monthly')">Monthly</button>
+      </div>
+    </div>
+    <div class="card-body"><div class="vs-chart"><canvas id="vsSlaLob"></canvas></div></div>
+  </div>
+
+  <!-- ══ LEGACY Sections 1–3 markup (hidden, kept so older render functions still find their elements) ══ -->
+  <div id="legacyOverview" style="display:none" aria-hidden="true">
   <div class="kpi-strip" id="kpiStrip">
     <div class="kpi"><div class="kpi-lbl">Total Volume</div><div class="kpi-val" id="kVol">—</div><div class="kpi-sub" id="kVolSub">inbound</div></div>
     <div class="kpi"><div class="kpi-lbl">Avg SLA</div><div class="kpi-val" id="kSLA">—</div><div class="kpi-sub">Target ≥ 80%</div></div>
@@ -259,34 +374,10 @@ footer{text-align:center;padding:14px;font-size:11px;color:var(--text3);border-t
     <div class="kpi"><div class="kpi-lbl">Avg NPS</div><div class="kpi-val" id="kNPS">—</div><div class="kpi-sub">Target ≥ 30</div></div>
     <div class="kpi kpi-hoverable" id="kpiAgentsCard"><div class="kpi-lbl">Active Agents</div><div class="kpi-val" id="kAgents">—</div><div class="kpi-sub">This period · hover for LOB breakdown</div><div class="kpi-tooltip" id="kAgentsTooltip"></div></div>
   </div>
-
-  <!-- ══ 2 — LOB PERFORMANCE ══ -->
-  <div class="sec-hdr">
-    <div class="sec-bar" style="background:var(--accent)"></div>
-    <div class="sec-label">2 — LOB Performance</div>
-  </div>
-  <div class="lob-grid" id="lobGrid">
-    <div class="card" style="grid-column:1/-1"><div class="empty"><strong>No data loaded</strong>Upload your monthly xlsx to populate</div></div>
-  </div>
-
-  <!-- ══ 3 — VOLUME & TRENDS ══ -->
-  <div class="sec-hdr">
-    <div class="sec-bar" style="background:#8b5cf6"></div>
-    <div class="sec-label">3 — Volume &amp; Trends</div>
-    <div class="view-toggle" style="margin-left:auto">
-      <button class="view-btn on" id="btnMoM" onclick="setChartView('mom')">MoM</button>
-      <button class="view-btn" id="btnWoW" onclick="setChartView('wow')">WoW</button>
-    </div>
-  </div>
-  <div class="two-col">
-    <div class="card">
-      <div class="card-hdr"><div><div class="card-title" id="volChartTitle">Monthly Inbound Volume by LOB</div><div class="card-sub" id="volChartSub">Jan – Jun · EMAIL + CHAT inbound</div></div></div>
-      <div class="card-body"><div class="chart-box"><canvas id="cVol"></canvas></div></div>
-    </div>
-    <div class="card">
-      <div class="card-hdr"><div><div class="card-title" id="slaChartTitle">Monthly SLA% Trend by LOB</div><div class="card-sub" id="slaChartSub">Jan – Jun · First response SLA</div></div></div>
-      <div class="card-body"><div class="chart-box"><canvas id="cSla"></canvas></div></div>
-    </div>
+  <div class="lob-grid" id="lobGrid"></div>
+  <button class="view-btn on" id="btnMoM"></button><button class="view-btn" id="btnWoW"></button>
+  <div id="volChartTitle"></div><div id="volChartSub"></div><div class="chart-box"><canvas id="cVol"></canvas></div>
+  <div id="slaChartTitle"></div><div id="slaChartSub"></div><div class="chart-box"><canvas id="cSla"></canvas></div>
   </div>
 
   <!-- ══ MONTH PICKER (Agent section) ══ -->
@@ -417,6 +508,15 @@ var AGENT_CODE_MAP = {
   'Dencio Almag, Jr.':'Dencio6574gr',  'Moses Eragbai':'Moses5552gr',        'Nay Nuttida':'Nay3547gr',
   'Suzette Mejia':'Suzette4527gr',
   'Jasmine Alcantara':'Jasmine2201sd', 'John John Baylon':'JohnJohn3312sd',  'Bianca Alegre':'Bianca4498sd',
+  // Subdelete — added 2026-10-08 per Lisa (new hires / trainees)
+  'Rachel Ann Sabalo':'Rachel5163sd',
+  'Beatrix Genove':'Beatrix7240sd',
+  'Daveyjay Omar':'Daveyjay3895sd',
+  'Michelle Guillermo':'Michelle6018sd',
+  'Jennifer Rei Teves-Malacad':'Jennifer4472sd',
+  'Kahmille Dela Cruz':'Kahmille8306sd',
+  'Thelma Sestoso':'Thelma2751sd',
+  'Yuan Calamiong':'Yuan9184sd',
   'Roynalyn Malcampo':'Roynalyn6514fo','Geal Ann Lorico':'Geal2674fo',       'Jessica Ibañez':'Jessica2519fo'
 };
 var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -483,11 +583,11 @@ var DEFAULT_DATA = {
     {name:'Abigail Aquino',        lob:'Path Social', tickets:618, aht:5.97,ahtTgt:5.0,qa:0.9509,qaTgt:0.90,csat:null,fcr:0.5837,occ:0.81,adh:0.97, avgCustDay:37, handleCust:'5m 58s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'7h 44m',loginUtil:0.896,productivity:0.81,fulfilledByResp:587},
     {name:'Benedict Catbagan',     lob:'Path Social', tickets:682, aht:5.58,ahtTgt:5.0,qa:0.9155,qaTgt:0.90,csat:null,fcr:0.5171,occ:0.81,adh:0.97, avgCustDay:62, handleCust:'5m 35s', chatAHT:'6m 20s',  missedChats:2,  avgLogin:'8h 9m', loginUtil:0.909,productivity:0.78,fulfilledByResp:654},
     {name:'Kaila May Membredo',    lob:'Path Social', tickets:677, aht:6.18,ahtTgt:5.0,qa:0.9260,qaTgt:0.90,csat:null,fcr:0.5203,occ:0.85,adh:0.97, avgCustDay:52, handleCust:'6m 11s', chatAHT:'6m 18s',  missedChats:14, avgLogin:'8h 15m',loginUtil:0.909,productivity:0.85,fulfilledByResp:633},
-    {name:'Jennilen Manosa',       lob:'Path Social', tickets:28,  aht:5.52,ahtTgt:5.0,qa:0.9581,qaTgt:0.90,csat:null,fcr:0.5964,occ:0.38,adh:0.97, avgCustDay:32, handleCust:'5m 31s', chatAHT:null,       missedChats:0,  avgLogin:'8h 13m',loginUtil:0.912,productivity:0.34,fulfilledByResp:22},
+    {name:'Jennilen Manosa',       lob:'Crowd Ignite', tickets:28,  aht:5.52,ahtTgt:5.0,qa:0.9581,qaTgt:0.90,csat:null,fcr:0.5964,occ:0.38,adh:0.97, avgCustDay:32, handleCust:'5m 31s', chatAHT:null,       missedChats:0,  avgLogin:'8h 13m',loginUtil:0.912,productivity:0.34,fulfilledByResp:22},
     {name:'Pherbia Mayor',               lob:'Path Social', tickets:237, aht:7.30,ahtTgt:5.0,qa:0.9485,qaTgt:0.90,csat:null,fcr:0.4027,occ:0.61,adh:0.97,esc:true, avgCustDay:22, handleCust:'7m 18s', chatAHT:null,       missedChats:0,  avgLogin:'7h 50m',loginUtil:0.891,productivity:0.38,fulfilledByResp:221},
     {name:'Janelle Decena',        lob:'Path Social', tickets:270, aht:3.90,ahtTgt:5.0,qa:0.9929,qaTgt:0.90,csat:null,fcr:0.3732,occ:0.23,adh:0.97,esc:true, avgCustDay:25, handleCust:'3m 54s', chatAHT:null,       missedChats:0,  avgLogin:'8h 12m',loginUtil:0.989,productivity:0.22,fulfilledByResp:171},
     {name:'Mark Lora',             lob:'Subdelete',tickets:304, aht:6.13,ahtTgt:5.0,qa:0.9620,qaTgt:0.90,csat:null,fcr:0.4633,occ:0.62,adh:0.97, avgCustDay:30, handleCust:'6m 08s', chatAHT:'10m 24s', missedChats:0,  avgLogin:'8h 03m',loginUtil:0.901,productivity:0.429,fulfilledByResp:247}, // transferred from Crowd Ignite 2026-08
-    {name:'Sonja Faye Regodon Lomarquez',                  lob:'Crowd Ignite',tickets:291, aht:4.02,ahtTgt:5.0,qa:0.9760,qaTgt:0.90,csat:null,fcr:0.5051,occ:0.44,adh:0.97, avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  avgLogin:'6h 52m',loginUtil:0.930,productivity:0.235,fulfilledByResp:175},
+    {name:'Sonja Faye Regodon Lomarquez',                  lob:'Path Social',tickets:291, aht:4.02,ahtTgt:5.0,qa:0.9760,qaTgt:0.90,csat:null,fcr:0.5051,occ:0.44,adh:0.97, avgCustDay:22, handleCust:'4m 01s', chatAHT:'8m 57s',  missedChats:1,  avgLogin:'6h 52m',loginUtil:0.930,productivity:0.235,fulfilledByResp:175},
     {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:234, aht:4.75,ahtTgt:5.0,qa:0.9912,qaTgt:0.90,csat:null,fcr:0.5535,occ:0.30,adh:0.97, avgCustDay:21, handleCust:'4m 45s', chatAHT:'7m 00s',  missedChats:3,  avgLogin:'8h 07m',loginUtil:0.877,productivity:0.237,fulfilledByResp:139},
     {name:'Rosie Eslao',           lob:'High Social', tickets:585, aht:2.72,ahtTgt:5.0,qa:0.8960, qaTgt:0.90,csat:null,fcr:0.4814,occ:0.40,adh:0.97, avgCustDay:58, handleCust:'2m 43s', chatAHT:'5m 11s',  missedChats:0,  avgLogin:'7h 39m',loginUtil:0.952,productivity:0.363,fulfilledByResp:281},
     {name:'Rockwell De Mesa',      lob:'High Social', tickets:426, aht:3.45,ahtTgt:5.0,qa:0.9600, qaTgt:0.90,csat:null,fcr:0.4578,occ:0.39,adh:0.97, avgCustDay:47, handleCust:'3m 27s', chatAHT:'7m 32s',  missedChats:0,  avgLogin:'8h 07m',loginUtil:0.918,productivity:0.367,fulfilledByResp:246},
@@ -511,6 +611,14 @@ var DEFAULT_DATA = {
     {name:'Jasmine Alcantara',     lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // new to Subdelete 2026-08; name per Lisa ("Jasmine Alcantara, I think") — CONFIRM SPELLING; no historical data yet
     {name:'John John Baylon',      lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // new to Subdelete 2026-08; no historical data yet
     {name:'Bianca Alegre',        lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // transferred from Path Social 2026-08 (previously not in DEFAULT_DATA at all); no historical data yet
+    {name:'Rachel Ann Sabalo',      lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · rachel@pathsocial.com
+    {name:'Beatrix Genove',         lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · beatrix@adly.com
+    {name:'Daveyjay Omar',          lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · daveyjay@adly.com
+    {name:'Michelle Guillermo',     lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · michelle@pathsocial.com · trainee wk of Sep 28
+    {name:'Jennifer Rei Teves-Malacad',  lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · jennifer@pathsocial.com · trainee wk of Sep 28
+    {name:'Kahmille Dela Cruz',     lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · kahmille@pathsocial.com · trainee wk of Sep 28
+    {name:'Thelma Sestoso',         lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · thelma@smodin.io · trainee wk of Sep 28
+    {name:'Yuan Calamiong',         lob:'Subdelete',   tickets:0, aht:0,ahtTgt:5.0,qa:null, qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · yuan@pathsocial.com · incoming trainee wk of Oct 12
     {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:349, aht:5.98,ahtTgt:5.0,qa:0.9600,qaTgt:0.90,csat:null,fcr:0.4045,occ:0.60,adh:0.97, avgCustDay:32, handleCust:'5m 59s', chatAHT:'6m 59s',  missedChats:2,  avgLogin:'8h 09m',loginUtil:0.909,productivity:0.428,fulfilledByResp:296},
     {name:'Geal Ann Lorico',       lob:'Follows',     tickets:203, aht:5.98,ahtTgt:5.0,qa:0.9742,qaTgt:0.90,csat:null,fcr:0.3804,occ:0.40,adh:0.97, avgCustDay:20, handleCust:'5m 59s', chatAHT:'7m 16s',  missedChats:0,  avgLogin:'8h 02m',loginUtil:0.890,productivity:0.283,fulfilledByResp:184},
     {name:'Jessica Ibañez',        lob:'Follows',     tickets:64,  aht:9.40,ahtTgt:5.0,qa:0.801,qaTgt:0.90,csat:null,fcr:0.6115,occ:0.71,adh:0.97,partTime:true, avgCustDay:4,  handleCust:'9m 24s', chatAHT:null,       missedChats:0,  avgLogin:'5h 14m',loginUtil:0.957,productivity:0.092,fulfilledByResp:57},
@@ -523,11 +631,11 @@ var DEFAULT_DATA = {
     {name:'Abigail Aquino',        lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:49, handleCust:'6m 17s', chatAHT:'8m 10s',  missedChats:0,  avgLogin:'7h 27m',loginUtil:0.904,productivity:0.759,fulfilledByResp:46},
     {name:'Benedict Catbagan',     lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:50, handleCust:'6m 04s', chatAHT:'7m 22s',  missedChats:0,  avgLogin:'7h 46m',loginUtil:0.895,productivity:0.734,fulfilledByResp:49},
     {name:'Kaila May Membredo',    lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:60, handleCust:'5m 12s', chatAHT:'7m 11s',  missedChats:1,  avgLogin:'8h 04m',loginUtil:0.893,productivity:0.724,fulfilledByResp:54},
-    {name:'Jennilen Manosa',       lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:58, handleCust:'5m 08s', chatAHT:'7m 59s',  missedChats:1,  avgLogin:'7h 54m',loginUtil:0.893,productivity:0.699,fulfilledByResp:53},
+    {name:'Jennilen Manosa',       lob:'Crowd Ignite', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:58, handleCust:'5m 08s', chatAHT:'7m 59s',  missedChats:1,  avgLogin:'7h 54m',loginUtil:0.893,productivity:0.699,fulfilledByResp:53},
     {name:'Pherbia Mayor',               lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97,esc:true, avgCustDay:57, handleCust:'5m 41s', chatAHT:'6m 48s',  missedChats:0,  avgLogin:'8h 09m',loginUtil:0.883,productivity:0.753,fulfilledByResp:52},
     {name:'Janelle Decena',        lob:'Path Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97,esc:true, avgCustDay:32, handleCust:'3m 46s', chatAHT:'58m 57s', missedChats:0,  avgLogin:'7h 47m',loginUtil:0.968,productivity:0.264,fulfilledByResp:25},
     {name:'Mark Lora',             lob:'Subdelete',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:59, handleCust:'5m 35s', chatAHT:'6m 45s',  missedChats:0,  avgLogin:'7h 52m',loginUtil:0.893,productivity:0.785,fulfilledByResp:56}, // transferred from Crowd Ignite 2026-08
-    {name:'Sonja Faye Regodon Lomarquez',                  lob:'Crowd Ignite',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:41, handleCust:'6m 08s', chatAHT:'7m 47s',  missedChats:1,  avgLogin:'7h 07m',loginUtil:0.909,productivity:0.653,fulfilledByResp:37},
+    {name:'Sonja Faye Regodon Lomarquez',                  lob:'Path Social',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:41, handleCust:'6m 08s', chatAHT:'7m 47s',  missedChats:1,  avgLogin:'7h 07m',loginUtil:0.909,productivity:0.653,fulfilledByResp:37},
     {name:'Mariam Riasat',         lob:'Crowd Ignite',tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:45, handleCust:'5m 25s', chatAHT:'5m 59s',  missedChats:0,  avgLogin:'7h 56m',loginUtil:0.908,productivity:0.566,fulfilledByResp:40},
     {name:'Rosie Eslao',           lob:'High Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:51, handleCust:'4m 09s', chatAHT:'7m 06s',  missedChats:0,  avgLogin:'8h 00m',loginUtil:0.955,productivity:0.458,fulfilledByResp:38},
     {name:'Rockwell De Mesa',      lob:'High Social', tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:52, handleCust:'4m 25s', chatAHT:'5m 37s',  missedChats:0,  avgLogin:'7h 00m',loginUtil:0.904,productivity:0.610,fulfilledByResp:46},
@@ -551,6 +659,14 @@ var DEFAULT_DATA = {
     {name:'Jasmine Alcantara',     lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // new to Subdelete 2026-08; CONFIRM SPELLING; no historical data yet
     {name:'John John Baylon',      lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // new to Subdelete 2026-08; no historical data yet
     {name:'Bianca Alegre',        lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // transferred from Path Social 2026-08; no historical data yet
+    {name:'Rachel Ann Sabalo',      lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · rachel@pathsocial.com
+    {name:'Beatrix Genove',         lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · beatrix@adly.com
+    {name:'Daveyjay Omar',          lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · daveyjay@adly.com
+    {name:'Michelle Guillermo',     lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · michelle@pathsocial.com · trainee wk of Sep 28
+    {name:'Jennifer Rei Teves-Malacad',  lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · jennifer@pathsocial.com · trainee wk of Sep 28
+    {name:'Kahmille Dela Cruz',     lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · kahmille@pathsocial.com · trainee wk of Sep 28
+    {name:'Thelma Sestoso',         lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · thelma@smodin.io · trainee wk of Sep 28
+    {name:'Yuan Calamiong',         lob:'Subdelete',   tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null,loginUtil:null,productivity:null,fulfilledByResp:null}, // added 2026-10-08 · yuan@pathsocial.com · incoming trainee wk of Oct 12
     {name:'Roynalyn Malcampo',     lob:'Follows',     tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:54, handleCust:'6m 27s', chatAHT:'7m 19s',  missedChats:0,  avgLogin:'8h 10m',loginUtil:0.903,productivity:0.781,fulfilledByResp:51},
     {name:'Geal Ann Lorico',       lob:'Follows',     tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97, avgCustDay:53, handleCust:'5m 21s', chatAHT:'7m 19s',  missedChats:0,  avgLogin:'7h 37m',loginUtil:0.894,productivity:0.697,fulfilledByResp:49},
     {name:'Jessica Ibañez',        lob:'Follows',     tickets:0,aht:0,ahtTgt:5.0,qa:null,qaTgt:0.90,csat:null,fcr:null,occ:0,adh:0.97,partTime:true, avgCustDay:6,  handleCust:'7m 40s', chatAHT:null,       missedChats:0,  avgLogin:'1h 42m',loginUtil:0.906,productivity:0.519,fulfilledByResp:5},
@@ -829,6 +945,7 @@ function _reRenderMain(){
     }
   }
   renderKPIs(); renderLOB();
+  renderVolSla(); // Sections 1–3 follow the main month picker
 }
 
 function _reRenderAgent(){
@@ -1621,7 +1738,18 @@ var SHEET_NAME_ALIASES = {
   'Monica':'Monica Tandoc',
   'Monica Cruz':'Monica Tandoc',
   'Nay Nuttida Thongyai':'Nay Nuttida',
-  'John Baylon':'John John Baylon'
+  'John Baylon':'John John Baylon',
+  // 2026-10-08: Gladly sometimes records a new agent's Name as their email, and the FCR sheet
+  // has Beatrix as first name only — map both to the roster name so Section 4 matches them.
+  'Beatrix':'Beatrix Genove',
+  'rachel@pathsocial.com':'Rachel Ann Sabalo',
+  'beatrix@adly.com':'Beatrix Genove',
+  'daveyjay@adly.com':'Daveyjay Omar',
+  'michelle@pathsocial.com':'Michelle Guillermo',
+  'jennifer@pathsocial.com':'Jennifer Rei Teves-Malacad',
+  'kahmille@pathsocial.com':'Kahmille Dela Cruz',
+  'thelma@smodin.io':'Thelma Sestoso',
+  'yuan@pathsocial.com':'Yuan Calamiong'
 };
 function resolveSheetName(n){ return SHEET_NAME_ALIASES[normName(n)] || normName(n); }
 var _emailCache = {};
@@ -1868,6 +1996,9 @@ function parseFCRSheetIdx(text, tgt){
     if(f.length<8) continue;
     var name=normName((f[3]||'').trim());
     if(!name) continue;
+    // Agent FCR = overall FCR across ALL inboxes (2026-10-08, per Lisa). Skip any inbox-filtered
+    // export rows (Inboxes Filter ≠ "All Inboxes") so they never double-count into the agent's score.
+    var _inbF=(f[1]||'').trim(); if(_inbF && _inbF!=='All Inboxes') continue;
     var email=(f[8]||'').trim().toLowerCase();
     var key=(email&&email.indexOf('@')>=0)?email:name;
     var dp=(f[4]||'').trim().split('/');
@@ -2083,6 +2214,7 @@ async function loadFromSheets(){
     // give any failed fetch one retry with a longer timeout before giving up. See
     // project memory (data update rules) for the full incident writeup.
     var cb = '&_cb='+Date.now(); // cache-buster prevents stale redirects
+    var _csTeamP = _fetchCSTeamText(); // CS Team roster (team + auto-add new agents), 2026-10-08
     function doFetch(url, timeoutMs){
       var u = url + cb;
       var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
@@ -2136,6 +2268,9 @@ async function loadFromSheets(){
     RAW_TEXTS.vol = _rawVolText;
     RAW_TEXTS.sla = _rawSLAText;
 
+    // CS Team roster first, so newly listed agents exist before the live merge (2026-10-08)
+    try{ var _csTeamText = await _csTeamP; if(_csTeamText) _setCSTeam(_csTeamText); }catch(e){}
+    ensureRosterAgents();
     // Agent reporting — merge immediately and populate _emailCache so FCR/QA can match by email
     if(_rawAgentText){
       D.agents    = JSON.parse(JSON.stringify(DEFAULT_DATA.agents));
@@ -2401,11 +2536,618 @@ function showUpdBar(ts){
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
+// ══ VOLUME & SLA OVERVIEW — Sections 1–3 (rebuilt 2026-10-08, per Lisa) ═══════════
+// Single source: the row-level ContactExport (RAW_TEXTS.contact) — Inbound, Email+Chat,
+// SLA target ≠ 0, bucketed by Queued date. SLA met = "Within SLA" flag (Col R = 1, same
+// rule as parseSLAFromContacts). Avg wait = Queued-to-Fulfilled seconds (Col L).
+// LOB→inbox map, categories and colors mirror the CX Volume & SLA Heatmap Tracker artifact,
+// so the dashboard and the full report agree. Sections 4–7 do NOT read anything defined here.
+var VS_HEATMAP_URL = 'https://claude.ai/artifact/XhrVh5MsFYPEGYLc5v6Jcp';
+var VS_LOB_MAP = {
+  'Path Social':         ['Path - General','Path - Escalations','Path - Onboarding Insights','Path - Billing','Path - Failed Payments','Path - Win-Back'],
+  'Crowd Ignite':        ['Crowd Ignite - General','Crowd Ignite - Onboarding Insights'],
+  'Follows':             ['FollowSpy - General','Recent Follow - General'],
+  'Subdelete':           ['Subdelete - General'],
+  'Plixi':               ['Plixi - General'],
+  'High Social+Cloutify':['High Social - Escalations','High Social - General','Cloutify - General'],
+  'Goread':              ['Goread - General'],
+  'Tweet Delete':        ['Tweet Delete - General'],
+  'Tweet Deleter':       ['Tweet Deleter - General'],
+  'Tweet Eraser':        ['Tweet Eraser - General']
+};
+var VS_LOBS = Object.keys(VS_LOB_MAP);
+var VS_COLORS = {
+  'Path Social':'#C81E5C','Crowd Ignite':'#7C3AED','Follows':'#64748B','Subdelete':'#0E9F6E',
+  'Plixi':'#F5A524','High Social+Cloutify':'#F0722F','Goread':'#3B82F6',
+  'Tweet Delete':'#14B8A6','Tweet Deleter':'#84CC16','Tweet Eraser':'#A16207'
+};
+var VS_CATS = [
+  {name:'Socials', color:'#2563EB', lobs:['Path Social','Crowd Ignite','High Social+Cloutify','Plixi','Goread']},
+  {name:'Deleter', color:'#0E9F6E', lobs:['Subdelete','Tweet Delete','Tweet Deleter','Tweet Eraser']},
+  {name:'Follows', color:'#64748B', lobs:['Follows']}
+];
+var VS_SLA_TGT = 0.90, VS_SLA_BENCH = 0.80, VS_WAIT_FLAG = 12*3600, VS_FCR_TGT = 0.75;
+var VS_AGG_KEY = 'csm_volsla_agg_v1';
+var VS_AGG = null, VS_AGG_SRC_LEN = -1;
+var VS_STATE = {mode:'count', slaGran:'monthly'};
+var VS_CHARTS = {};
+var VS_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function vsCatOf(lob){ for(var i=0;i<VS_CATS.length;i++){ if(VS_CATS[i].lobs.indexOf(lob)>=0) return VS_CATS[i]; } return null; }
+
+// ── Aggregate the ContactExport once into {day → per-LOB [vol, met, waitSum, waitN]} ──
+function vsBuildAgg(text){
+  var inb = {};
+  VS_LOBS.forEach(function(l,i){ VS_LOB_MAP[l].forEach(function(n){ inb[n.toLowerCase()] = i; }); });
+  var days = {}, lines = text.split('\n'), minD = null, maxD = null;
+  for(var i=1;i<lines.length;i++){
+    var s = lines[i];
+    if(s.indexOf('INBOUND')<0 && s.indexOf('nbound')<0) continue;
+    var f = s.indexOf('"')>=0 ? parseCSVRow(s) : s.split(',');
+    if(f.length<18) continue;
+    if((f[4]||'').trim().toUpperCase()!=='INBOUND') continue;
+    var ch = (f[3]||'').trim().toUpperCase();
+    if(ch!=='EMAIL' && ch!=='CHAT') continue;
+    if(!parseFloat((f[10]||'').replace(/,/g,''))) continue;
+    var li = inb[(f[9]||'').trim().toLowerCase()];
+    if(li===undefined) continue;
+    var dp = (f[16]||'').trim().split(' ')[0].split('/');
+    if(dp.length<3) continue;
+    var iso = dp[2]+'-'+('0'+dp[0]).slice(-2)+'-'+('0'+dp[1]).slice(-2);
+    if(!/^\d{4}-\d\d-\d\d$/.test(iso)) continue;
+    var day = days[iso] || (days[iso] = VS_LOBS.map(function(){ return [0,0,0,0]; }));
+    var a = day[li];
+    a[0]++;
+    if((f[17]||'').trim()==='1') a[1]++;
+    var w = parseFloat(f[11]);
+    if(!isNaN(w) && w>=0){ a[2]+=w; a[3]++; }
+    if(!minD || iso<minD) minD = iso;
+    if(!maxD || iso>maxD) maxD = iso;
+  }
+  if(!maxD) return null;
+  for(var k in days){ days[k].forEach(function(a){ a[2] = Math.round(a[2]); }); }
+  return {lobs:VS_LOBS.slice(), days:days, minDate:minD, maxDate:maxD, builtAt:Date.now()};
+}
+function vsGetAgg(){
+  if(RAW_TEXTS.contact && RAW_TEXTS.contact.length!==VS_AGG_SRC_LEN){
+    var a = null;
+    try{ a = vsBuildAgg(RAW_TEXTS.contact); }catch(e){ console.warn('[VolSLA] aggregate failed:', e); }
+    VS_AGG_SRC_LEN = RAW_TEXTS.contact.length;
+    if(a){ VS_AGG = a; try{ localStorage.setItem(VS_AGG_KEY, JSON.stringify(a)); }catch(e){} }
+  }
+  if(!VS_AGG){
+    try{
+      var c = localStorage.getItem(VS_AGG_KEY);
+      if(c){ var p = JSON.parse(c); if(p && p.lobs && p.lobs.join('|')===VS_LOBS.join('|')){ VS_AGG = p; VS_AGG._cached = true; } }
+    }catch(e){}
+  }
+  return VS_AGG;
+}
+
+// ── Date helpers (ISO strings, UTC-safe) ──
+function vsD(iso){ var p = iso.split('-'); return new Date(Date.UTC(+p[0], +p[1]-1, +p[2])); }
+function vsIso(d){ return d.toISOString().slice(0,10); }
+function vsAdd(iso, n){ var d = vsD(iso); d.setUTCDate(d.getUTCDate()+n); return vsIso(d); }
+function vsMonthEnd(y, m){ return vsIso(new Date(Date.UTC(y, m, 0))); }
+function vsMonday(iso){ var d = vsD(iso); return vsAdd(iso, -((d.getUTCDay()+6)%7)); }
+function vsShort(iso){ var d = vsD(iso); return VS_MON[d.getUTCMonth()]+' '+d.getUTCDate(); }
+function vsRange(a, b){
+  var da = vsD(a), db = vsD(b);
+  if(da.getUTCMonth()===db.getUTCMonth()) return VS_MON[da.getUTCMonth()]+' '+da.getUTCDate()+(a===b?'':'–'+db.getUTCDate());
+  return vsShort(a)+' – '+vsShort(b);
+}
+
+// ── Aggregation helpers ──
+function vsSum(agg, start, end){
+  var out = VS_LOBS.map(function(){ return [0,0,0,0]; });
+  for(var k in agg.days){
+    if(k<start || k>end) continue;
+    agg.days[k].forEach(function(a,i){ var o = out[i]; o[0]+=a[0]; o[1]+=a[1]; o[2]+=a[2]; o[3]+=a[3]; });
+  }
+  return out;
+}
+function vsRoll(rows, lobs){
+  var o = [0,0,0,0];
+  lobs.forEach(function(l){ var a = rows[VS_LOBS.indexOf(l)]; o[0]+=a[0]; o[1]+=a[1]; o[2]+=a[2]; o[3]+=a[3]; });
+  return o;
+}
+function vsSt(a){ return {vol:a[0], met:a[1], miss:a[0]-a[1], sla:a[0]?a[1]/a[0]:null, wait:a[3]?a[2]/a[3]:null}; }
+
+// ── Viewing period (uses the Sections 1&2 month picker: MTD or one of the last 6 months) ──
+function vsPeriod(agg){
+  var now = new Date(), y, m;
+  if(SEL_MONTH){ y = SEL_YEAR; m = SEL_MONTH; } else { y = now.getFullYear(); m = now.getMonth()+1; }
+  var start = y+'-'+('0'+m).slice(-2)+'-01', end = vsMonthEnd(y, m), note = '';
+  if(start > agg.maxDate){
+    var p = agg.maxDate.split('-'); var y2 = +p[0], m2 = +p[1];
+    note = 'No contact data yet for '+MONTH_NAMES[m-1]+' '+y+' — showing '+MONTH_NAMES[m2-1]+' '+y2;
+    y = y2; m = m2; start = agg.maxDate.slice(0,8)+'01'; end = vsMonthEnd(y, m);
+  }
+  var dataEnd = end > agg.maxDate ? agg.maxDate : end;
+  var partial = dataEnd < end;
+  var py = m===1 ? y-1 : y, pm = m===1 ? 12 : m-1;
+  var pStart = py+'-'+('0'+pm).slice(-2)+'-01', pEndFull = vsMonthEnd(py, pm);
+  var nDays = Math.round((vsD(dataEnd)-vsD(start))/864e5)+1;
+  var pEnd = partial ? vsAdd(pStart, nDays-1) : pEndFull;
+  if(pEnd > pEndFull) pEnd = pEndFull;
+  return {
+    y:y, m:m, start:start, end:end, dataEnd:dataEnd, partial:partial, pStart:pStart, pEnd:pEnd, note:note,
+    label: partial ? vsRange(start, dataEnd)+', '+y : MONTH_NAMES[m-1]+' '+y,
+    prevLabel: partial ? vsRange(pStart, pEnd) : VS_MON[pm-1]+' '+py
+  };
+}
+
+// ── FCR (agent-based, from the existing FCR merge into D.sla / D.agents) ──
+// FCR by inbox team (2026-10-08, per Lisa: "anyone on those inboxes who responds").
+// The FCR sheet is per agent across All Inboxes (no per-inbox split), so a LOB's FCR =
+// conversation-weighted FCR of every agent whose Gladly inbox assignment that month
+// includes the LOB's inbox(es). Used for the Deleter LOBs — Tweet Delete / Tweet Deleter /
+// Tweet Eraser are worked by the same agent group, so they currently show the same value.
+var VS_FCR_INBOX_LOBS = VS_LOBS.slice(); // all 10 LOBs (2026-10-08: LOB FCR is always inbox-based)
+var VS_FCR_LS_KEY = 'csm_volsla_fcr_v1';
+var VS_FCR_CACHE = {};
+function vsFCRByInbox(y, m){
+  var key = y+'-'+m+'|'+(RAW_TEXTS.agent?RAW_TEXTS.agent.length:0)+'|'+(RAW_TEXTS.fcr?RAW_TEXTS.fcr.length:0);
+  if(VS_FCR_CACHE[key]!==undefined) return VS_FCR_CACHE[key];
+  var res = null;
+  try{ if(RAW_TEXTS.agent && RAW_TEXTS.fcr) res = _vsFCRByInbox(y, m); }catch(e){ console.warn('[VolSLA] FCR by inbox failed:', e); }
+  VS_FCR_CACHE[key] = res; return res;
+}
+function _vsFCRByInbox(y, m){
+  function hdr(lines, must){ for(var i=0;i<Math.min(lines.length,6);i++){ if(lines[i].indexOf(must)>=0) return i; } return -1; }
+  function inMonth(dateStr){ var d=(dateStr||'').trim().split(' ')[0].split('/'); return d.length===3 && +d[2]===y && +d[0]===m; }
+  // Gladly agent sheet → per agent email: inboxes assigned this month; name → email
+  var G = RAW_TEXTS.agent.split('\n'), gh = hdr(G, 'Inbox(es)'); if(gh<0) return null;
+  var H = parseCSVRow(G[gh]).map(function(x){ return x.trim(); });
+  var cB = H.indexOf('Bucket Beginning'), cN = H.indexOf('Name'), cE = H.indexOf('Email'), cI = H.indexOf('Inbox(es)');
+  var inb = {}, n2e = {};
+  for(var i=gh+1;i<G.length;i++){
+    var f = parseCSVRow(G[i]); if(f.length<=cI || !inMonth(f[cB])) continue;
+    var e = (f[cE]||'').toLowerCase().trim(); if(!e) continue;
+    n2e[(f[cN]||'').toLowerCase().trim()] = e;
+    var set = inb[e] || (inb[e] = {});
+    (f[cI]||'').split(',').forEach(function(x){ x=x.trim().toLowerCase(); if(x) set[x]=1; });
+  }
+  // FCR sheet → per agent email: FCR conversations / FCR-eligible conversations this month
+  var F = RAW_TEXTS.fcr.split('\n'), fh = hdr(F, 'FCR-Eligible'); if(fh<0) return null;
+  var FH = parseCSVRow(F[fh]).map(function(x){ return x.trim(); });
+  var fI = FH.indexOf('Inboxes Filter'), fN = FH.indexOf('Assigned Agent Name - Last Closed'), fD = FH.indexOf('Last Closed At Date'),
+      fC = FH.indexOf('FCR Conversations'), fL = FH.indexOf('FCR-Eligible Conversations'), fE = FH.indexOf('Email');
+  var fc = {}, exact = {};
+  var boxLob = {}; VS_LOBS.forEach(function(l){ VS_LOB_MAP[l].forEach(function(x){ boxLob[x.toLowerCase()] = l; }); });
+  for(var j=fh+1;j<F.length;j++){
+    var r = parseCSVRow(F[j]); if(r.length<=fL || !inMonth(r[fD])) continue;
+    var filt = fI>=0 ? (r[fI]||'').trim() : '';
+    if(filt && filt!=='All Inboxes'){
+      // Exact inbox FCR: rows exported with an Inboxes Filter that belongs to a single LOB
+      var lobs = {}; filt.split(',').forEach(function(x){ var l = boxLob[x.trim().toLowerCase()]; lobs[l||'?'] = 1; });
+      var ks = Object.keys(lobs);
+      if(ks.length===1 && ks[0]!=='?'){ var ex = exact[ks[0]] || (exact[ks[0]] = [0,0]); ex[0] += parseFloat(r[fC])||0; ex[1] += parseFloat(r[fL])||0; }
+      continue;
+    }
+    var nm = (r[fN]||'').trim(), em = (fE>=0 ? (r[fE]||'') : '').toLowerCase().trim();
+    if(!em) em = nm.indexOf('@')>=0 ? nm.toLowerCase() : (n2e[nm.toLowerCase()]||'');
+    if(!em || !inb[em]) continue;
+    var a = fc[em] || (fc[em] = [0,0]); a[0] += parseFloat(r[fC])||0; a[1] += parseFloat(r[fL])||0;
+  }
+  var out = {};
+  VS_LOBS.forEach(function(l){
+    var boxes = VS_LOB_MAP[l].map(function(x){ return x.toLowerCase(); }), num = 0, den = 0, n = 0;
+    Object.keys(fc).forEach(function(e){ if(boxes.some(function(b){ return inb[e][b]; })){ num += fc[e][0]; den += fc[e][1]; n++; } });
+    if(exact[l] && exact[l][1]>0) out[l] = {fcr:exact[l][0]/exact[l][1], agents:null, eligible:exact[l][1], exact:true};
+    else out[l] = den ? {fcr:num/den, agents:n, eligible:den, exact:false} : null;
+  });
+  try{ var c = JSON.parse(localStorage.getItem(VS_FCR_LS_KEY)||'{}'); c[y+'-'+m] = {}; VS_LOBS.forEach(function(l){ c[y+'-'+m][l] = out[l] ? out[l].fcr : null; }); localStorage.setItem(VS_FCR_LS_KEY, JSON.stringify(c)); }catch(e){}
+  return out;
+}
+var VS_FCR_PERIOD = null; // {y,m} of the period being rendered (set in _renderVolSla)
+function vsFCR(lob){
+  // LOB FCR = FCR of conversations on that LOB's inboxes (never the agents' home team).
+  if(!VS_FCR_PERIOD) return null;
+  var byInbox = vsFCRByInbox(VS_FCR_PERIOD.y, VS_FCR_PERIOD.m);
+  if(byInbox) return byInbox[lob] ? byInbox[lob].fcr : null;
+  try{ var c = JSON.parse(localStorage.getItem(VS_FCR_LS_KEY)||'{}')[VS_FCR_PERIOD.y+'-'+VS_FCR_PERIOD.m]; if(c && c[lob]!=null) return c[lob]; }catch(e){}
+  return null; // cached view before live FCR data loads
+}
+function vsFCRWeighted(lobs, rows){
+  var num = 0, den = 0;
+  lobs.forEach(function(l){ var f = vsFCR(l), v = rows[VS_LOBS.indexOf(l)][0]; if(f!=null && v){ num += f*v; den += v; } });
+  return den ? num/den : null;
+}
+
+// ── Formatting ──
+function vsN(v){ return v==null ? '—' : Math.round(v).toLocaleString(); }
+function vsP(v, d){ return v==null ? '—' : (v*100).toFixed(d==null?1:d)+'%'; }
+function vsW(sec){ if(sec==null) return '—'; var h = Math.floor(sec/3600), m = Math.round((sec%3600)/60); if(m===60){ h++; m=0; } return h>0 ? h+'h '+(m<10?'0':'')+m+'m' : m+'m'; }
+function vsR(v){ return v==null ? null : Math.round(v*1000)/1000; } // compare on the value shown (1 decimal %)
+function vsSlaCls(v){ v = vsR(v); return v==null ? '' : v>=VS_SLA_TGT ? 'vs-g' : v>=VS_SLA_BENCH ? 'vs-w' : 'vs-r'; }
+function vsWaitCls(v){ return v==null ? '' : v>=VS_WAIT_FLAG ? 'vs-r' : ''; }
+function vsFcrCls(v){ return v==null ? '' : v>=VS_FCR_TGT ? 'vs-g' : 'vs-r'; }
+function vsDot(c){ return '<span class="ldot" style="background:'+c+';margin-right:0"></span>'; }
+function vsDeltaPct(cur, prev, lowerBetter){
+  if(cur==null || !prev) return '<span class="vs-delta flat">—</span>';
+  var d = (cur-prev)/prev*100, good = lowerBetter ? d<0 : d>0;
+  if(Math.abs(d)<0.5) return '<span class="vs-delta flat">±0%</span>';
+  return '<span class="vs-delta '+(good?'good':'bad')+'">'+(d>0?'▲ +':'▼ ')+d.toFixed(0)+'%</span>';
+}
+function vsDeltaVol(cur, prev){
+  if(cur==null || !prev) return '<span class="vs-delta flat">—</span>';
+  var d = (cur-prev)/prev*100;
+  return '<span class="vs-delta flat">'+(d>=0?'▲ +':'▼ ')+d.toFixed(0)+'%</span>';
+}
+function vsDeltaPts(cur, prev){
+  if(cur==null || prev==null) return '<span class="vs-delta flat">—</span>';
+  var d = (cur-prev)*100;
+  if(Math.abs(d)<0.05) return '<span class="vs-delta flat">±0.0 pts</span>';
+  return '<span class="vs-delta '+(d>0?'good':'bad')+'">'+(d>0?'▲ +':'▼ ')+d.toFixed(1)+' pts</span>';
+}
+
+// ── Main entry: called from render() and _reRenderMain() ──
+function renderVolSla(){
+  try{ _renderVolSla(); }catch(e){ console.warn('[VolSLA] render error:', e); }
+}
+function _renderVolSla(){
+  var agg = vsGetAgg(), meta = document.getElementById('vsMeta');
+  if(!agg){ if(meta) meta.innerHTML = '⏳ Loading live contact data… (first load can take 10–20 seconds)'; return; }
+  var P = vsPeriod(agg);
+  VS_FCR_PERIOD = {y:P.y, m:P.m};
+  var cur = vsSum(agg, P.start, P.dataEnd), prev = vsSum(agg, P.pStart, P.pEnd);
+  if(meta){
+    meta.innerHTML = 'Showing <b>'+P.label+'</b>'+(P.partial?' (month to date)':'')
+      +' · compared with <b>'+P.prevLabel+'</b>'+(P.partial?' (same days last month)':'')
+      +' · Email + Chat inbound · contact data through <b>'+vsShort(agg.maxDate)+'</b>'
+      +(agg._cached ? ' · <span class="warn">showing last saved snapshot — live refresh pending</span>' : '')
+      +(P.note ? ' · <span class="warn">'+P.note+'</span>' : '');
+  }
+  vsRenderCards(cur, prev, P);
+  vsRenderTable(cur, prev, P);
+  vsRenderTrends(agg, P);
+}
+
+function vsRenderCards(cur, prev, P){
+  var all = VS_LOBS, tot = vsSt(vsRoll(cur, all)), ptot = vsSt(vsRoll(prev, all));
+  var cats = VS_CATS.map(function(c){ return {c:c, s:vsSt(vsRoll(cur, c.lobs)), p:vsSt(vsRoll(prev, c.lobs)), fcr:vsFCRWeighted(c.lobs, cur)}; });
+  var lobSt = VS_LOBS.map(function(l,i){ return {lob:l, s:vsSt(cur[i])}; }).filter(function(x){ return x.s.vol>0; });
+  var fcrAll = vsFCRWeighted(all, cur);
+  function card(lbl, val, valCls, delta, sub, rows, extra){
+    return '<div class="vs-card"><div class="vs-card-lbl">'+lbl+'</div>'
+      +'<div class="vs-card-top"><div class="vs-card-val '+(valCls||'')+'">'+val+'</div>'+(delta||'')+'</div>'
+      +'<div class="vs-card-sub">'+sub+'</div>'
+      +'<div class="vs-brk">'+rows+'</div>'+(extra||'')+'</div>';
+  }
+  function row(c, valHtml, barPct, barColor){
+    return '<div class="vs-brk-row"><span class="vs-brk-name">'+vsDot(c.color)+c.name+'</span><span class="vs-brk-val">'+valHtml+'</span>'
+      +(barPct!=null ? '<div class="vs-brk-bar"><span style="width:'+Math.max(0,Math.min(100,barPct))+'%;background:'+(barColor||c.color)+'"></span></div>' : '')+'</div>';
+  }
+  function slaColor(v){ v = vsR(v); return v==null ? '#cbd5e1' : v>=VS_SLA_TGT ? '#16a34a' : v>=VS_SLA_BENCH ? '#d97706' : '#dc2626'; }
+
+  // 1) Volume
+  var volRows = cats.map(function(x){
+    return row(x.c, vsN(x.s.vol)+'<small>'+(tot.vol?(x.s.vol/tot.vol*100).toFixed(0):0)+'%</small>', tot.vol?x.s.vol/tot.vol*100:0);
+  }).join('');
+  var hVol = card('Overall Volume', vsN(tot.vol), '', vsDeltaVol(tot.vol, ptot.vol), 'Inbound contacts · vs '+P.prevLabel+': '+vsN(ptot.vol), volRows);
+
+  // 2) SLA (+ flag LOBs below the 80% benchmark)
+  var slaRows = cats.map(function(x){
+    return row(x.c, '<span class="'+vsSlaCls(x.s.sla)+'">'+vsP(x.s.sla)+'</span>', x.s.sla!=null?x.s.sla*100:0, slaColor(x.s.sla));
+  }).join('');
+  var below = lobSt.filter(function(x){ return x.s.sla!=null && vsR(x.s.sla)<VS_SLA_BENCH; }).sort(function(a,b){ return a.s.sla-b.s.sla; });
+  var slaFlags = '<div class="vs-flags">'+(below.length
+    ? below.map(function(x){ return '<span class="vs-flag">⚠ '+x.lob+' '+vsP(x.s.sla)+'</span>'; }).join('')
+    : '<span class="vs-ok">✓ No LOB below the 80% benchmark</span>')+'</div>';
+  var hSla = card('Overall SLA', vsP(tot.sla), vsSlaCls(tot.sla), vsDeltaPts(tot.sla, ptot.sla), 'Target ≥ 90% · benchmark 80% · vs '+P.prevLabel+': '+vsP(ptot.sla), slaRows, slaFlags);
+
+  // 3) Avg wait (Queued → Fulfilled) (+ flag LOBs at 12h+)
+  var maxW = Math.max.apply(null, cats.map(function(x){ return x.s.wait||0; }).concat([VS_WAIT_FLAG]));
+  var waitRows = cats.map(function(x){
+    return row(x.c, '<span class="'+vsWaitCls(x.s.wait)+'">'+vsW(x.s.wait)+'</span>', x.s.wait!=null?x.s.wait/maxW*100:0, x.s.wait>=VS_WAIT_FLAG?'#dc2626':x.c.color);
+  }).join('');
+  var slow = lobSt.filter(function(x){ return x.s.wait!=null && x.s.wait>=VS_WAIT_FLAG; }).sort(function(a,b){ return b.s.wait-a.s.wait; });
+  var waitFlags = '<div class="vs-flags">'+(slow.length
+    ? slow.map(function(x){ return '<span class="vs-flag">⚠ '+x.lob+' '+vsW(x.s.wait)+'</span>'; }).join('')
+    : '<span class="vs-ok">✓ No LOB at 12h+ average wait</span>')+'</div>';
+  var hWait = card('Overall Avg Wait Time', vsW(tot.wait), vsWaitCls(tot.wait), vsDeltaPct(tot.wait, ptot.wait, true), 'Queued → fulfilled · flag at 12h+ · vs '+P.prevLabel+': '+vsW(ptot.wait), waitRows, waitFlags);
+
+  // 4) FCR
+  var fcrRows = cats.map(function(x){
+    return row(x.c, '<span class="'+vsFcrCls(x.fcr)+'">'+vsP(x.fcr)+'</span>', x.fcr!=null?x.fcr*100:0, x.fcr==null?'#cbd5e1':x.fcr>=VS_FCR_TGT?'#16a34a':'#dc2626');
+  }).join('');
+  var hFcr = card('Overall FCR', vsP(fcrAll), vsFcrCls(fcrAll), '', 'Target ≥ 75% · volume-weighted across LOBs', fcrRows);
+
+  document.getElementById('vsCards').innerHTML = hVol + hSla + hWait + hFcr;
+}
+
+function vsRenderTable(cur, prev, P){
+  var tot = vsSt(vsRoll(cur, VS_LOBS));
+  function slaCell(s){
+    if(s==null) return '<td class="r vs-dim">—</td><td></td>';
+    var sr = vsR(s);
+    var c = sr>=VS_SLA_TGT ? '#16a34a' : sr>=VS_SLA_BENCH ? '#d97706' : '#dc2626';
+    var pill = sr>=VS_SLA_TGT ? '<span class="vs-pill g">✓ On target</span>' : sr>=VS_SLA_BENCH ? '<span class="vs-pill w">Below target</span>' : '<span class="vs-pill r">⚠ Below 80%</span>';
+    return '<td class="r"><div class="vs-bar"><span class="'+vsSlaCls(s)+'" style="font-weight:700">'+vsP(s)+'</span>'
+      +'<span class="vs-trk"><span style="width:'+(s*100)+'%;background:'+c+'"></span><i class="b" style="left:80%"></i><i style="left:90%"></i></span></div></td>'
+      +'<td>'+pill+'</td>';
+  }
+  function shareCell(part, whole, color){
+    if(!whole) return '<td class="r vs-dim">—</td>';
+    var p = part/whole*100;
+    return '<td class="r"><div class="vs-bar"><span>'+p.toFixed(1)+'%</span><span class="vs-trk"><span style="width:'+p+'%;background:'+color+'"></span></span></div></td>';
+  }
+  var head = '<table class="vs-tbl"><thead><tr>'
+    +'<th>LOB</th><th class="r">Volume</th><th class="r">vs '+P.prevLabel+'</th><th class="r">Volume share</th>'
+    +'<th class="r">SLA %</th><th>Status</th><th class="r">SLA miss share</th><th class="r">Avg wait (Q→F)</th><th class="r">FCR</th>'
+    +'</tr></thead><tbody>';
+  var body = '';
+  VS_CATS.forEach(function(c){
+    var cs = vsSt(vsRoll(cur, c.lobs)), cp = vsSt(vsRoll(prev, c.lobs)), cf = vsFCRWeighted(c.lobs, cur);
+    body += '<tr class="vs-cat">'
+      +'<td>'+vsDot(c.color)+' '+c.name+'<span class="vs-sub">'+(c.lobs.length>1?c.lobs.length+' LOBs':'FollowSpy + Recent Follow')+'</span></td>'
+      +'<td class="r">'+vsN(cs.vol)+'</td><td class="r">'+vsDeltaVol(cs.vol, cp.vol)+'</td>'
+      +'<td class="r">'+(tot.vol?(cs.vol/tot.vol*100).toFixed(1)+'%':'—')+'<span class="vs-sub">of all</span></td>'
+      +slaCell(cs.sla)
+      +'<td class="r">'+(tot.miss?(cs.miss/tot.miss*100).toFixed(1)+'%':'—')+'<span class="vs-sub">of all</span></td>'
+      +'<td class="r '+vsWaitCls(cs.wait)+'" style="font-weight:700">'+(cs.wait>=VS_WAIT_FLAG?'⚠ ':'')+vsW(cs.wait)+'</td>'
+      +'<td class="r '+vsFcrCls(cf)+'">'+vsP(cf)+''+'</td></tr>';
+    if(c.lobs.length===1) return; // single-LOB category (Follows): the category row is the LOB row
+    var lobs = c.lobs.slice().sort(function(a,b){ return cur[VS_LOBS.indexOf(b)][0]-cur[VS_LOBS.indexOf(a)][0]; });
+    lobs.forEach(function(l){
+      var i = VS_LOBS.indexOf(l), s = vsSt(cur[i]), p = vsSt(prev[i]), f = vsFCR(l);
+      body += '<tr>'
+        +'<td class="vs-lob">'+vsDot(VS_COLORS[l])+' '+l+'</td>'
+        +'<td class="r">'+vsN(s.vol)+'</td><td class="r">'+vsDeltaVol(s.vol, p.vol)+'</td>'
+        +shareCell(s.vol, cs.vol, VS_COLORS[l])
+        +slaCell(s.sla)
+        +shareCell(s.miss, cs.miss, '#dc2626')
+        +'<td class="r '+vsWaitCls(s.wait)+'" style="font-weight:'+(s.wait>=VS_WAIT_FLAG?700:400)+'">'+(s.wait>=VS_WAIT_FLAG?'⚠ ':'')+vsW(s.wait)+'</td>'
+        +'<td class="r '+vsFcrCls(f)+'"'+(f==null&&c.name==='Deleter'?' title="No FCR data for the agents on this inbox this period"':'')+'>'+vsP(f)+'</td></tr>';
+    });
+  });
+  var pt = vsSt(vsRoll(prev, VS_LOBS)), fAll = vsFCRWeighted(VS_LOBS, cur);
+  body += '<tr class="vs-total"><td>All LOBs</td><td class="r">'+vsN(tot.vol)+'</td><td class="r">'+vsDeltaVol(tot.vol, pt.vol).replace('vs-delta flat','vs-delta')+'</td><td class="r">100%</td>'
+    +'<td class="r">'+vsP(tot.sla)+'</td><td></td><td class="r">'+vsN(tot.miss)+'<span class="vs-sub">missed</span></td>'
+    +'<td class="r">'+vsW(tot.wait)+'</td><td class="r">'+vsP(fAll)+'</td></tr>';
+  document.getElementById('vsTable').innerHTML = head + body + '</tbody></table>';
+  var sub = document.getElementById('vsTblSub');
+  if(sub) sub.textContent = P.label+(P.partial?' (MTD)':'')+' · grouped by category (Socials · Deleter · Follows) · LOB shares are within each category';
+}
+
+// ── Trend charts (same windows/behavior as the heatmap's Daily / Weekly / Monthly charts) ──
+function vsBuckets(gran, agg, P){
+  var keys = [], labels = [], keyOf;
+  if(gran==='daily'){
+    for(var i=13;i>=0;i--) keys.push(vsAdd(P.dataEnd, -i));
+    labels = keys.map(vsShort); keyOf = function(k){ return k; };
+  } else if(gran==='weekly'){
+    var lastMon = vsMonday(P.dataEnd);
+    for(var j=7;j>=0;j--) keys.push(vsAdd(lastMon, -7*j));
+    labels = keys.map(function(m){ return vsShort(m)+(vsAdd(m,6)>agg.maxDate?' (partial)':''); });
+    keyOf = vsMonday;
+  } else {
+    for(var n=5;n>=0;n--){ var mm = P.m-n, yy = P.y; while(mm<=0){ mm+=12; yy--; } keys.push(yy+'-'+('0'+mm).slice(-2)); }
+    labels = keys.map(function(k){ var p = k.split('-'); var lbl = VS_MON[+p[1]-1]+' '+p[0].slice(2); return vsMonthEnd(+p[0], +p[1])>agg.maxDate ? lbl+' (partial)' : lbl; });
+    keyOf = function(k){ return k.slice(0,7); };
+  }
+  var idx = {}; keys.forEach(function(k,i){ idx[k] = i; });
+  var vol = VS_LOBS.map(function(){ return keys.map(function(){ return 0; }); });
+  var met = VS_LOBS.map(function(){ return keys.map(function(){ return 0; }); });
+  for(var d in agg.days){
+    var b = idx[keyOf(d)];
+    if(b===undefined) continue;
+    agg.days[d].forEach(function(a,li){ vol[li][b] += a[0]; met[li][b] += a[1]; });
+  }
+  return {keys:keys, labels:labels, vol:vol, met:met};
+}
+function vsTotals(B){
+  return {
+    vol: B.keys.map(function(_,i){ return VS_LOBS.reduce(function(s,_l,li){ return s+B.vol[li][i]; },0); }),
+    met: B.keys.map(function(_,i){ return VS_LOBS.reduce(function(s,_l,li){ return s+B.met[li][i]; },0); })
+  };
+}
+function vsTrendChart(id, B){
+  var share = VS_STATE.mode==='share', T = vsTotals(B), tot = T.vol, ds = [];
+  VS_LOBS.forEach(function(l,li){
+    var c = B.vol[li];
+    if(!c.some(function(v){ return v>0; })) return;
+    ds.push({type:'bar', label:l, data: share ? c.map(function(v,i){ return tot[i]?v/tot[i]*100:null; }) : c, _counts:c,
+      backgroundColor:VS_COLORS[l], stack:'s', yAxisID:'y', order:2, borderRadius:0});
+  });
+  if(!share) ds.push({type:'line', label:'SLA %', data: tot.map(function(v,i){ return v?T.met[i]/v*100:null; }),
+    borderColor:'#15161C', backgroundColor:'#15161C', borderWidth:1.6, yAxisID:'y1', tension:.3, pointRadius:2.5, order:1});
+  var scales = {
+    x:{stacked:true, grid:{display:false}, ticks:{font:{size:10}, maxRotation:45, autoSkip:true}},
+    y:{stacked:true, beginAtZero:true, grid:{color:'#f1f5f9'},
+       ticks:{font:{size:10}, callback: share ? function(v){ return v+'%'; } : function(v){ return v>=1000?(v/1000).toFixed(v%1000?1:0)+'k':v; }},
+       title:{display:true, text: share ? 'Share of all LOBs' : 'Contacts', font:{size:10}}}
+  };
+  if(share) scales.y.max = 100;
+  else scales.y1 = {position:'right', min:0, max:100, grid:{drawOnChartArea:false}, ticks:{font:{size:10}, callback:function(v){ return v+'%'; }}, title:{display:true, text:'SLA %', font:{size:10}}};
+  if(VS_CHARTS[id]) VS_CHARTS[id].destroy();
+  VS_CHARTS[id] = new Chart(document.getElementById(id), {
+    type:'bar', data:{labels:B.labels, datasets:ds},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      plugins:{legend:{position:'bottom', labels:{boxWidth:9, font:{size:10}}},
+        tooltip:{callbacks:{
+          label:function(it){
+            if(it.dataset.type==='line') return 'SLA %: '+(it.raw==null?'—':it.raw.toFixed(1)+'%');
+            var c = it.dataset._counts[it.dataIndex], t = tot[it.dataIndex];
+            return it.dataset.label+': '+c.toLocaleString()+' ('+(t?(c/t*100).toFixed(1):'—')+'% of all LOBs)';
+          },
+          footer:function(items){ return items.length ? 'Total: '+tot[items[0].dataIndex].toLocaleString() : ''; }
+        }}},
+      scales:scales}
+  });
+}
+function vsSlaLobChart(B){
+  var ds = [], n = B.keys.length, T = vsTotals(B);
+  VS_LOBS.forEach(function(l,li){
+    if(!B.vol[li].some(function(v){ return v>0; })) return;
+    var c = VS_COLORS[l];
+    ds.push({label:l, data:B.vol[li].map(function(v,i){ return v?B.met[li][i]/v*100:null; }), _vol:B.vol[li],
+      borderColor:c, backgroundColor:'#fff', pointBorderColor:c, pointBorderWidth:2, pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:.3, spanGaps:true});
+  });
+  ds.push({label:'Target 90%', data:Array(n).fill(90), _ref:true, borderColor:'rgba(22,163,74,.6)', backgroundColor:'rgba(14,159,110,0.10)', borderDash:[5,4], borderWidth:1.2, pointRadius:0, pointHoverRadius:0, fill:'end'});
+  ds.push({label:'Benchmark 80%', data:Array(n).fill(80), _ref:true, borderColor:'#d97706', borderDash:[3,3], borderWidth:1.2, pointRadius:0, pointHoverRadius:0, fill:false});
+  ds.push({label:'All LOBs', data:T.vol.map(function(v,i){ return v?T.met[i]/v*100:null; }), _vol:T.vol, borderColor:'#15161C', backgroundColor:'#15161C', borderDash:[6,4], borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.3, spanGaps:true});
+  if(VS_CHARTS.vsSlaLob) VS_CHARTS.vsSlaLob.destroy();
+  VS_CHARTS.vsSlaLob = new Chart(document.getElementById('vsSlaLob'), {
+    type:'line', data:{labels:B.labels, datasets:ds},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:10.5}}},
+        tooltip:{filter:function(it){ return !it.dataset._ref; }, callbacks:{
+          label:function(it){ var v = it.raw;
+            var mark = v==null ? '' : v>=90 ? '  ✓ on target' : v>=80 ? '  ↓ below 90% target' : '  ⚠ below 80% benchmark';
+            return it.dataset.label+': '+(v==null?'—':v.toFixed(1)+'%')+' ('+(it.dataset._vol[it.dataIndex]||0).toLocaleString()+' contacts)'+mark; },
+          footer:function(){ return 'Target ≥ 90% · benchmark 80%'; }}}},
+      scales:{y:{min:0, max:100, grid:{color:'#f1f5f9'}, ticks:{font:{size:10}, callback:function(v){ return v+'%'; }}}, x:{grid:{display:false}, ticks:{font:{size:10}}}}}
+  });
+}
+function vsRenderTrends(agg, P){
+  if(typeof Chart==='undefined') return;
+  vsTrendChart('vsDaily',   vsBuckets('daily',   agg, P));
+  vsTrendChart('vsWeekly',  vsBuckets('weekly',  agg, P));
+  vsTrendChart('vsMonthly', vsBuckets('monthly', agg, P));
+  vsSlaLobChart(vsBuckets(VS_STATE.slaGran, agg, P));
+  var desc = document.getElementById('vsTrendDesc');
+  if(desc) desc.textContent = VS_STATE.mode==='share'
+    ? 'Share %: each LOB\'s share of all inbound contacts per day / week / month.'
+    : 'Count: volume stacked by LOB, with the combined SLA % line. Hover a slice for its % of all LOBs.';
+}
+function vsSetMode(m){
+  VS_STATE.mode = m;
+  document.getElementById('vsModeCount').className = 'view-btn'+(m==='count'?' on':'');
+  document.getElementById('vsModeShare').className = 'view-btn'+(m==='share'?' on':'');
+  var agg = vsGetAgg(); if(agg) vsRenderTrends(agg, vsPeriod(agg));
+}
+function vsSetGran(g){
+  VS_STATE.slaGran = g;
+  ['Daily','Weekly','Monthly'].forEach(function(x){ var b = document.getElementById('vsGran'+x); if(b) b.className = 'view-btn'+(x.toLowerCase()===g?' on':''); });
+  var agg = vsGetAgg(); if(agg) vsSlaLobChart(vsBuckets(g, agg, vsPeriod(agg)));
+}
+// ══ END VOLUME & SLA OVERVIEW ══════════════════════════════════════════════════
+
+// ══ TEAM ROSTER — follows the "CS Team" roster in the Agent Reporting sheet (2026-10-08) ══
+// The published "FCR Data" tab's Company column (col J) is a live lookup of each agent's team
+// from the CS Team roster. When Lisa moves an agent to another team there, the agent's LOB on
+// this dashboard follows on the next load. An agent's own scores (volume, FCR, QA, productivity)
+// always follow the agent by email/name, whatever team or inbox they were on before.
+// Values that are not a team (Inactive, Insights, Dispute, blank) are ignored → roster default.
+var TEAM_ROSTER_KEY = 'csm_team_roster_v1';
+var TEAM_NORMALIZE = {'path social':'Path Social','crowd ignite':'Crowd Ignite','high social':'High Social','plixi':'Plixi',
+  'goread':'Goread','goread/byp':'Goread','subdelete':'Subdelete','follows':'Follows'};
+var TEAM_ROSTER = null, _TEAM_ROSTER_SRC = -1;
+// Primary source (2026-10-08): the published "CS Team" tab itself — col A Agent Name, col B Work
+// Email, col C Company (= team). Covers new hires before they have any FCR rows. The FCR Data
+// Company column below stays as a fallback if this tab can't be fetched.
+var SHEETS_CSTEAM_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=0&single=true&output=csv';
+var CSTEAM_ROSTER_KEY = 'csm_csteam_roster_v1';
+var CSTEAM_ROSTER = null;
+// Auto login code for agents added from the CS Team tab (2026-10-08). MUST stay identical in
+// index.html and agent.html: FirstName (letters, max 10) + 4 digits derived from the work email + "cx".
+function autoAgentCode(name, email){
+  var first = ((name||'').trim().split(/\s+/)[0]||'Agent').replace(/[^A-Za-z]/g,'').slice(0,10) || 'Agent';
+  first = first.charAt(0).toUpperCase()+first.slice(1).toLowerCase();
+  var e = (email||name||'').toLowerCase().trim(), h = 5381;
+  for(var i=0;i<e.length;i++){ h = ((h*33) ^ e.charCodeAt(i)) >>> 0; }
+  return first + (1000 + (h % 9000)) + 'cx';
+}
+function buildCSTeamRoster(text){
+  var lines = text.split('\n'), byEmail = {}, byName = {}, rows = [];
+  for(var i=1;i<lines.length;i++){
+    var f = parseCSVRow(lines[i]); if(f.length<3) continue;
+    var team = TEAM_NORMALIZE[(f[2]||'').trim().toLowerCase()]; if(!team) continue;
+    var rawName = normName((f[0]||'').trim()), email = (f[1]||'').trim().toLowerCase(), nm = resolveSheetName(rawName);
+    if(email.indexOf('@')>=0) byEmail[email] = team;
+    if(nm) byName[nm] = team;
+    rows.push({name:rawName, email:email, team:team, notes:(f[3]||'').trim()});
+  }
+  return rows.length ? {byEmail:byEmail, byName:byName, rows:rows, builtAt:Date.now(), source:'CS Team'} : null;
+}
+function _fetchCSTeamText(){
+  if(!SHEETS_CSTEAM_URL || typeof fetch==='undefined') return Promise.resolve(null);
+  var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 30000) : null;
+  return fetch(SHEETS_CSTEAM_URL+'&_cb='+Date.now(), {credentials:'omit', cache:'no-store', signal:ctrl?ctrl.signal:undefined})
+    .then(function(r){ if(timer) clearTimeout(timer); return r.ok ? r.text() : null; })
+    .catch(function(e){ if(timer) clearTimeout(timer); console.warn('[Roster] CS Team fetch failed', e); return null; });
+}
+function _setCSTeam(text){
+  var r = text ? buildCSTeamRoster(text) : null;
+  if(!r) return false;
+  CSTEAM_ROSTER = r;
+  try{ localStorage.setItem(CSTEAM_ROSTER_KEY, JSON.stringify(r)); }catch(e){}
+  return true;
+}
+// Auto-add (2026-10-08): anyone listed in CS Team with a real team (not Inactive/Insights/Dispute/
+// "… Lead", and not marked "Lead" in Notes) who isn't on the dashboard yet is added to the roster
+// template with empty stats; the live Gladly/FCR/QA merge then fills their numbers like anyone else.
+// They get an automatic login code (autoAgentCode) — visible in the admin view of Section 4.
+function ensureRosterAgents(){
+  try{
+    if(!CSTEAM_ROSTER){ try{ var c = localStorage.getItem(CSTEAM_ROSTER_KEY); if(c) CSTEAM_ROSTER = JSON.parse(c); }catch(e){} }
+    if(!CSTEAM_ROSTER || !CSTEAM_ROSTER.rows) return 0;
+    var added = 0;
+    var known = {};
+    DEFAULT_DATA.agents.forEach(function(a){ known[normName(a.name)] = 1; });
+    Object.keys(SHEET_NAME_ALIASES).forEach(function(k){ if(k.indexOf('@')>=0) known['@'+k.toLowerCase()] = 1; });
+    Object.keys(_emailCache||{}).forEach(function(k){ known['@'+k] = 1; });
+    CSTEAM_ROSTER.rows.forEach(function(r){
+      if(!r.name || /\blead\b/i.test(r.notes||'')) return;
+      var nm = resolveSheetName(r.name);
+      if(known[normName(nm)] || (r.email && SHEET_NAME_ALIASES[r.email] && known[normName(SHEET_NAME_ALIASES[r.email])])) return;
+      var base = {name:nm, lob:r.team, tickets:0, aht:0, ahtTgt:5.0, qa:null, qaTgt:0.90, csat:null, fcr:null, occ:0, adh:0.97,
+                  avgCustDay:null, handleCust:null, chatAHT:null, missedChats:null, avgLogin:null, loginUtil:null, productivity:null,
+                  fulfilledByResp:null, autoAdded:true};
+      DEFAULT_DATA.agents.push(JSON.parse(JSON.stringify(base)));
+      DEFAULT_DATA.agents12m.push(JSON.parse(JSON.stringify(base)));
+      if(D && D!==DEFAULT_DATA){
+        if(D.agents && !D.agents.some(function(a){ return normName(a.name)===nm; })) D.agents.push(JSON.parse(JSON.stringify(base)));
+        if(D.agents12m && !D.agents12m.some(function(a){ return normName(a.name)===nm; })) D.agents12m.push(JSON.parse(JSON.stringify(base)));
+      }
+      if(r.email && !SHEET_NAME_ALIASES[r.email]) SHEET_NAME_ALIASES[r.email] = nm;   // Gladly sometimes records the email as the name
+      if(!AGENT_CODE_MAP[nm]) AGENT_CODE_MAP[nm] = autoAgentCode(nm, r.email);
+      known[normName(nm)] = 1; added++;
+    });
+    if(added) console.info('[Roster] auto-added '+added+' agent(s) from CS Team');
+    return added;
+  }catch(e){ console.warn('[Roster] auto-add failed', e); return 0; }
+}
+function getTeamRoster(){
+  if(RAW_TEXTS.fcr && RAW_TEXTS.fcr.length!==_TEAM_ROSTER_SRC){
+    _TEAM_ROSTER_SRC = RAW_TEXTS.fcr.length;
+    var r = null; try{ r = buildTeamRoster(RAW_TEXTS.fcr); }catch(e){ console.warn('[Roster] build failed', e); }
+    if(r){ TEAM_ROSTER = r; try{ localStorage.setItem(TEAM_ROSTER_KEY, JSON.stringify(r)); }catch(e){} }
+  }
+  if(!TEAM_ROSTER){ try{ var c = localStorage.getItem(TEAM_ROSTER_KEY); if(c) TEAM_ROSTER = JSON.parse(c); }catch(e){} }
+  if(!CSTEAM_ROSTER){ try{ var c2 = localStorage.getItem(CSTEAM_ROSTER_KEY); if(c2) CSTEAM_ROSTER = JSON.parse(c2); }catch(e){} }
+  if(!CSTEAM_ROSTER) return TEAM_ROSTER;
+  if(!TEAM_ROSTER) return CSTEAM_ROSTER;
+  // CS Team tab wins; FCR Data lookup only fills agents the tab doesn't list
+  return {byEmail:Object.assign({}, TEAM_ROSTER.byEmail, CSTEAM_ROSTER.byEmail),
+          byName: Object.assign({}, TEAM_ROSTER.byName,  CSTEAM_ROSTER.byName)};
+}
+function applyTeamRoster(){
+  try{
+    var R = getTeamRoster(); if(!R || !D) return;
+    var n2e = {};
+    Object.keys(_emailCache||{}).forEach(function(e){ n2e[_emailCache[e]] = e; });
+    Object.keys(SHEET_NAME_ALIASES).forEach(function(k){ if(k.indexOf('@')>=0) n2e[SHEET_NAME_ALIASES[k]] = k; });
+    [D.agents, D.agents12m].forEach(function(arr){
+      (arr||[]).forEach(function(a){
+        var nm = normName(a.name), t = R.byName[nm];
+        if(!t && n2e[nm]) t = R.byEmail[n2e[nm]];
+        if(t) a.lob = t;
+      });
+    });
+  }catch(e){ console.warn('[Roster] apply failed', e); }
+}
+
 function render(){
   if(!D){ renderEmpty(); return; }
+  applyTeamRoster(); // team per CS Team roster (2026-10-08)
   renderKPIs();
   renderLOB();
   renderCharts();
+  renderVolSla(); // Sections 1–3 (Volume & SLA overview, 2026-10-08)
   renderAgents();
   renderEscalations();
   renderRefunds();
@@ -2665,6 +3407,7 @@ function renderCharts(){
 }
 
 function renderAgents(){
+  applyTeamRoster(); // keep LOB in sync with the CS Team roster after any month-picker reload
   // Tabs
   var tabs = document.getElementById('agTabs');
   var allLOBs = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows','All'];
@@ -3572,6 +4315,7 @@ function toggleAdmin(){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
+ensureRosterAgents(); // agents from the last saved CS Team roster (2026-10-08)
 D = DEFAULT_DATA;
 render();
 loadData();
