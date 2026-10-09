@@ -2588,7 +2588,7 @@ var VS_CATS = [
   {name:'Follows', color:'#64748B', lobs:['Follows']}
 ];
 var VS_SLA_TGT = 0.90, VS_SLA_BENCH = 0.80, VS_WAIT_FLAG = 12*3600, VS_FCR_TGT = 0.75;
-var VS_AGG_KEY = 'csm_volsla_agg_v1';
+var VS_AGG_KEY = 'csm_volsla_agg_v2'; // v2 (2026-10-09): per-LOB day = [vol, met, waitSum, waitN, slaCounted]
 var VS_AGG = null, VS_AGG_SRC_LEN = -1;
 var VS_STATE = {mode:'count', slaGran:'monthly'};
 var VS_CHARTS = {};
@@ -2601,6 +2601,19 @@ function vsBuildAgg(text){
   var inb = {};
   VS_LOBS.forEach(function(l,i){ VS_LOB_MAP[l].forEach(function(n){ inb[n.toLowerCase()] = i; }); });
   var days = {}, lines = text.split('\n'), minD = null, maxD = null;
+  // SLA rule (2026-10-09, agreed with Lisa — same rule as the Heatmap):
+  //  • answered contacts: within SLA if answered inside the target (Within SLA flag; it always
+  //    agrees with "Seconds within/over SLA" when Queued-to-Fulfilled is present)
+  //  • still unanswered (Queued-to-Fulfilled blank) and already past the SLA target as of the data
+  //    pull → MISSED. The sheet fills "Within SLA" = 1 for these, so that flag can't be trusted here.
+  //  • still unanswered but inside the target window → left out of SLA % (outcome not known yet);
+  //    still counted in volume.
+  // "As of" = the latest Queued At in the file (the moment of the data pull).
+  function qts(v){ var m = /(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)/.exec(v||''); return m ? Date.UTC(+m[3], +m[1]-1, +m[2], +m[4], +m[5]) : null; }
+  var asOf = 0;
+  for(var j=lines.length-1, seen=0; j>0 && seen<50000; j--, seen++){ var q0 = qts(lines[j].slice(0,20)); if(q0 && q0>asOf) asOf = q0; }
+  for(var j2=1; j2<Math.min(lines.length, 50000); j2++){ var q1 = qts(lines[j2].slice(0,20)); if(q1 && q1>asOf) asOf = q1; }
+  var pendingN = 0, overdueN = 0;
   for(var i=1;i<lines.length;i++){
     var s = lines[i];
     if(s.indexOf('INBOUND')<0 && s.indexOf('nbound')<0) continue;
@@ -2616,18 +2629,26 @@ function vsBuildAgg(text){
     if(dp.length<3) continue;
     var iso = dp[2]+'-'+('0'+dp[0]).slice(-2)+'-'+('0'+dp[1]).slice(-2);
     if(!/^\d{4}-\d\d-\d\d$/.test(iso)) continue;
-    var day = days[iso] || (days[iso] = VS_LOBS.map(function(){ return [0,0,0,0]; }));
+    var day = days[iso] || (days[iso] = VS_LOBS.map(function(){ return [0,0,0,0,0]; }));
     var a = day[li];
     a[0]++;
-    if((f[17]||'').trim()==='1') a[1]++;
-    var w = parseFloat(f[11]);
-    if(!isNaN(w) && w>=0){ a[2]+=w; a[3]++; }
+    var qtfRaw = (f[11]||'').trim();
+    if(qtfRaw===''){
+      var tgt = parseFloat((f[10]||'').replace(/,/g,'')), qAt = qts(f[0]);
+      if(asOf && qAt!=null && (asOf-qAt)/1000 > tgt){ a[4]++; overdueN++; }   // overdue & unanswered → missed
+      else pendingN++;                                                          // still inside window → excluded
+    } else {
+      a[4]++;
+      if((f[17]||'').trim()==='1') a[1]++;
+      var w = parseFloat(qtfRaw);
+      if(!isNaN(w) && w>=0){ a[2]+=w; a[3]++; }
+    }
     if(!minD || iso<minD) minD = iso;
     if(!maxD || iso>maxD) maxD = iso;
   }
   if(!maxD) return null;
   for(var k in days){ days[k].forEach(function(a){ a[2] = Math.round(a[2]); }); }
-  return {lobs:VS_LOBS.slice(), days:days, minDate:minD, maxDate:maxD, builtAt:Date.now()};
+  return {lobs:VS_LOBS.slice(), days:days, minDate:minD, maxDate:maxD, asOf:asOf||null, pendingN:pendingN, overdueN:overdueN, builtAt:Date.now()};
 }
 function vsGetAgg(){
   if(RAW_TEXTS.contact && RAW_TEXTS.contact.length!==VS_AGG_SRC_LEN){
@@ -2660,19 +2681,19 @@ function vsRange(a, b){
 
 // ── Aggregation helpers ──
 function vsSum(agg, start, end){
-  var out = VS_LOBS.map(function(){ return [0,0,0,0]; });
+  var out = VS_LOBS.map(function(){ return [0,0,0,0,0]; });
   for(var k in agg.days){
     if(k<start || k>end) continue;
-    agg.days[k].forEach(function(a,i){ var o = out[i]; o[0]+=a[0]; o[1]+=a[1]; o[2]+=a[2]; o[3]+=a[3]; });
+    agg.days[k].forEach(function(a,i){ var o = out[i]; o[0]+=a[0]; o[1]+=a[1]; o[2]+=a[2]; o[3]+=a[3]; o[4]+=(a[4]||0); });
   }
   return out;
 }
 function vsRoll(rows, lobs){
-  var o = [0,0,0,0];
-  lobs.forEach(function(l){ var a = rows[VS_LOBS.indexOf(l)]; o[0]+=a[0]; o[1]+=a[1]; o[2]+=a[2]; o[3]+=a[3]; });
+  var o = [0,0,0,0,0];
+  lobs.forEach(function(l){ var a = rows[VS_LOBS.indexOf(l)]; o[0]+=a[0]; o[1]+=a[1]; o[2]+=a[2]; o[3]+=a[3]; o[4]+=a[4]; });
   return o;
 }
-function vsSt(a){ return {vol:a[0], met:a[1], miss:a[0]-a[1], sla:a[0]?a[1]/a[0]:null, wait:a[3]?a[2]/a[3]:null}; }
+function vsSt(a){ return {vol:a[0], met:a[1], slaN:a[4], miss:a[4]-a[1], sla:a[4]?a[1]/a[4]:null, wait:a[3]?a[2]/a[3]:null}; } // SLA % = met ÷ SLA-counted (excludes not-yet-due unanswered)
 
 // ── Viewing period (uses the Sections 1&2 month picker: MTD or one of the last 6 months) ──
 function vsPeriod(agg){
@@ -2817,6 +2838,7 @@ function _renderVolSla(){
     meta.innerHTML = 'Showing <b>'+P.label+'</b>'+(P.partial?' (month to date)':'')
       +' · compared with <b>'+P.prevLabel+'</b>'+(P.partial?' (same days last month)':'')
       +' · Email + Chat inbound · contact data through <b>'+vsShort(agg.maxDate)+'</b>'
+      +(agg.asOf ? ' · SLA as of <b>'+vsShort(new Date(agg.asOf).toISOString().slice(0,10))+' '+new Date(agg.asOf).toISOString().slice(11,16)+'</b>' : '')
       +(agg._cached ? ' · <span class="warn">showing last saved snapshot — live refresh pending</span>' : '')
       +(P.note ? ' · <span class="warn">'+P.note+'</span>' : '');
   }
@@ -2952,17 +2974,19 @@ function vsBuckets(gran, agg, P){
   var idx = {}; keys.forEach(function(k,i){ idx[k] = i; });
   var vol = VS_LOBS.map(function(){ return keys.map(function(){ return 0; }); });
   var met = VS_LOBS.map(function(){ return keys.map(function(){ return 0; }); });
+  var sn  = VS_LOBS.map(function(){ return keys.map(function(){ return 0; }); });
   for(var d in agg.days){
     var b = idx[keyOf(d)];
     if(b===undefined) continue;
-    agg.days[d].forEach(function(a,li){ vol[li][b] += a[0]; met[li][b] += a[1]; });
+    agg.days[d].forEach(function(a,li){ vol[li][b] += a[0]; met[li][b] += a[1]; sn[li][b] += (a[4]||0); });
   }
-  return {keys:keys, labels:labels, vol:vol, met:met};
+  return {keys:keys, labels:labels, vol:vol, met:met, sn:sn};
 }
 function vsTotals(B){
   return {
     vol: B.keys.map(function(_,i){ return VS_LOBS.reduce(function(s,_l,li){ return s+B.vol[li][i]; },0); }),
-    met: B.keys.map(function(_,i){ return VS_LOBS.reduce(function(s,_l,li){ return s+B.met[li][i]; },0); })
+    met: B.keys.map(function(_,i){ return VS_LOBS.reduce(function(s,_l,li){ return s+B.met[li][i]; },0); }),
+    sn:  B.keys.map(function(_,i){ return VS_LOBS.reduce(function(s,_l,li){ return s+B.sn[li][i]; },0); })
   };
 }
 function vsTextColor(hex){ var n = parseInt(String(hex).slice(1),16), r = n>>16&255, g = n>>8&255, b = n&255; return (0.299*r+0.587*g+0.114*b)/255 > 0.62 ? '#22232B' : '#FFFFFF'; }
@@ -2995,7 +3019,7 @@ function vsTrendChart(id, B){
     ds.push({type:'bar', label:l, data: share ? c.map(function(v,i){ return tot[i]?v/tot[i]*100:null; }) : c, _counts:c,
       backgroundColor:VS_COLORS[l], stack:'s', yAxisID:'y', order:2, borderRadius:0});
   });
-  if(!share) ds.push({type:'line', label:'SLA %', data: tot.map(function(v,i){ return v?T.met[i]/v*100:null; }),
+  if(!share) ds.push({type:'line', label:'SLA %', data: tot.map(function(v,i){ return T.sn[i]?T.met[i]/T.sn[i]*100:null; }),
     borderColor:'#15161C', backgroundColor:'#15161C', borderWidth:1.6, yAxisID:'y1', tension:.3, pointRadius:2.5, order:1});
   var scales = {
     x:{stacked:true, grid:{display:false}, ticks:{font:{size:10}, maxRotation:45, autoSkip:true}},
@@ -3028,12 +3052,12 @@ function vsSlaLobChart(B){
   VS_LOBS.forEach(function(l,li){
     if(!B.vol[li].some(function(v){ return v>0; })) return;
     var c = VS_COLORS[l];
-    ds.push({label:l, data:B.vol[li].map(function(v,i){ return v?B.met[li][i]/v*100:null; }), _vol:B.vol[li],
+    ds.push({label:l, data:B.vol[li].map(function(v,i){ return B.sn[li][i]?B.met[li][i]/B.sn[li][i]*100:null; }), _vol:B.vol[li],
       borderColor:c, backgroundColor:'#fff', pointBorderColor:c, pointBorderWidth:2, pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:.3, spanGaps:true});
   });
   ds.push({label:'Target 90%', data:Array(n).fill(90), _ref:true, borderColor:'rgba(22,163,74,.6)', backgroundColor:'rgba(14,159,110,0.10)', borderDash:[5,4], borderWidth:1.2, pointRadius:0, pointHoverRadius:0, fill:'end'});
   ds.push({label:'Benchmark 80%', data:Array(n).fill(80), _ref:true, borderColor:'#d97706', borderDash:[3,3], borderWidth:1.2, pointRadius:0, pointHoverRadius:0, fill:false});
-  ds.push({label:'All LOBs', data:T.vol.map(function(v,i){ return v?T.met[i]/v*100:null; }), _vol:T.vol, borderColor:'#15161C', backgroundColor:'#15161C', borderDash:[6,4], borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.3, spanGaps:true});
+  ds.push({label:'All LOBs', data:T.vol.map(function(v,i){ return T.sn[i]?T.met[i]/T.sn[i]*100:null; }), _vol:T.vol, borderColor:'#15161C', backgroundColor:'#15161C', borderDash:[6,4], borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.3, spanGaps:true});
   if(VS_CHARTS.vsSlaLob) VS_CHARTS.vsSlaLob.destroy();
   VS_CHARTS.vsSlaLob = new Chart(document.getElementById('vsSlaLob'), {
     type:'line', data:{labels:B.labels, datasets:ds},
@@ -3065,7 +3089,7 @@ function vsRenderFootnote(agg){
   var range = agg ? (vsShort(agg.minDate)+', '+agg.minDate.slice(0,4)+' through '+vsShort(agg.maxDate)+', '+agg.maxDate.slice(0,4)) : 'loading…';
   el.innerHTML =
     '<b>Source:</b> Gladly ContactExport (row-level), the same data behind the Volume &amp; SLA Heatmap. Counted: <b>inbound email + chat</b> contacts that carry an SLA target. Volume is bucketed by <b>Queued At</b> (when the contact arrived), not when it was closed — that is what drives staffing.  '
-   +'<b>SLA %</b> = contacts flagged "Within SLA" ÷ all counted contacts. <b>Target 90%</b>, <b>benchmark 80%</b>; a LOB below 80% is flagged. <b>Avg wait</b> = Queued-to-Fulfilled (time from arrival until the contact is answered); a LOB averaging <b>12h+</b> is flagged. (The heatmap\'s wait column is Queued-to-Accepted, so its numbers run lower.)  '
+   +'<b>SLA %</b> = contacts answered within the SLA target ÷ contacts whose SLA outcome is known. Contacts still unanswered and already past the target as of the data pull count as <b>missed</b>; unanswered contacts still inside the target window are left out until they are answered or become overdue (they still count in volume). <b>Target 90%</b>, <b>benchmark 80%</b>; a LOB below 80% is flagged. <b>Avg wait</b> = Queued-to-Fulfilled (time from arrival until the contact is answered); a LOB averaging <b>12h+</b> is flagged. (The heatmap\'s wait column is Queued-to-Accepted, so its numbers run lower.)  '
    +'<b>FCR:</b> a LOB\'s FCR is measured on that LOB\'s own inboxes, whoever handled them — the combined FCR of the agents assigned to those inboxes that month (an exact per-inbox FCR export is used automatically if added to FCR Data). An agent\'s FCR in Agent Productivity is their overall FCR across every inbox they worked. Overall/category FCR is volume-weighted across LOBs. Target 75%.  '
    +'<b>Shares:</b> on each LOB row, Volume share and SLA miss share are measured against the LOB\'s own category; on category rows, against all LOBs. <b>SLA miss share</b> = the LOB\'s share of its category\'s missed-SLA contacts (who is pulling the category down).  '
    +'<b>Period:</b> follows the Viewing period buttons. Month-to-date is compared with the same days of the previous month; a full month with the full previous month. Trends: Daily = last 14 days, Weekly = last 8 weeks (Mon–Sun), Monthly = trailing 6 months; partial weeks/months are marked.  '
