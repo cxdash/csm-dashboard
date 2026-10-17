@@ -178,7 +178,7 @@ function fixName(s){ return (s||'').replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').
 //    pace isn't judged and they're left out of the team pace baseline.
 var RAMP_DAYS = 30;
 var ROSTER = {
-  'bianca@pathsocial.com':    {name:'Bianca Alegre',               lob:'Subdelete', status:'senior',   seniorSince:'2026-09-04', note:'Senior agent — trains new agents, so email output is lower by design'},
+  'bianca@pathsocial.com':    {name:'Bianca Alegre',               lob:'Subdelete', status:'senior',   seniorSince:'2026-09-04', note:'Senior agent — trains new agents, so email output is lower by design. She may stay Active in Gladly while training (or go idle), and logs off before starting OT.', paceExempt:true},
   'beatrix@adly.com':         {name:'Beatrix Genove',              lob:'Subdelete', status:'newhire'},
   'christine@highsocial.com': {name:'Christine Joy M Salvador',    lob:'Subdelete', status:'transfer', from:'High Social'},
   'daveyjay@adly.com':        {name:'Daveyjay Omar',               lob:'Subdelete', status:'newhire'},
@@ -194,14 +194,45 @@ var ROSTER = {
   'thelma@smodin.io':         {name:'Thelma Sestoso',              lob:'Subdelete', status:'transfer', from:'TD'},
   'trisha@pathsocial.com':    {name:'Trisha Joy Cads',             lob:'Subdelete', status:'tenured'},
   'yuan@pathsocial.com':      {name:'Yuan Calamiong',              lob:'Subdelete', status:'transfer', from:'Insights'},
-  'zheraine@pathsocial.com':  {name:'Zheraine Velasquez',          lob:'Subdelete', status:'tenured'}
+  'zheraine@pathsocial.com':  {name:'Zheraine Velasquez',          lob:'Subdelete', status:'tenured'},
+  // Senior agents (Lisa, 2026-10-17): they sometimes slide their shift to run 1:1 coaching, so start-time slides
+  // are shown for context only (not scored). Pace is still judged (only Bianca's training role exempts pace).
+  'janelle@pathsocial.com':   {name:'Janelle Decena',  status:'senior', note:'Senior agent — may slide shift for 1:1 coaching'},
+  'pherbia@pathsocial.com':   {name:'Pherbia Mayor',   status:'senior', note:'Senior agent — may slide shift for 1:1 coaching'},
+  'mariam@pathsocial.com':    {name:'Mariam Riasat',   status:'senior', note:'Senior agent — may slide shift for 1:1 coaching'},
+  'monica@plixi.com':         {name:'Monica Tandoc',   status:'senior', note:'Senior agent — may slide shift for 1:1 coaching'},
+  'suzette@adly.com':         {name:'Suzette Mejia',   status:'senior', note:'Senior agent (to confirm) — may slide shift for 1:1 coaching'},
+  // Part-time (Lisa, 2026-10-17): ~1 hr a day at a set time — punctuality matters, so log-in times are checked closely.
+  'jgallier224@gmail.com':    {name:'Jessica Ibañez',  status:'parttime', shiftHrs:1, note:'Part-time · about 1 hr a day at a set time'}
 };
 // ── Assigned schedules (start time in PT, 24h; days 0=Sun … 6=Sat). Used with the Agent Timestamps export:
 //    slides and missed days are judged against the assigned schedule instead of the agent's own habit.
 var SCHEDULES = {
   'jasmine@tweetdelete.net': [{from:'2026-09-09', start:12, days:[2,3,4,5,6], label:'12:00 PM PT · Tue–Sat',
-     note:'Set by Lisa in Sep 2026. Before that Jasmine set her own schedule (10:00 AM PT, incl. weekends) while she handled scheduling for the LOB.'}]
+     note:'Set by Lisa in Sep 2026. Before that Jasmine set her own schedule (10:00 AM PT, incl. weekends) while she handled scheduling for the LOB.'}],
+  'rachel@pathsocial.com': [
+    {from:'2026-09-04', start:8,  days:null, label:'8:00 AM PT', note:'Start time before the 10/16 schedule update.'},
+    {from:'2026-10-17', start:13, days:null, label:'1:00 PM PT', note:'Updated by Lisa on 10/16 (was 8:00 AM PT).'}],
+  // Jessica: set times inferred from her log-ins (weekdays ~2:00 PM PT, weekends ~11:00 AM PT) — confirm with Lisa.
+  'jgallier224@gmail.com': [{from:'2026-07-01', start:{0:11,6:11,d:14}, days:[0,1,2,3,4,5,6], tol:0.5,
+     label:'2:00 PM PT weekdays · 11:00 AM PT weekends (1 hr)', note:'Part-time, 1 hr a day. Set times inferred from her log-ins — confirm. Starts more than 30 min off are flagged.'}]
 };
+// Mark (Lisa, 2026-10-17): on the 1:00 AM PT shift; moves to 12:00 AM PT after his rest day next week — add
+// {from:'YYYY-MM-DD', start:0, …} below once the date is set. Geric: moved to 4:00 PM Manila (= 1:00 AM PT) from 10/17.
+SCHEDULES['mark@pathsocial.com'] = [{from:'2026-09-07', start:1, days:null, label:'1:00 AM PT (4:00 PM Manila)',
+  note:'Moving to 12:00 AM PT (3:00 PM Manila) after his rest day next week.'}];
+SCHEDULES['geric@pathsocial.com'] = [{from:'2026-10-17', start:1, days:null, label:'1:00 AM PT (4:00 PM Manila)',
+  note:'Moved by Lisa from 10/17 (was ~8:00 AM PT).'}];
+// Approved overtime days (e.g. rest-day OT). These days aren't counted as unapproved extensions, 6-day weeks or off-schedule days.
+var APPROVED_OT = {
+  'mark@pathsocial.com': {'2026-10-17':'RDOT approved by Lisa'}
+};
+function isApprovedOT(em,date){ return !!(APPROVED_OT[em] && APPROVED_OT[em][date]); }
+// PT ↔ Manila (Asia/Manila is UTC+8, no DST; PT is UTC−7 in PDT, UTC−8 in PST)
+function isPDT(iso){ var y=+iso.slice(0,4); function nthSun(m,n){ var d=new Date(Date.UTC(y,m,1)); var first=(7-d.getUTCDay())%7; return 1+first+7*(n-1); }
+  var a=y+'-03-'+String(nthSun(2,2)).padStart(2,'0'), b=y+'-11-'+String(nthSun(10,1)).padStart(2,'0'); return iso>=a && iso<b; }
+function manilaH(iso,h){ return (h+(isPDT(iso)?15:16))%24; }
+function schedStart(sc,dow){ return typeof sc.start==='number'? sc.start : (sc.start[dow]!=null? sc.start[dow] : sc.start.d); }
 // Is this shift judged on pace? false while ramping (new hire / transfer) or after becoming senior.
 function paceJudged(a, date){
   if(a.seniorSince && date>=a.seniorSince) return false;
@@ -302,7 +333,7 @@ function extractAgentDays(rows){
   Object.keys(ROSTER).forEach(function(em){
     var a=agents[em], R=ROSTER[em]; if(!a) return;
     a.name=R.name; a.status=R.status; a.from=R.from||''; a.rosterNote=R.note||'';
-    a.seniorSince=R.seniorSince||null;
+    a.seniorSince=R.seniorSince||null; a.shiftHrs=R.shiftHrs||null;
     a.lobStart = R.since || a.firstInLob || a.firstSeen;
     if(R.status==='newhire'||R.status==='transfer') a.rampStart = a.lobStart;
   });
@@ -381,7 +412,7 @@ function parseTimestamps(text){
     sess.forEach(function(x){
       var hrs=(x.end-x.start)/60, d=days[days.length-1];
       if(d && x.start-d.end < 8*60 && x.start-d.start < 16*60){
-        if(x.start-d.end>60) d.returns++;
+        if(x.start-d.end>60){ d.returns++; if(d.logged>=7) d.otBlocks=(d.otBlocks||0)+1; else d.splits=(d.splits||0)+1; }
         d.end=Math.max(d.end,x.end); d.logged+=hrs; Object.keys(x.away).forEach(function(r){ d.away[r]=(d.away[r]||0)+x.away[r]; });
       } else days.push({start:x.start,end:x.end,logged:hrs,away:JSON.parse(JSON.stringify(x.away)),returns:0});
     });
@@ -422,33 +453,42 @@ function attachTimestamps(data, ts){
   var n=0;
   Object.keys(data.agents).forEach(function(em){
     var a=data.agents[em], t=(a.agentId&&byId[a.agentId]) || byName[nk(a.name)] || null;
-    a.ts=t; if(t){ n++; applySchedule(t, SCHEDULES[em], ts.to); }
+    a.ts=t; if(t){ n++; applySchedule(t, SCHEDULES[em], ts.to, a.shiftHrs||8); }
   });
   return n;
 }
 // Judge start times / days against an assigned schedule (when one is configured for the agent)
-function applySchedule(t, scheds, exportEnd){
+function applySchedule(t, scheds, exportEnd, S){
   if(!t._missed0) t._missed0=t.missed.slice();
   t.sched=null;
-  if(!scheds||!scheds.length){ t.missed=t._missed0.slice(); return; }
+  var minWork=Math.min(2,(S||8)*0.5);
+  if(!scheds||!scheds.length){ t.missed=(minWork<2? missedByPattern(t.days,minWork) : t._missed0.slice()); return; }
   function schedOn(d){ var s=null; scheds.forEach(function(x){ if(d>=x.from) s=x; }); return s; }
   t.sched=scheds[scheds.length-1];
   var worked={};
   t.days.forEach(function(d){
-    if(d.logged>=2) worked[d.date]=1;
+    if(d.logged>=minWork) worked[d.date]=1;
     var sc=schedOn(d.date); if(!sc) return;
-    var dow=new Date(d.date+'T12:00:00Z').getUTCDay();
-    d.sched=sc; d.norm=sc.start; d.dev=((d.startH-sc.start+36)%24)-12;
-    d.move=false; d.moveRun=false; d.slide=Math.abs(d.dev)>1; d.late=d.dev>0.25 && !d.slide;
-    d.offDay=sc.days.indexOf(dow)<0;
+    var dow=new Date(d.date+'T12:00:00Z').getUTCDay(), st=schedStart(sc,dow), tol=sc.tol||1;
+    d.sched=sc; d.norm=st; d.dev=((d.startH-st+36)%24)-12;
+    d.move=false; d.moveRun=false; d.slide=Math.abs(d.dev)>tol; d.late=d.dev>0.25 && !d.slide;
+    d.offDay=!!(sc.days && sc.days.indexOf(dow)<0);
   });
-  var first=scheds[0].from, missed=t._missed0.filter(function(x){return x<first;});
+  var first=scheds[0].from, base=(minWork<2? missedByPattern(t.days,minWork) : t._missed0);
+  var missed=base.filter(function(x){ var sc=schedOn(x); return x<first || (sc && !sc.days); });
   var last=exportEnd || (t.days.length? t.days[t.days.length-1].date : first);
   for(var dd=first; dd<=last; dd=addDays(dd,1)){
     var sc=schedOn(dd), dow=new Date(dd+'T12:00:00Z').getUTCDay();
-    if(sc && sc.days.indexOf(dow)>=0 && !worked[dd]) missed.push(dd);
+    if(sc && sc.days && sc.days.indexOf(dow)>=0 && !worked[dd]) missed.push(dd);
   }
-  t.missed=missed;
+  t.missed=missed.sort();
+}
+function missedByPattern(days,minWork){
+  var worked={}, missed=[]; days.forEach(function(d){ if(d.logged>=minWork) worked[d.date]=1; });
+  if(!days.length) return missed;
+  for(var dd=days[0].date; dd<=days[days.length-1].date; dd=addDays(dd,1)){
+    if(worked[dd]) continue; var c=0; for(var w=1;w<=4;w++) if(worked[addDays(dd,-7*w)]) c++; if(c>=3) missed.push(dd); }
+  return missed;
 }
 
 function classify(u,S,buf){
@@ -465,7 +505,7 @@ function summarise(data, opts){
   var res=[];
   Object.keys(data.agents).forEach(function(em){
     var a=data.agents[em]; if(!a.lob) return;
-    var S = (opts.goread9 && a.lob==='Goread') ? 9 : opts.shiftHrs;
+    var S = a.shiftHrs || ((opts.goread9 && a.lob==='Goread') ? 9 : opts.shiftHrs);
     var shifts=buildShifts(a.days,S).filter(function(u){ return u.date>=opts.from && u.date<=opts.to; });
     shifts.forEach(function(u){ if(!u.lobs.length) u.lobs=[a.lob]; u.lobs=LOB_ORDER.filter(function(l){return u.lobs.indexOf(l)>=0;}); u.lob=primaryLob(u.lobs,a.rosterLob); });
     if(opts.lob) shifts=shifts.filter(function(u){ return u.lobs.indexOf(opts.lob)>=0; });
@@ -642,7 +682,8 @@ function computeCompliance(rows, o){
            relReg:null,relExt:null,flags:[],score:0,pattern:[]};
     var rr=[],re=[];
     sh.forEach(function(u,i){
-      var isTeam=!!team[(u.lob||a.lob)+'|'+u.date];
+      var isTeam=!!team[(u.lob||a.lob)+'|'+u.date]||isApprovedOT(a.email,u.date)||isApprovedOT(a.email,u.endDate);
+      if(isApprovedOT(a.email,u.date)) c.approved=(c.approved||0)+1;
       var ext=u.hrs>S+o.otBuf && !isTeam;
       if(isTeam && u.hrs>S+o.otBuf) c.extTeam++;
       if(ext){ c.ext++; if(u.lobs.some(function(l){return NO_OT_LOBS[l];})) c.extInLob++; }
@@ -659,7 +700,7 @@ function computeCompliance(rows, o){
       if(!paceJudged(a,u.date)){ c.notJudged++; m=null; } else c.judged++;
       if(m && u.hrs>=4){ var v=((u.email+u.chat)/u.hrs)/m; (ext?re:(u.hrs>=S-1?rr:[])).push(v); }
     });
-    var W={}; sh.forEach(function(u){ var k=wkStart(u.date); (W[k]=W[k]||{d:0,h:0}); W[k].d++; W[k].h+=u.hrs; });
+    var W={}; sh.forEach(function(u){ if(isApprovedOT(a.email,u.date)) return; var k=wkStart(u.date); (W[k]=W[k]||{d:0,h:0}); W[k].d++; W[k].h+=u.hrs; });
     var wkCap=S*5+2;
     Object.keys(W).forEach(function(k){ c.weeks++; if(W[k].d>=6) c.sixDay++; if(W[k].h>wkCap) c.overWk++; });
     function av(z){ return z.length? z.reduce(function(p,q){return p+q;},0)/z.length : null; }
@@ -681,22 +722,27 @@ function computeCompliance(rows, o){
     // Timestamp-based flags (only when the Agent Timestamps export is loaded)
     if(a.ts){
       var td=a.ts.days.filter(function(d){return d.date>=o.from && d.date<=o.to;});
+      td.forEach(function(d){ if(isApprovedOT(a.email,d.date)){ d.approvedOT=APPROVED_OT[a.email][d.date]; d.offDay=false; d.slide=false; d.late=false; } });
       var slides=td.filter(function(d){return d.slide;}), moves=td.filter(function(d){return d.move;});
       var miss=a.ts.missed.filter(function(d){return d>=o.from && d<=o.to;});
-      var rets=td.filter(function(d){return d.returns>0;});
+      var rets=td.filter(function(d){return d.splits>0;}), otb=td.filter(function(d){return d.otBlocks>0;});
       var unsp=td.length? td.reduce(function(s,d){return s+(d.away.Unspecified||0);},0)/td.length : 0;
       var trn=td.reduce(function(s,d){return s+(d.away.Training||0)+(d.away.Coaching||0)+(d.away.Upskilling||0);},0);
       c.ts={days:td.length,slides:slides.length,moves:moves.length,missed:miss,returns:rets.length,unsp:unsp,train:trn};
-      if(slides.length>=3){ var ex=slides[slides.length-1]; F(slides.length>=6?'hi':'md',slides.length+' start-time slides >1h (e.g. '+fmtD(ex.date)+' '+fmtClock(ex.startH)+' vs usual '+fmtClock(ex.norm)+')'); }
+      var tolTxt=(a.ts.sched&&a.ts.sched.tol)? Math.round(a.ts.sched.tol*60)+' min' : '1h';
+      if(slides.length && a.status==='senior') F('lo',slides.length+' start-time slide'+(slides.length>1?'s':'')+' >'+tolTxt+' — senior, may be 1:1 coaching (confirm)');
+      else if(slides.length>=(a.status==='parttime'?2:3)){ var ex=slides[slides.length-1]; F(slides.length>=6?'hi':'md',slides.length+' start-time slides >'+tolTxt+' (e.g. '+fmtD(ex.date)+' '+fmtClock(ex.startH)+' vs '+(ex.sched?'assigned ':'usual ')+fmtClock(ex.norm)+')'); }
       if(moves.length && !a.ts.sched) F('lo','Schedule moved '+moves.map(function(m){return fmtD(m.date)+' → '+fmtClock(m.startH);}).join(', ')+' (confirm approved)');
       if(miss.length) F(miss.length>=2?'md':'lo',miss.length+' missed scheduled day'+(miss.length>1?'s':'')+' — check PTO: '+miss.map(fmtD).join(', '));
-      if(rets.length>=3) F('md',rets.length+' days logged back in later (split shift / extra block)');
+      if(rets.length>=3) F('md',rets.length+' split shifts (logged off early, back later)');
+      if(otb.length) F('lo',otb.length+' day'+(otb.length>1?'s':'')+' logged off after a full shift, then back in for OT');
       var offd=td.filter(function(d){return d.offDay;}), late=td.filter(function(d){return d.late;});
       c.ts.offDays=offd.length; c.ts.late=late.length;
       if(offd.length) F(offd.length>=2?'md':'lo',offd.length+' day'+(offd.length>1?'s':'')+' worked outside assigned days ('+offd.map(function(d){return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d.date+'T12:00:00Z').getUTCDay()]+' '+fmtD(d.date);}).join(', ')+')');
       if(late.length>=3) F('lo',late.length+' late log-ins (15–60 min after assigned start)');
       if(unsp>=30) F('lo','Avg '+Math.round(unsp)+' min/day away with no reason');
     }
+    if(c.approved) F('lo',c.approved+' approved OT day'+(c.approved>1?'s':'')+' (not counted)');
     if(c.extTeam) F('lo',c.extTeam+' team-wide long day'+(c.extTeam>1?'s':'')+' (not counted)');
     if(c.multiLogin>=Math.max(3,Math.round(sh.length*0.25))) F('lo',c.multiLogin+' days with 3+ log-ins');
     if(c.ext>=3 && c.relExt!=null && c.relReg!=null && c.relExt < c.relReg-0.1 && c.relExt<0.95)
@@ -704,12 +750,14 @@ function computeCompliance(rows, o){
 
     // Pattern labels
     if(c.ext>=3 && c.relExt!=null && c.relExt<0.95 && (c.relReg==null || c.relExt<c.relReg-0.05)) c.pattern.push('Catch-up extender');
-    if(c.ts && c.ts.slides>=3 && !(c.splitRest>=Math.max(2,Math.round(c.weeks*0.3)) || c.sixDay>=2)) c.pattern.push('Self-scheduling / sliding days');
+    if(c.ts && c.ts.slides>=3 && a.status!=='senior' && !(c.splitRest>=Math.max(2,Math.round(c.weeks*0.3)) || c.sixDay>=2)) c.pattern.push('Self-scheduling / sliding days');
     if(c.splitRest>=Math.max(2,Math.round(c.weeks*0.3)) || c.sixDay>=2) c.pattern.push('Self-scheduling / sliding days');
     if(c.afterLost>=2) c.pattern.push('Offsetting lost time');
     if(extPct>=0.25 && c.relExt!=null && c.relExt>=1.05) c.pattern.push('Routine OT, high output');
     if(c.marathon>=3 || c.longest>=14) c.pattern.push('Fatigue risk');
     if(a.status==='senior' && a.seniorSince && o.to>=a.seniorSince) c.pattern.unshift('Senior · training duties');
+    else if(a.status==='senior') c.pattern.unshift('Senior · coaching duties');
+    if(a.status==='parttime') c.pattern.unshift('Part-time');
     if(c.notJudged>0 && (a.status==='newhire'||a.status==='transfer')) c.pattern.unshift('Ramping'+(a.status==='transfer'&&a.from?' (from '+a.from+')':' (new hire)'));
     c.sev = c.score>=7?'H':c.score>=4?'M':c.score>=1?'L':'';
     a.comp=c;
@@ -723,6 +771,8 @@ var PATTERN_HELP={
   'Routine OT, high output':'Extends often but stays fast. Productive, but the hours aren\'t approved and it inflates their totals compared with 8-hr peers.',
   'Fatigue risk':'12+ hour days. Quality, accuracy and burnout risk; also a labour-policy exposure.',
   'Senior · training duties':'Senior agent who trains new agents. Lower email output is expected, so pace isn\'t judged from the senior start date. Schedule and hours rules still apply.',
+  'Senior · coaching duties':'Senior agent who runs 1:1 coaching and sometimes slides their shift for it. Start-time slides are shown for context, not scored. Pace and hours rules still apply.',
+  'Part-time':'Part-time agent on a short set shift. Log-in times are checked against the set time with a 30-minute tolerance; anything over the short shift + 1 hr counts as extended.',
   'Ramping (new hire)':'In the first '+RAMP_DAYS+' days in the LOB. Pace isn\'t judged and they\'re left out of the team pace baseline. Schedule and hours rules still apply.'
 };
 
@@ -745,6 +795,7 @@ function loadTsFile(f){
 function lobCell(lobs){ lobs=(lobs&&lobs.length)?lobs:[]; return lobs.map(function(l){ return '<span style="white-space:nowrap"><span class="dot" style="background:'+(LOB_COLORS[l]||'#999')+'"></span>'+esc(l)+'</span>'; }).join(' <span class="muted">+</span> ')||'<span class="muted">—</span>'; }
 function helpFor(p){ return PATTERN_HELP[p] || (/^Ramping/.test(p)? PATTERN_HELP['Ramping (new hire)'] : ''); }
 function statusTag(a){
+  if(a.status==='parttime') return ' <span class="b b-short" title="'+esc(a.rosterNote)+'">Part-time</span>';
   if(a.status==='senior') return ' <span class="b b-reg" title="'+esc(a.rosterNote)+'">Senior</span>';
   if(a.status==='newhire') return ' <span class="b b-short">New hire</span>';
   if(a.status==='transfer') return ' <span class="b b-short" title="Started in '+esc(a.lob)+' '+(a.rampStart||'')+'">Tx from '+esc(a.from)+'</span>';
@@ -955,22 +1006,6 @@ function render(){
 
   // Schedule compliance
   computeCompliance(ROWS,o);
-  var flagged=ROWS.filter(function(a){return a.comp.sev;}).sort(function(x,y){ return y.comp.score-x.comp.score || x.name.localeCompare(y.name); });
-  html+='<div class="sec-title">⚑ Schedule Compliance Flags</div><div class="sec-sub">Standard: 5 straight days × '+S+' hrs = '+(S*5)+' hrs/week (Goread 9 hrs). Overtime isn\'t approved for Path Social, Crowd Ignite or Subdelete. Pace is compared with the LOB\'s median on the same day (tenured agents only; ramping and senior agents aren\'t judged on pace). Risk: HIGH = 7+ points, MEDIUM = 4–6, LOW = 1–3 (red flag = 2 pts, amber = 1). Click a row for the agent\'s week-by-week grid.</div>';
-  if(TEAM_DAYS.length) html+='<div class="note" style="margin:0 0 10px"><b>Team-wide long days</b> (3 in 4 or more of the LOB extended — likely a directed backlog push, so not held against individuals; confirm with the team lead): '+
-    TEAM_DAYS.map(function(t){ return esc(t.lob)+' '+fmtD(t.date)+' ('+t.x+' of '+t.n+')'; }).join(' · ')+'</div>';
-  html+='<div class="card"><table id="flagTbl"><thead><tr><th class="l" style="cursor:default">Risk</th><th class="l" style="cursor:default">Agent</th><th class="l" style="cursor:default">LOB</th><th class="l" style="cursor:default">Pattern</th><th class="l" style="cursor:default">Flags</th><th style="cursor:default">Pace reg / long</th></tr></thead><tbody>';
-  if(!flagged.length) html+='<tr><td colspan="6" class="l muted" style="padding:16px">No schedule flags in this range.</td></tr>';
-  flagged.forEach(function(a){
-    var c=a.comp, sevTxt={H:'HIGH',M:'MEDIUM',L:'LOW'}[c.sev];
-    html+='<tr class="ag'+(SEL===a.email?' sel':'')+'" data-email="'+esc(a.email)+'"><td class="l"><span class="sev sev-'+c.sev+'">'+sevTxt+'</span></td><td class="l"><b>'+esc(a.name)+'</b>'+statusTag(a)+'</td>'+
-      '<td class="l">'+lobCell(a.lobs)+'</td>'+
-      '<td class="l wrapc">'+(c.pattern.length?c.pattern.map(function(p){var ctx=/^Ramping|^Senior/.test(p); return '<span title="'+esc(helpFor(p))+'"'+(ctx?' class="muted"':'')+'>'+(ctx?'ⓘ '+p:'<b>'+p+'</b>')+'</span>';}).join('<br>'):'<span class="muted">—</span>')+'</td>'+
-      '<td class="l wrapc">'+c.flags.map(function(f){return '<span class="flag f-'+f.lvl+'">'+esc(f.txt)+'</span>';}).join('')+'</td>'+
-      '<td>'+(c.relReg!=null?Math.round(c.relReg*100)+'%':'—')+' / '+(c.relExt!=null?'<span class="'+(c.relExt<(c.relReg||1)-0.1?'down':'')+'">'+Math.round(c.relExt*100)+'%</span>':'—')+'</td></tr>';
-  });
-  html+='</tbody></table></div>';
-
   // Agent table
   html+='<div class="sec-title">Agent Detail</div><div class="sec-sub">Click any agent to see their shift-by-shift log. Click a column header to sort.'+(hidden?' '+hidden+' non-handling user'+(hidden>1?'s':'')+' hidden (under 5 contacts per 8 hrs).':'')+'</div>';
   html+='<div class="card" style="max-height:640px"><table id="agTbl"><thead><tr>'+
@@ -993,6 +1028,23 @@ function render(){
       '<td class="bl">'+qaCell(a.qaP)+'</td><td>'+fcrCell(a.fcrP)+'</td></tr>';
   });
   html+='</tbody></table></div>';
+  // Schedule compliance (shown after Agent Detail)
+  var flagged=ROWS.filter(function(a){return a.comp.sev;}).sort(function(x,y){ return y.comp.score-x.comp.score || x.name.localeCompare(y.name); });
+  html+='<div class="sec-title">⚑ Schedule Compliance Flags</div><div class="sec-sub">Standard: 5 straight days × '+S+' hrs = '+(S*5)+' hrs/week (Goread 9 hrs). Overtime isn\'t approved for Path Social, Crowd Ignite or Subdelete. Pace is compared with the LOB\'s median on the same day (tenured agents only; ramping and senior agents aren\'t judged on pace). Risk: HIGH = 7+ points, MEDIUM = 4–6, LOW = 1–3 (red flag = 2 pts, amber = 1). Click a row for the agent\'s week-by-week grid.</div>';
+  if(TEAM_DAYS.length) html+='<div class="note" style="margin:0 0 10px"><b>Team-wide long days</b> (3 in 4 or more of the LOB extended — likely a directed backlog push, so not held against individuals; confirm with the team lead): '+
+    TEAM_DAYS.map(function(t){ return esc(t.lob)+' '+fmtD(t.date)+' ('+t.x+' of '+t.n+')'; }).join(' · ')+'</div>';
+  html+='<div class="card"><table id="flagTbl"><thead><tr><th class="l" style="cursor:default">Risk</th><th class="l" style="cursor:default">Agent</th><th class="l" style="cursor:default">LOB</th><th class="l" style="cursor:default">Pattern</th><th class="l" style="cursor:default">Flags</th><th style="cursor:default">Pace reg / long</th></tr></thead><tbody>';
+  if(!flagged.length) html+='<tr><td colspan="6" class="l muted" style="padding:16px">No schedule flags in this range.</td></tr>';
+  flagged.forEach(function(a){
+    var c=a.comp, sevTxt={H:'HIGH',M:'MEDIUM',L:'LOW'}[c.sev];
+    html+='<tr class="ag'+(SEL===a.email?' sel':'')+'" data-email="'+esc(a.email)+'"><td class="l"><span class="sev sev-'+c.sev+'">'+sevTxt+'</span></td><td class="l"><b>'+esc(a.name)+'</b>'+statusTag(a)+'</td>'+
+      '<td class="l">'+lobCell(a.lobs)+'</td>'+
+      '<td class="l wrapc">'+(c.pattern.length?c.pattern.map(function(p){var ctx=/^Ramping|^Senior/.test(p); return '<span title="'+esc(helpFor(p))+'"'+(ctx?' class="muted"':'')+'>'+(ctx?'ⓘ '+p:'<b>'+p+'</b>')+'</span>';}).join('<br>'):'<span class="muted">—</span>')+'</td>'+
+      '<td class="l wrapc">'+c.flags.map(function(f){return '<span class="flag f-'+f.lvl+'">'+esc(f.txt)+'</span>';}).join('')+'</td>'+
+      '<td>'+(c.relReg!=null?Math.round(c.relReg*100)+'%':'—')+' / '+(c.relExt!=null?'<span class="'+(c.relExt<(c.relReg||1)-0.1?'down':'')+'">'+Math.round(c.relExt*100)+'%</span>':'—')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+
   html+='<div id="detail"></div>';
   destroyCharts();
   $('main').innerHTML=html;
@@ -1066,10 +1118,12 @@ function renderDetail(a){
       if(d.late) notes.push('<span class="flag f-lo">Late '+Math.round(d.dev*60)+' min</span>');
       if(d.offDay) notes.push('<span class="flag f-md">Not an assigned work day</span>');
       if(d.move) notes.push('<span class="flag f-lo">Schedule changed from '+fmtClock(d.norm)+'</span>');
-      if(d.returns) notes.push('<span class="flag f-lo">Logged back in later ×'+d.returns+'</span>');
+      if(d.approvedOT) notes.push('<span class="flag f-lo">✓ '+esc(d.approvedOT)+'</span>');
+      if(d.otBlocks) notes.push('<span class="flag f-lo">Logged off, back in for OT</span>');
+      if(d.splits) notes.push('<span class="flag f-md">Split shift (back in later)</span>');
       if(d.logged>S+opts().otBuf) notes.push('<span class="flag f-md">'+fmtH(d.logged)+' logged</span>');
       var endDay=minIso(d.end)!==d.date?' (+1)':'';
-      h+='<tr><td class="l">'+fmtD(d.date)+' '+['Su','Mo','Tu','We','Th','Fr','Sa'][new Date(d.date+'T12:00:00Z').getUTCDay()]+'</td><td class="l">'+fmtClock(d.startH)+'</td><td class="l">'+fmtClock(d.endH)+endDay+'</td><td>'+fh(d.logged)+'</td>'+
+      h+='<tr><td class="l">'+fmtD(d.date)+' '+['Su','Mo','Tu','We','Th','Fr','Sa'][new Date(d.date+'T12:00:00Z').getUTCDay()]+'</td><td class="l">'+fmtClock(d.startH)+' <span class="muted" style="font-size:10px">('+fmtClock(manilaH(d.date,d.startH))+' MNL)</span></td><td class="l">'+fmtClock(d.endH)+endDay+'</td><td>'+fh(d.logged)+'</td>'+
         '<td>'+Math.round(aw.Lunch||0)+'m</td><td>'+Math.round(aw.Break||0)+'m</td><td>'+(tr?Math.round(tr)+'m':'<span class="muted">0</span>')+'</td><td>'+(oth?Math.round(oth)+'m':'<span class="muted">0</span>')+'</td><td class="l wrapc">'+notes.join('')+'</td></tr>';
     });
     h+='</tbody></table></div>';
