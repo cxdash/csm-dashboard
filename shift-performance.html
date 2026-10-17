@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Hour Shift Performance</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f1b35;--accent:#3b82f6;
+  --bg:#f1f4f9;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --green:#16a34a;--red:#dc2626;--amber:#d97706;
+  --green-bg:#f0fdf4;--red-bg:#fef2f2;--amber-bg:#fffbeb;--blue-bg:#eff6ff;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px}
+.header{background:var(--navy);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.3);flex-wrap:wrap;gap:10px}
+.logo{width:30px;height:30px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:12px;flex-shrink:0}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-title{color:#fff;font-size:14px;font-weight:600}
+.hdr-sub{color:rgba(255,255,255,.5);font-size:10px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);padding:4px 10px;border-radius:4px;font-size:11px;border:1px solid rgba(255,255,255,.15);text-decoration:none}
+a.pill:hover,button.pill:hover{background:rgba(255,255,255,.2);color:#fff}
+button.pill{cursor:pointer;font-family:inherit}
+.wrap{padding:16px 24px 40px;max-width:1500px;margin:0 auto}
+.controls{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.ctl label{display:block;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.ctl select,.ctl input{font:inherit;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)}
+.ctl input[type=number]{width:64px}
+.ctl .chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:6px 0}
+.btn{font:inherit;font-size:12px;font-weight:600;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text);cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.status{margin-left:auto;font-size:11px;color:var(--text2);align-self:center}
+.sec-title{font-size:13px;font-weight:700;margin:22px 0 4px;display:flex;align-items:center;gap:8px}
+.sec-sub{font-size:11px;color:var(--text3);margin-bottom:10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.kpi .k-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.kpi .k-val{font-size:24px;font-weight:700;margin-top:4px}
+.kpi .k-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f8fafc;color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:right;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;cursor:pointer;user-select:none}
+th.l,td.l{text-align:left}
+th.grp{text-align:center;background:#eef2f7;cursor:default;border-left:1px solid var(--border)}
+td{padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap}
+td.bl,th.bl{border-left:1px solid var(--border)}
+tr.ag:hover td{background:#f8fbff;cursor:pointer}
+tr.sel td{background:var(--blue-bg)!important}
+tr.tot td{font-weight:700;background:#f8fafc}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.b{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.b-reg{background:var(--green-bg);color:var(--green)}
+.b-ot{background:var(--amber-bg);color:var(--amber)}
+.b-short{background:#f1f5f9;color:var(--text2)}
+.up{color:var(--green);font-weight:600}.down{color:var(--red);font-weight:600}.muted{color:var(--text3)}
+.note{font-size:11px;color:var(--text2);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-top:22px;line-height:1.6}
+.note b{color:var(--text)}
+.detail-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border)}
+.detail-head b{font-size:13px}
+.loading{padding:40px;text-align:center;color:var(--text2)}
+.err{color:var(--red)}
+@media (max-width:700px){.wrap{padding:12px}.header{padding:10px 12px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="hdr-left">
+    <div class="logo">8H</div>
+    <div>
+      <div class="hdr-title">Shift Performance — Regular vs Overtime</div>
+      <div class="hdr-sub">Actual average per 8-hour shift · Emails fulfilled · Chats fulfilled · Combined</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span class="pill" id="periodPill">—</span>
+    <button class="pill" id="refreshBtn" title="Reload live data">🔄 Refresh</button>
+    <a class="pill" href="index.html">← KPI Dashboard</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="ctl"><label>Period</label>
+      <select id="preset">
+        <option value="mtd">This month (MTD)</option>
+        <option value="lastm">Last month</option>
+        <option value="lastw">Last week (Mon–Sun)</option>
+        <option value="l4w">Last 4 weeks</option>
+        <option value="custom">Custom range</option>
+      </select>
+    </div>
+    <div class="ctl"><label>From</label><input type="date" id="dFrom"></div>
+    <div class="ctl"><label>To</label><input type="date" id="dTo"></div>
+    <div class="ctl"><label>LOB</label><select id="lobSel"><option value="">All LOBs</option></select></div>
+    <div class="ctl"><label>Shift hrs</label><input type="number" id="shiftHrs" value="8" min="4" max="12" step="0.5"></div>
+    <div class="ctl"><label>OT if more than</label><select id="otBuf"><option value="1" selected>+1 hr over shift</option><option value="0.5">+30 min over shift</option><option value="2">+2 hrs over shift</option></select></div>
+    <div class="ctl"><label>&nbsp;</label><div class="chk"><input type="checkbox" id="goread9" checked><span>Goread = 9-hr shift</span></div></div>
+    <div class="ctl"><label>&nbsp;</label><div class="chk" title="Hides leads/admins and anyone averaging under 5 handled contacts per 8 hrs logged in"><input type="checkbox" id="hideLow" checked><span>Hide non-handling users</span></div></div>
+    <div class="ctl"><label>&nbsp;</label><button class="btn" id="exportBtn">⬇ Export CSV</button></div>
+    <div class="status" id="status">Loading live Gladly data…</div>
+  </div>
+
+  <div id="main"><div class="loading">⏳ Loading the Gladly Agent Reporting sheet (≈16 MB, can take 10–30 seconds)…</div></div>
+
+  <div class="note">
+    <b>How this is calculated.</b>
+    Source: Gladly Agent Reporting sheet (daily buckets, Pacific Time). Each agent day is rebuilt into <b>shifts</b>.
+    Shifts that cross midnight (e.g. 10 PM 10/16 → 6 AM 10/17) get split by Gladly into two calendar days. Wherever the sheet shows a day with no new login (the agent was still logged in from the night before), that time is joined back to the shift it belongs to, so each split shift counts once.
+    <br><b>Regular shift</b> = logged-in time within ±1 hr of the shift length (7–9 hrs for an 8-hr shift).
+    <b>OT / Offset</b> = logged in more than shift + the OT buffer (default: more than 9 hrs).
+    <b>Short</b> = under shift − 1 hr (half days, late log-ins, start or end of a schedule change). Short shifts are left out of the regular average, so they don't pull it down.
+    <br><b>Avg per regular shift</b> = total handled on regular shifts ÷ number of regular shifts. This is the actual daily average on a normal 8-hr day.
+    <b>OT shift avg</b> = average handled on an OT day (the whole day, OT included).
+    <b>OT rate per 8 hrs</b> = OT-day volume ÷ (OT-day hours ÷ 8). This answers whether the agent keeps the same pace during overtime.
+    <b>Pace vs regular</b> = OT rate per 8 hrs compared with the regular-shift average.
+    Emails = Contact Fulfilled – Email · Chats = Contact Fulfilled – Chat · Combined = Emails + Chats.
+    The KPI Dashboard isn't changed by this page.
+  </div>
+</div>
+
+<script id="core">
+// ───────────────────────── CORE LOGIC (pure, testable) ─────────────────────────
+var SHEETS_AGENT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';
+var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Subdelete':'#6366f1','Follows':'#6b7280'};
+var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows'];
+var EXCL = {'matt@pathsocial.com':1};
+
+function parseCSV(t){
+  var rows=[],r=[],c='',q=false;
+  for(var i=0;i<t.length;i++){
+    var ch=t[i];
+    if(q){ if(ch==='"'){ if(t[i+1]==='"'){c+='"';i++;} else q=false; } else c+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){ r.push(c); c=''; }
+    else if(ch==='\n'){ r.push(c); rows.push(r); r=[]; c=''; }
+    else if(ch!=='\r') c+=ch;
+  }
+  if(c||r.length){ r.push(c); rows.push(r); }
+  return rows;
+}
+
+// Same LOB rules as the KPI dashboard (index.html)
+function getLOB(inboxes, team){
+  var t=((inboxes||'')+' '+(team||'')).toLowerCase();
+  if(t.indexOf('path')>=0) return 'Path Social';
+  if(t.indexOf('crowd')>=0) return 'Crowd Ignite';
+  if(t.indexOf('high social')>=0||t.indexOf('cloutify')>=0) return 'High Social';
+  if(t.indexOf('plixi')>=0) return 'Plixi';
+  if(t.indexOf('goread')>=0||t.indexOf('viralpush')>=0) return 'Goread';
+  if(t.indexOf('subdelete')>=0) return 'Subdelete';
+  if(t.indexOf('followspy')>=0||t.indexOf('recentfollow')>=0||t.indexOf('follows')>=0) return 'Follows';
+  return null;
+}
+
+function isoFromBucket(s){
+  var p=(s||'').split(' ')[0].split('/');
+  if(p.length<3) return null;
+  var m=+p[0], d=+p[1], y=+p[2];
+  if(!m||!d||!y) return null;
+  return y+'-'+(m<10?'0':'')+m+'-'+(d<10?'0':'')+d;
+}
+function addDays(iso,n){
+  var p=iso.split('-'); var dt=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n));
+  return dt.toISOString().slice(0,10);
+}
+
+// rows → { agents: {email:{email,name,lob,days:[...]}} , maxDate }
+function extractAgentDays(rows){
+  var hdr=-1;
+  for(var i=0;i<Math.min(rows.length,6);i++){ if(rows[i].indexOf('Bucket Beginning')>=0){hdr=i;break;} }
+  if(hdr<0) throw new Error('Header row ("Bucket Beginning") not found in sheet');
+  var H=rows[hdr].map(function(h){return (h||'').trim().toLowerCase();});
+  function C(n){ return H.indexOf(n.toLowerCase()); }
+  var COL={bucket:C('Bucket Beginning'),name:C('Name'),email:C('Email'),inbox:C('Inbox(es)'),team:C('Team(s)'),
+    logins:C('Logged In'),login:C('Logged in Time in seconds'),active:C('Active Time in seconds'),away:C('Away Time in seconds'),
+    ful:C('Contact Fulfilled'),email_f:C('Contact Fulfilled - Email'),chat_f:C('Contact Fulfilled - Chat')};
+  ['bucket','email','login','email_f','chat_f'].forEach(function(k){ if(COL[k]<0) throw new Error('Missing column: '+k); });
+  function n(r,i){ return i>=0&&r[i]? (+r[i]||0):0; }
+  var agents={}, maxDate='';
+  for(var i=hdr+1;i<rows.length;i++){
+    var r=rows[i]; if(r.length<10) continue;
+    var em=(r[COL.email]||'').toLowerCase().trim(); if(!em||EXCL[em]) continue;
+    var date=isoFromBucket(r[COL.bucket]); if(!date) continue;
+    var hrs=n(r,COL.login)/3600;
+    var e=n(r,COL.email_f), c=n(r,COL.chat_f);
+    if(hrs<=0 && e+c===0) continue;
+    var lob=getLOB(r[COL.inbox],r[COL.team]);
+    var a=agents[em]||(agents[em]={email:em,name:r[COL.name]||em,lob:null,lastLobDate:'',days:[]});
+    if(lob && date>=a.lastLobDate){ a.lob=lob; a.lastLobDate=date; a.name=r[COL.name]||a.name; }
+    a.days.push({date:date,logins:n(r,COL.logins),hrs:hrs,active:n(r,COL.active)/3600,away:n(r,COL.away)/3600,
+                 email:e,chat:c,total:n(r,COL.ful),lob:lob});
+    if(date>maxDate) maxDate=date;
+  }
+  return {agents:agents,maxDate:maxDate};
+}
+
+// Rebuild shifts from daily buckets for one agent.
+// S = shift length (hrs). A day with 0 logins is a continuation of a session that
+// started the previous day (shift crossed midnight).
+function buildShifts(days, S){
+  var d=days.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;})
+    .filter(function(x){ return !(x.hrs<0.5 && x.email+x.chat===0); }); // drop stray micro-logins
+  var out=[], stretchStart=0;
+  function unit(x){ return {date:x.date,endDate:x.date,parts:[x.date],logins:x.logins,hrs:x.hrs,active:x.active,away:x.away,
+                            email:x.email,chat:x.chat,total:x.total,joined:false,joinNote:''}; }
+  function absorb(u,x,note){ u.hrs+=x.hrs;u.active+=x.active;u.away+=x.away;u.email+=x.email;u.chat+=x.chat;u.total+=x.total;
+                             u.parts.push(x.date); if(x.date>u.endDate) u.endDate=x.date; u.joined=true; u.joinNote=note; }
+  for(var i=0;i<d.length;i++){
+    var x=d[i], prev=d[i-1];
+    var consecutive = prev && addDays(prev.date,1)===x.date;
+    if(!consecutive) stretchStart=out.length;
+    var isLastOfStretch = !(d[i+1] && addDays(x.date,1)===d[i+1].date);
+    if(consecutive && x.logins===0){
+      var first=out[stretchStart], last=out[out.length-1];
+      // (a) end of a cross-midnight work block: the block's first day only held the start
+      //     of a shift (short, with a login) — join this tail to it so it counts as one shift
+      if(isLastOfStretch && first && first!==undefined && out.length-1>=stretchStart && !first.joined &&
+         first.logins>=1 && first.hrs < S-1 && first.parts.length===1 && first.date!==x.date){
+        absorb(first,x,'Work block '+first.date.slice(5).replace('-','/')+'–'+x.date.slice(5).replace('-','/')+' crossed midnight: start of first shift + end of last shift joined into one');
+        continue;
+      }
+      // (b) single split shift: previous day + this tail fits within one shift
+      if(last && !last.joined && last.hrs + x.hrs <= S+1.5){
+        absorb(last,x,'Crossed midnight into '+x.date.slice(5).replace('-','/')+' (joined)');
+        continue;
+      }
+    }
+    out.push(unit(x));
+  }
+  return out;
+}
+
+function classify(u,S,buf){
+  if(u.hrs > S+buf) return 'ot';
+  if(u.hrs < S-1) return 'short';
+  return 'reg';
+}
+
+function emptyAgg(){ return {n:0,hrs:0,email:0,chat:0,total:0}; }
+function addAgg(a,u){ a.n++; a.hrs+=u.hrs; a.email+=u.email; a.chat+=u.chat; a.total+=u.email+u.chat; }
+
+// Summarise agents over [from,to] (inclusive, YYYY-MM-DD)
+function summarise(data, opts){
+  var res=[];
+  Object.keys(data.agents).forEach(function(em){
+    var a=data.agents[em]; if(!a.lob) return;
+    if(opts.lob && a.lob!==opts.lob) return;
+    var S = (opts.goread9 && a.lob==='Goread') ? 9 : opts.shiftHrs;
+    var shifts=buildShifts(a.days,S).filter(function(u){ return u.date>=opts.from && u.date<=opts.to; });
+    var all=emptyAgg(), reg=emptyAgg(), ot=emptyAgg(), sh=emptyAgg(), otExtra=0;
+    shifts.forEach(function(u){
+      u.type=classify(u,S,opts.otBuf);
+      addAgg(all,u);
+      if(u.type==='reg') addAgg(reg,u);
+      else if(u.type==='ot'){ addAgg(ot,u); otExtra+=u.hrs-S; }
+      else addAgg(sh,u);
+    });
+    if(all.email+all.chat===0) return;
+    res.push({email:em,name:a.name,lob:a.lob,S:S,shifts:shifts,all:all,reg:reg,ot:ot,short:sh,otExtra:otExtra});
+  });
+  res.sort(function(x,y){ var a=LOB_ORDER.indexOf(x.lob),b=LOB_ORDER.indexOf(y.lob); return a!==b?a-b:x.name.localeCompare(y.name); });
+  return res;
+}
+
+// derived metrics for an agent or a group
+function metrics(o){
+  function per(a,k){ return a.n? a[k]/a.n : null; }
+  function per8(a,k,S){ return a.hrs>0? a[k]/(a.hrs/S) : null; }
+  var S=o.S||8;
+  var m={
+    regEmail:per(o.reg,'email'), regChat:per(o.reg,'chat'), regComb:per(o.reg,'total'),
+    otComb:per(o.ot,'total'), otEmail:per(o.ot,'email'), otChat:per(o.ot,'chat'),
+    otRate:per8(o.ot,'total',S), allRate:per8(o.all,'total',S),
+    allEmailRate:per8(o.all,'email',S), allChatRate:per8(o.all,'chat',S)
+  };
+  m.pace = o.isGroup ? (o.paceDen? o.paceNum/o.paceDen-1 : null)
+         : ((m.otRate!=null && m.regComb) ? (m.otRate/m.regComb - 1) : null);
+  return m;
+}
+</script>
+
+<script>
+// ───────────────────────── UI ─────────────────────────
+var DATA=null, ROWS=[], SEL=null, SORT={k:null,dir:-1};
+var $=function(id){return document.getElementById(id);};
+function f1(v){ return v==null||isNaN(v)?'<span class="muted">—</span>':(Math.round(v*10)/10).toFixed(1); }
+function f0(v){ return v==null||isNaN(v)?'<span class="muted">—</span>':Math.round(v).toLocaleString(); }
+function fh(v){ if(v==null) return '—'; var h=Math.floor(v), m=Math.round((v-h)*60); if(m===60){h++;m=0;} return h+'h '+(m<10?'0':'')+m+'m'; }
+function pct(v){ if(v==null||isNaN(v)) return '<span class="muted">—</span>'; var s=Math.round(v*100); return '<span class="'+(s>=0?'up':'down')+'">'+(s>0?'+':'')+s+'%</span>'; }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtD(iso){ var p=iso.split('-'); return (+p[1])+'/'+(+p[2]); }
+function fmtDL(iso){ var p=iso.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1]+' '+(+p[2])+', '+p[0]; }
+
+function applyPreset(){
+  var p=$('preset').value, end=DATA&&DATA.maxDate? DATA.maxDate : todayISO();
+  var y=+end.slice(0,4), m=+end.slice(5,7);
+  var from,to;
+  if(p==='mtd'){ from=end.slice(0,8)+'01'; to=end; }
+  else if(p==='lastm'){ var ly=m===1?y-1:y, lm=m===1?12:m-1; from=ly+'-'+String(lm).padStart(2,'0')+'-01'; to=addDays(end.slice(0,8)+'01',-1); }
+  else if(p==='lastw'){ var t=todayISO(); var dt=new Date(t+'T12:00:00'); var dow=(dt.getDay()+6)%7; var mon=addDays(t,-dow-7); from=mon; to=addDays(mon,6); }
+  else if(p==='l4w'){ from=addDays(end,-27); to=end; }
+  else return;
+  $('dFrom').value=from; $('dTo').value=to;
+}
+
+function opts(){
+  return {from:$('dFrom').value,to:$('dTo').value,lob:$('lobSel').value,shiftHrs:+$('shiftHrs').value||8,
+          otBuf:+$('otBuf').value,goread9:$('goread9').checked};
+}
+
+function groupAgg(list){
+  var g={S:+$('shiftHrs').value||8,reg:emptyAgg(),ot:emptyAgg(),all:emptyAgg(),short:emptyAgg(),otExtra:0,paceNum:0,paceDen:0,isGroup:true};
+  // For mixed shift lengths (Goread 9h) normalise each agent's hours to 8-hr-equivalent on its own S
+  list.forEach(function(a){
+    ['reg','ot','all','short'].forEach(function(k){
+      g[k].n+=a[k].n; g[k].email+=a[k].email; g[k].chat+=a[k].chat; g[k].total+=a[k].total;
+      g[k].hrs+=a[k].hrs*(g.S/a.S);
+    });
+    g.otExtra+=a.otExtra;
+    // Pace for a group compares each agent's OT rate with that SAME agent's regular
+    // average (weighted by OT shifts), so a high-volume LOB can't skew the comparison.
+    var am=a.m||metrics(a);
+    if(am.otRate!=null && am.regComb){ g.paceNum+=a.ot.n*am.otRate; g.paceDen+=a.ot.n*am.regComb; }
+  });
+  return g;
+}
+
+function render(){
+  if(!DATA) return;
+  var o=opts();
+  if(!o.from||!o.to||o.from>o.to){ $('main').innerHTML='<div class="loading err">Please pick a valid date range.</div>'; return; }
+  $('periodPill').textContent=fmtDL(o.from)+' – '+fmtDL(o.to);
+  ROWS=summarise(DATA,o);
+  ROWS.forEach(function(a){ a.m=metrics(a); });
+  var hidden=0;
+  if($('hideLow').checked){ ROWS=ROWS.filter(function(a){ var keep=(a.m.allRate||0)>=5; if(!keep) hidden++; return keep; }); }
+  if(SORT.k){ ROWS.sort(function(x,y){ var a=sortVal(x,SORT.k), b=sortVal(y,SORT.k);
+    if(a==null&&b==null) return 0; if(a==null) return 1; if(b==null) return -1;
+    return (a<b?-1:a>b?1:0)*SORT.dir; }); }
+  var G=groupAgg(ROWS), GM=metrics(G);
+  var S=o.shiftHrs;
+  var html='';
+
+  // KPIs
+  var otShare=G.all.n? G.ot.n/G.all.n : 0;
+  html+='<div class="kpis">'+
+    kpi('Emails / regular shift',f1(GM.regEmail),'Avg emails fulfilled on a '+S+'-hr day')+
+    kpi('Chats / regular shift',f1(GM.regChat),'Avg chats fulfilled on a '+S+'-hr day')+
+    kpi('Combined / regular shift',f1(GM.regComb),G.reg.n+' regular shifts · '+ROWS.length+' agents')+
+    kpi('OT / offset shifts',G.ot.n+' <span style="font-size:13px;color:var(--text3)">('+Math.round(otShare*100)+'%)</span>',fh(G.otExtra)+' worked beyond shift')+
+    kpi('OT rate per '+S+' hrs',f1(GM.otRate),'Combined, OT days, normalised to '+S+' hrs')+
+    kpi('OT pace vs regular',pct(GM.pace),'Each agent vs their own regular avg · above 0% = faster on OT days')+
+  '</div>';
+
+  // LOB rollup
+  var byLob={}; ROWS.forEach(function(a){ (byLob[a.lob]=byLob[a.lob]||[]).push(a); });
+  html+='<div class="sec-title">LOB Summary</div><div class="sec-sub">Averages per shift. Regular = '+(S-1)+'–'+(S+o.otBuf)+' hrs logged in'+(o.goread9?' (Goread '+8+'–'+(9+o.otBuf)+' hrs)':'')+'.</div>';
+  html+='<div class="card"><table><thead><tr>'+
+    '<th class="l" style="cursor:default">LOB</th><th style="cursor:default">Agents</th><th style="cursor:default">Shifts</th><th style="cursor:default">Regular</th><th style="cursor:default">OT</th><th style="cursor:default">Short</th>'+
+    '<th class="bl" style="cursor:default">Emails / reg shift</th><th style="cursor:default">Chats / reg shift</th><th style="cursor:default">Combined / reg shift</th>'+
+    '<th class="bl" style="cursor:default">OT day avg</th><th style="cursor:default">OT rate / '+S+'h</th><th style="cursor:default">Pace vs reg</th><th class="bl" style="cursor:default">OT hrs</th></tr></thead><tbody>';
+  LOB_ORDER.concat(Object.keys(byLob).filter(function(l){return LOB_ORDER.indexOf(l)<0;})).forEach(function(l){
+    if(!byLob[l]) return; var g=groupAgg(byLob[l]), m=metrics(g);
+    html+=lobRow(l,byLob[l].length,g,m);
+  });
+  if(Object.keys(byLob).length>1) html+=lobRow('All LOBs',ROWS.length,G,GM,true);
+  html+='</tbody></table></div>';
+
+  // Agent table
+  html+='<div class="sec-title">Agent Detail</div><div class="sec-sub">Click any agent to see their shift-by-shift log. Click a column header to sort.'+(hidden?' '+hidden+' non-handling user'+(hidden>1?'s':'')+' hidden (under 5 contacts per 8 hrs).':'')+'</div>';
+  html+='<div class="card" style="max-height:640px"><table id="agTbl"><thead><tr>'+
+    '<th class="l" colspan="2" style="cursor:default"></th><th class="grp" colspan="4">Shifts</th><th class="grp" colspan="3">Regular shift avg (actual)</th><th class="grp" colspan="3">OT / offset days</th><th class="grp" colspan="3">All shifts, per '+S+' hrs</th></tr><tr>'+
+    th('name','Agent','l')+th('lob','LOB','l')+th('n','Total','bl')+th('nReg','Reg')+th('nOT','OT')+th('nShort','Short')+
+    th('regEmail','Emails','bl')+th('regChat','Chats')+th('regComb','Combined')+
+    th('otComb','Avg / day','bl')+th('otRate','Per '+S+'h')+th('pace','Pace')+
+    th('allEmailRate','Emails','bl')+th('allChatRate','Chats')+th('allRate','Combined')+
+    '</tr></thead><tbody>';
+  if(!ROWS.length) html+='<tr><td colspan="15" class="l muted" style="padding:20px">No agent activity in this range.</td></tr>';
+  ROWS.forEach(function(a,i){
+    var m=a.m;
+    html+='<tr class="ag'+(SEL===a.email?' sel':'')+'" data-i="'+i+'">'+
+      '<td class="l"><b>'+esc(a.name)+'</b>'+(a.S!==S?' <span class="muted" title="Shift length used">('+a.S+'h)</span>':'')+'</td>'+
+      '<td class="l"><span class="dot" style="background:'+(LOB_COLORS[a.lob]||'#999')+'"></span>'+esc(a.lob)+'</td>'+
+      '<td class="bl">'+a.all.n+'</td><td>'+a.reg.n+'</td><td>'+(a.ot.n?'<span class="b b-ot">'+a.ot.n+'</span>':'0')+'</td><td>'+(a.short.n||'<span class="muted">0</span>')+'</td>'+
+      '<td class="bl">'+f1(m.regEmail)+'</td><td>'+f1(m.regChat)+'</td><td><b>'+f1(m.regComb)+'</b></td>'+
+      '<td class="bl">'+f1(m.otComb)+'</td><td>'+f1(m.otRate)+'</td><td>'+pct(m.pace)+'</td>'+
+      '<td class="bl">'+f1(m.allEmailRate)+'</td><td>'+f1(m.allChatRate)+'</td><td>'+f1(m.allRate)+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='<div id="detail"></div>';
+  $('main').innerHTML=html;
+
+  Array.prototype.forEach.call(document.querySelectorAll('#agTbl tr.ag'),function(tr){
+    tr.onclick=function(){ var a=ROWS[+tr.getAttribute('data-i')]; SEL=(SEL===a.email)?null:a.email; render(); if(SEL) $('detail').scrollIntoView({behavior:'smooth',block:'start'}); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#agTbl th[data-k]'),function(t){
+    t.onclick=function(){ var k=t.getAttribute('data-k'); if(SORT.k===k) SORT.dir*=-1; else {SORT.k=k;SORT.dir=(k==='name'||k==='lob')?1:-1;} render(); };
+  });
+  if(SEL){ var a=ROWS.filter(function(r){return r.email===SEL;})[0]; if(a) renderDetail(a); }
+}
+
+function sortVal(a,k){
+  if(k==='name') return a.name.toLowerCase(); if(k==='lob') return LOB_ORDER.indexOf(a.lob);
+  if(k==='n') return a.all.n; if(k==='nReg') return a.reg.n; if(k==='nOT') return a.ot.n; if(k==='nShort') return a.short.n;
+  return a.m[k];
+}
+function th(k,label,cls){ var arrow=SORT.k===k?(SORT.dir>0?' ▲':' ▼'):''; return '<th data-k="'+k+'" class="'+(cls||'')+'">'+label+arrow+'</th>'; }
+function kpi(l,v,s){ return '<div class="kpi"><div class="k-lbl">'+l+'</div><div class="k-val">'+v+'</div><div class="k-sub">'+s+'</div></div>'; }
+function lobRow(l,n,g,m,tot){
+  return '<tr class="'+(tot?'tot':'')+'"><td class="l">'+(tot?'':'<span class="dot" style="background:'+(LOB_COLORS[l]||'#999')+'"></span>')+esc(l)+'</td><td>'+n+'</td><td>'+g.all.n+'</td><td>'+g.reg.n+'</td><td>'+g.ot.n+'</td><td>'+g.short.n+'</td>'+
+    '<td class="bl">'+f1(m.regEmail)+'</td><td>'+f1(m.regChat)+'</td><td><b>'+f1(m.regComb)+'</b></td>'+
+    '<td class="bl">'+f1(m.otComb)+'</td><td>'+f1(m.otRate)+'</td><td>'+pct(m.pace)+'</td><td class="bl">'+fh(g.otExtra)+'</td></tr>';
+}
+
+function renderDetail(a){
+  var S=a.S, m=a.m;
+  var h='<div class="sec-title"><span class="dot" style="background:'+(LOB_COLORS[a.lob]||'#999')+'"></span>'+esc(a.name)+' — Shift Log</div>'+
+    '<div class="sec-sub">'+a.lob+' · '+S+'-hr shift · Regular avg '+f1(m.regComb)+' combined/shift'+(a.ot.n?' · OT days avg '+f1(m.otComb)+' ('+f1(m.otRate)+' per '+S+'h, pace '+pct(m.pace)+')':'')+' · '+fh(a.otExtra)+' beyond shift</div>';
+  h+='<div class="card"><table><thead><tr><th class="l" style="cursor:default">Shift date</th><th class="l" style="cursor:default">Type</th><th style="cursor:default">Logged in</th><th style="cursor:default">Active</th><th style="cursor:default">Away</th>'+
+     '<th class="bl" style="cursor:default">Emails</th><th style="cursor:default">Chats</th><th style="cursor:default">Combined</th><th class="bl" style="cursor:default">Per '+S+'h</th><th class="l bl" style="cursor:default">Note</th></tr></thead><tbody>';
+  a.shifts.slice().reverse().forEach(function(u){
+    var comb=u.email+u.chat, badge=u.type==='reg'?'<span class="b b-reg">Regular</span>':u.type==='ot'?'<span class="b b-ot">OT / Offset</span>':'<span class="b b-short">Short</span>';
+    var dlabel=fmtD(u.date)+(u.endDate===addDays(u.date,1)?' → '+fmtD(u.endDate):'');
+    var note=u.joinNote? esc(u.joinNote) : (u.type==='ot'?'+'+fh(u.hrs-S)+' beyond shift':'');
+    h+='<tr><td class="l">'+dlabel+'</td><td class="l">'+badge+'</td><td>'+fh(u.hrs)+'</td><td>'+fh(u.active)+'</td><td>'+fh(u.away)+'</td>'+
+       '<td class="bl">'+u.email+'</td><td>'+u.chat+'</td><td><b>'+comb+'</b></td><td class="bl">'+(u.hrs>0?f1(comb/(u.hrs/S)):'—')+'</td><td class="l bl muted">'+note+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  $('detail').innerHTML=h;
+}
+
+function exportCSV(){
+  if(!ROWS.length) return;
+  var o=opts(), S=o.shiftHrs;
+  var head=['Agent','LOB','Shift hrs','Total shifts','Regular shifts','OT shifts','Short shifts','OT hrs beyond shift',
+    'Emails / reg shift','Chats / reg shift','Combined / reg shift','OT day avg combined','OT rate per '+S+'h','OT pace vs regular %',
+    'All shifts emails per '+S+'h','All shifts chats per '+S+'h','All shifts combined per '+S+'h'];
+  function r1(v){ return v==null||isNaN(v)?'':(Math.round(v*10)/10); }
+  var lines=[head.join(',')];
+  ROWS.forEach(function(a){ var m=a.m;
+    lines.push(['"'+a.name.replace(/"/g,'""')+'"',a.lob,a.S,a.all.n,a.reg.n,a.ot.n,a.short.n,r1(a.otExtra),r1(m.regEmail),r1(m.regChat),r1(m.regComb),
+      r1(m.otComb),r1(m.otRate),m.pace==null?'':Math.round(m.pace*100),r1(m.allEmailRate),r1(m.allChatRate),r1(m.allRate)].join(','));
+  });
+  var blob=new Blob([lines.join('\n')],{type:'text/csv'}), url=URL.createObjectURL(blob), el=document.createElement('a');
+  el.href=url; el.download='shift-performance_'+o.from+'_to_'+o.to+'.csv'; document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
+function fetchWithTimeout(url,ms){
+  var ctrl=new AbortController(), t=setTimeout(function(){ctrl.abort();},ms);
+  return fetch(url+(url.indexOf('?')>=0?'&':'?')+'_t='+Date.now(),{signal:ctrl.signal,cache:'no-store'})
+    .then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .catch(function(e){ clearTimeout(t); throw e; });
+}
+function load(){
+  $('status').textContent='⏳ Loading live Gladly data…'; $('refreshBtn').disabled=true;
+  var t0=Date.now();
+  fetchWithTimeout(SHEETS_AGENT_URL,60000)
+    .catch(function(){ $('status').textContent='⏳ Retrying…'; return fetchWithTimeout(SHEETS_AGENT_URL,90000); })
+    .then(function(text){
+      DATA=extractAgentDays(parseCSV(text));
+      var lobs={}; Object.keys(DATA.agents).forEach(function(k){ if(DATA.agents[k].lob) lobs[DATA.agents[k].lob]=1; });
+      var cur=$('lobSel').value;
+      $('lobSel').innerHTML='<option value="">All LOBs</option>'+LOB_ORDER.filter(function(l){return lobs[l];}).map(function(l){return '<option'+(l===cur?' selected':'')+'>'+l+'</option>';}).join('');
+      if($('preset').value!=='custom') applyPreset();
+      $('status').innerHTML='🔗 Live · data through <b>'+fmtDL(DATA.maxDate)+'</b> (PT) · '+((Date.now()-t0)/1000).toFixed(0)+'s';
+      render();
+    })
+    .catch(function(e){
+      $('status').innerHTML='<span class="err">⚠ Could not load the Gladly sheet ('+esc(e.message||e)+')</span>';
+      if(!DATA) $('main').innerHTML='<div class="loading err">⚠ Live data could not be loaded. Click 🔄 Refresh to try again.</div>';
+    })
+    .then(function(){ $('refreshBtn').disabled=false; });
+}
+
+$('preset').onchange=function(){ applyPreset(); render(); };
+['dFrom','dTo'].forEach(function(id){ $(id).onchange=function(){ $('preset').value='custom'; render(); }; });
+['lobSel','shiftHrs','otBuf','goread9','hideLow'].forEach(function(id){ $(id).onchange=render; });
+$('refreshBtn').onclick=load;
+$('exportBtn').onclick=exportCSV;
+applyPreset();
+load();
+</script>
+</body>
+</html>
