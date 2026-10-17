@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>8-Hour Shift Performance</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -66,6 +67,16 @@ td.wrapc{white-space:normal;min-width:260px}
 .wk{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:2px}
 .wk i{font-style:normal;display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:3px;margin-right:2px;font-size:10px;letter-spacing:0;font-weight:700}
 .wk .w-o{background:var(--green-bg);color:var(--green)}.wk .w-x{background:var(--amber);color:#fff}.wk .w-s{background:#e2e8f0;color:var(--text2)}.wk .w-n{background:transparent;color:#cbd5e1}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font:inherit;font-size:11px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.chip .dot{margin-right:5px}
+.trend-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border)}
+.chartbox{position:relative;height:270px;padding:10px 14px 6px}
+.chartbox.sm{height:220px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+td.d-up{color:var(--green)} td.d-dn{color:var(--red)}
 .loading{padding:40px;text-align:center;color:var(--text2)}
 .err{color:var(--red)}
 @media (max-width:700px){.wrap{padding:12px}.header{padding:10px 12px}}
@@ -131,15 +142,40 @@ td.wrapc{white-space:normal;min-width:260px}
 <script id="core">
 // ───────────────────────── CORE LOGIC (pure, testable) ─────────────────────────
 var SHEETS_AGENT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=838951842&single=true&output=csv';
-var LOB_COLORS = {'Path Social':'#3b82f6','Crowd Ignite':'#8b5cf6','High Social':'#10b981','Plixi':'#f59e0b','Goread':'#ef4444','Subdelete':'#6366f1','Follows':'#6b7280'};
-var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Follows'];
+// LOB = the inboxes an agent is assigned to that day (Gladly "Inbox(es)" column). An agent with inboxes from
+// two LOBs that day (e.g. Jennilen: Path + Crowd Ignite) is assigned to both. Tweet Delete / Tweet Deleter /
+// Tweet Eraser / X Deleter are one LOB here ("Tweet Delete"), because Gladly's agent report can't split an
+// agent's output between those inboxes.
+var LOB_ORDER = ['Path Social','Crowd Ignite','High Social','Plixi','Goread','Subdelete','Tweet Delete','Follows'];
+// Categorical palette (validated order — see dataviz reference palette); colour follows the LOB everywhere on the page.
+var LOB_COLORS = {'Path Social':'#2a78d6','Crowd Ignite':'#eb6834','High Social':'#1baf7a','Plixi':'#eda100','Goread':'#e87ba4',
+                  'Subdelete':'#008300','Tweet Delete':'#6250d6','Follows':'#e34948'};
+var CATS = [
+  {name:'Socials', color:'#2a78d6', lobs:['Path Social','Crowd Ignite','High Social','Plixi','Goread']},
+  {name:'Deleter', color:'#eb6834', lobs:['Subdelete','Tweet Delete']},
+  {name:'Follows', color:'#1baf7a', lobs:['Follows']}
+];
+var INBOX_RULES = [
+  [/^path\b/,'Path Social'], [/^crowd ignite/,'Crowd Ignite'], [/^(high social|cloutify)/,'High Social'], [/^plixi/,'Plixi'],
+  [/^(goread|viralpush|boostyourpresence)/,'Goread'], [/^subdelete/,'Subdelete'],
+  [/^(tweet delete|tweet eraser|x deleter)/,'Tweet Delete'], [/^(followspy|recent ?follow)/,'Follows']
+];
 var EXCL = {'matt@pathsocial.com':1};
+// Gladly short names → full roster names (same aliases the KPI dashboard uses; also used to match QA/FCR rows)
+var NAME_ALIASES = {
+  'zheraine':'Zheraine Velasquez','pherbia':'Pherbia Mayor','faye':'Sonja Faye Regodon Lomarquez','rushelle':'Rushelle Ronquillo',
+  'rushellevino':'Rushelle Ronquillo','monica':'Monica Tandoc','monicacruz':'Monica Tandoc','monicaprincesstandoc':'Monica Tandoc',
+  'naynuttidathongyai':'Nay Nuttida','johnbaylon':'John John Baylon','beatrix':'Beatrix Genove','eunicevaliao':'Eunice Jeremiah Valiao',
+  'nicoleasistio':'Anne Nicole Asistio','samanthaparrilla':'Samantha Mae Parrilla','christinesalvador':'Christine Joy M Salvador',
+  'christinejoy':'Christine Joy M Salvador'
+};
+function nk(s){ return (s||'').replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,''); }
+function fixName(s){ return (s||'').replace(/Ã±/g,'ñ').replace(/Ã©/g,'é').replace(/Ã¡/g,'á').replace(/Ã³/g,'ó'); }
 
-// ── Subdelete roster (Lisa, 2026-10-17). Forces LOB + roster name by email; status drives how pace is judged.
-//    status: 'tenured' | 'senior' | 'newhire' | 'transfer'. Start date in the LOB = first day their Gladly inboxes
-//    show that LOB (add since:'YYYY-MM-DD' to override). Before that date they were in another LOB, so pace and the
-//    "OT not approved" rule are only applied from that date. New hires / transfers are "ramping" for RAMP_DAYS after
-//    it: pace isn't judged and they're left out of the team pace baseline.
+// ── Subdelete roster (Lisa, 2026-10-17): roster name + status. LOB itself comes from the inboxes.
+//    status: 'tenured' | 'senior' | 'newhire' | 'transfer'. Start date in Subdelete = first day their inboxes show
+//    Subdelete (add since:'YYYY-MM-DD' to override). New hires / transfers "ramp" for RAMP_DAYS from that date:
+//    pace isn't judged and they're left out of the team pace baseline.
 var RAMP_DAYS = 30;
 var ROSTER = {
   'bianca@pathsocial.com':    {name:'Bianca Alegre',               lob:'Subdelete', status:'senior',   seniorSince:'2026-09-04', note:'Senior agent — trains new agents, so email output is lower by design'},
@@ -160,13 +196,28 @@ var ROSTER = {
   'yuan@pathsocial.com':      {name:'Yuan Calamiong',              lob:'Subdelete', status:'transfer', from:'Insights'},
   'zheraine@pathsocial.com':  {name:'Zheraine Velasquez',          lob:'Subdelete', status:'tenured'}
 };
+// ── Assigned schedules (start time in PT, 24h; days 0=Sun … 6=Sat). Used with the Agent Timestamps export:
+//    slides and missed days are judged against the assigned schedule instead of the agent's own habit.
+var SCHEDULES = {
+  'jasmine@tweetdelete.net': [{from:'2026-09-09', start:12, days:[2,3,4,5,6], label:'12:00 PM PT · Tue–Sat',
+     note:'Set by Lisa in Sep 2026. Before that Jasmine set her own schedule (10:00 AM PT, incl. weekends) while she handled scheduling for the LOB.'}]
+};
 // Is this shift judged on pace? false while ramping (new hire / transfer) or after becoming senior.
 function paceJudged(a, date){
-  if(a.lobStart && date<a.lobStart) return false;
   if(a.seniorSince && date>=a.seniorSince) return false;
-  if(a.rampStart && date<addDays(a.rampStart,RAMP_DAYS)) return false;
+  if(a.rampStart && date>=a.rampStart && date<addDays(a.rampStart,RAMP_DAYS)) return false;
   return true;
 }
+function inboxLobs(inbox, team){
+  var set={};
+  (inbox||'').split(',').forEach(function(t){ t=t.trim().toLowerCase(); if(!t) return;
+    for(var i=0;i<INBOX_RULES.length;i++){ if(INBOX_RULES[i][0].test(t)){ set[INBOX_RULES[i][1]]=1; break; } } });
+  var out=LOB_ORDER.filter(function(l){return set[l];});
+  if(!out.length){ var l=getLOB('',team); if(l) out=[l]; }
+  return out;
+}
+function primaryLob(lobs, rosterLob){ if(!lobs||!lobs.length) return null; return (rosterLob && lobs.indexOf(rosterLob)>=0)? rosterLob : lobs[0]; }
+function catOf(lob){ for(var i=0;i<CATS.length;i++) if(CATS[i].lobs.indexOf(lob)>=0) return CATS[i].name; return null; }
 
 function parseCSV(t){
   var rows=[],r=[],c='',q=false;
@@ -182,7 +233,7 @@ function parseCSV(t){
   return rows;
 }
 
-// Same LOB rules as the KPI dashboard (index.html)
+// Team-text fallback (same rules as the KPI dashboard) — only used when a row lists no mapped inbox
 function getLOB(inboxes, team){
   var t=((inboxes||'')+' '+(team||'')).toLowerCase();
   if(t.indexOf('path')>=0) return 'Path Social';
@@ -191,6 +242,7 @@ function getLOB(inboxes, team){
   if(t.indexOf('plixi')>=0) return 'Plixi';
   if(t.indexOf('goread')>=0||t.indexOf('viralpush')>=0) return 'Goread';
   if(t.indexOf('subdelete')>=0) return 'Subdelete';
+  if(t.indexOf('tweet')>=0) return 'Tweet Delete';
   if(t.indexOf('followspy')>=0||t.indexOf('recentfollow')>=0||t.indexOf('follows')>=0) return 'Follows';
   return null;
 }
@@ -227,20 +279,29 @@ function extractAgentDays(rows){
     var hrs=n(r,COL.login)/3600;
     var e=n(r,COL.email_f), c=n(r,COL.chat_f);
     if(hrs<=0 && e+c===0) continue;
-    var lob=getLOB(r[COL.inbox],r[COL.team]);
-    var a=agents[em]||(agents[em]={email:em,name:r[COL.name]||em,lob:null,lastLobDate:'',days:[],forceLob:ROSTER[em]?ROSTER[em].lob:null});
-    if(lob && date>=a.lastLobDate){ a.lob=lob; a.lastLobDate=date; a.name=r[COL.name]||a.name; }
-    if(lob===a.forceLob && (!a.firstInLob || date<a.firstInLob)) a.firstInLob=date;
+    var a=agents[em]||(agents[em]={email:em,name:fixName(r[COL.name])||em,lob:null,lobs:[],lastDate:'',days:[],rosterLob:ROSTER[em]?ROSTER[em].lob:null});
+    var lobs=inboxLobs(r[COL.inbox],r[COL.team]);
+    if(date>=a.lastDate){ a.lastDate=date; if(r[COL.name]) a.name=fixName(r[COL.name]); }
+    if(a.rosterLob && lobs.indexOf(a.rosterLob)>=0 && (!a.firstInLob || date<a.firstInLob)) a.firstInLob=date;
     if(!a.firstSeen || date<a.firstSeen) a.firstSeen=date;
     if(COL.agentId>=0 && r[COL.agentId]) a.agentId=r[COL.agentId];
     a.days.push({date:date,logins:n(r,COL.logins),hrs:hrs,active:n(r,COL.active)/3600,away:n(r,COL.away)/3600,
-                 email:e,chat:c,total:n(r,COL.ful),lob:lob});
+                 email:e,chat:c,total:n(r,COL.ful),lobs:lobs,lob:primaryLob(lobs,a.rosterLob)});
     if(date>maxDate) maxDate=date;
   }
-  // Apply roster overrides (LOB, name, status, ramp window)
+  // Current LOB(s) = inboxes over the agent's last 14 days of data; display name via roster / aliases
+  Object.keys(agents).forEach(function(em){
+    var a=agents[em], set={}, cut=addDays(a.lastDate,-13);
+    a.days.forEach(function(d){ if(d.date>=cut) d.lobs.forEach(function(l){ set[l]=1; }); });
+    a.lobs=LOB_ORDER.filter(function(l){return set[l];});
+    if(!a.lobs.length){ var all={}; a.days.forEach(function(d){ d.lobs.forEach(function(l){ all[l]=1; }); }); a.lobs=LOB_ORDER.filter(function(l){return all[l];}).slice(-1); }
+    a.lob=primaryLob(a.lobs,a.rosterLob);
+    var al=NAME_ALIASES[nk(a.name)]; if(al) a.name=al;
+  });
+  // Apply roster (name, status, ramp window)
   Object.keys(ROSTER).forEach(function(em){
     var a=agents[em], R=ROSTER[em]; if(!a) return;
-    a.lob=R.lob; a.name=R.name; a.status=R.status; a.from=R.from||''; a.rosterNote=R.note||'';
+    a.name=R.name; a.status=R.status; a.from=R.from||''; a.rosterNote=R.note||'';
     a.seniorSince=R.seniorSince||null;
     a.lobStart = R.since || a.firstInLob || a.firstSeen;
     if(R.status==='newhire'||R.status==='transfer') a.rampStart = a.lobStart;
@@ -256,8 +317,9 @@ function buildShifts(days, S){
     .filter(function(x){ return !(x.hrs<0.5 && x.email+x.chat===0); }); // drop stray micro-logins
   var out=[], stretchStart=0;
   function unit(x){ return {date:x.date,endDate:x.date,parts:[x.date],logins:x.logins,hrs:x.hrs,active:x.active,away:x.away,
-                            email:x.email,chat:x.chat,total:x.total,joined:false,joinNote:''}; }
+                            email:x.email,chat:x.chat,total:x.total,lobs:(x.lobs||[]).slice(),joined:false,joinNote:''}; }
   function absorb(u,x,note){ u.hrs+=x.hrs;u.active+=x.active;u.away+=x.away;u.email+=x.email;u.chat+=x.chat;u.total+=x.total;
+                             (x.lobs||[]).forEach(function(l){ if(u.lobs.indexOf(l)<0) u.lobs.push(l); });
                              u.parts.push(x.date); if(x.date>u.endDate) u.endDate=x.date; u.joined=true; u.joinNote=note; }
   for(var i=0;i<d.length;i++){
     var x=d[i], prev=d[i-1];
@@ -356,13 +418,37 @@ function parseTimestamps(text){
 }
 function attachTimestamps(data, ts){
   var byId={}, byName={};
-  Object.keys(ts.agents).forEach(function(k){ var t=ts.agents[k]; byId[k]=t; byName[(t.name||'').toLowerCase()]=t; });
+  Object.keys(ts.agents).forEach(function(k){ var t=ts.agents[k]; byId[k]=t; byName[nk(t.name)]=t; byName[nk(NAME_ALIASES[nk(t.name)]||t.name)]=t; });
   var n=0;
   Object.keys(data.agents).forEach(function(em){
-    var a=data.agents[em], t=(a.agentId&&byId[a.agentId]) || byName[(a.name||'').toLowerCase()] || null;
-    a.ts=t; if(t) n++;
+    var a=data.agents[em], t=(a.agentId&&byId[a.agentId]) || byName[nk(a.name)] || null;
+    a.ts=t; if(t){ n++; applySchedule(t, SCHEDULES[em], ts.to); }
   });
   return n;
+}
+// Judge start times / days against an assigned schedule (when one is configured for the agent)
+function applySchedule(t, scheds, exportEnd){
+  if(!t._missed0) t._missed0=t.missed.slice();
+  t.sched=null;
+  if(!scheds||!scheds.length){ t.missed=t._missed0.slice(); return; }
+  function schedOn(d){ var s=null; scheds.forEach(function(x){ if(d>=x.from) s=x; }); return s; }
+  t.sched=scheds[scheds.length-1];
+  var worked={};
+  t.days.forEach(function(d){
+    if(d.logged>=2) worked[d.date]=1;
+    var sc=schedOn(d.date); if(!sc) return;
+    var dow=new Date(d.date+'T12:00:00Z').getUTCDay();
+    d.sched=sc; d.norm=sc.start; d.dev=((d.startH-sc.start+36)%24)-12;
+    d.move=false; d.moveRun=false; d.slide=Math.abs(d.dev)>1; d.late=d.dev>0.25 && !d.slide;
+    d.offDay=sc.days.indexOf(dow)<0;
+  });
+  var first=scheds[0].from, missed=t._missed0.filter(function(x){return x<first;});
+  var last=exportEnd || (t.days.length? t.days[t.days.length-1].date : first);
+  for(var dd=first; dd<=last; dd=addDays(dd,1)){
+    var sc=schedOn(dd), dow=new Date(dd+'T12:00:00Z').getUTCDay();
+    if(sc && sc.days.indexOf(dow)>=0 && !worked[dd]) missed.push(dd);
+  }
+  t.missed=missed;
 }
 
 function classify(u,S,buf){
@@ -374,29 +460,97 @@ function classify(u,S,buf){
 function emptyAgg(){ return {n:0,hrs:0,email:0,chat:0,total:0}; }
 function addAgg(a,u){ a.n++; a.hrs+=u.hrs; a.email+=u.email; a.chat+=u.chat; a.total+=u.email+u.chat; }
 
-// Summarise agents over [from,to] (inclusive, YYYY-MM-DD)
+// Summarise agents over [from,to] (inclusive, YYYY-MM-DD). With opts.lob set, only shifts on that LOB's inboxes count.
 function summarise(data, opts){
   var res=[];
   Object.keys(data.agents).forEach(function(em){
     var a=data.agents[em]; if(!a.lob) return;
-    if(opts.lob && a.lob!==opts.lob) return;
     var S = (opts.goread9 && a.lob==='Goread') ? 9 : opts.shiftHrs;
     var shifts=buildShifts(a.days,S).filter(function(u){ return u.date>=opts.from && u.date<=opts.to; });
-    var all=emptyAgg(), reg=emptyAgg(), ot=emptyAgg(), sh=emptyAgg(), otExtra=0;
-    shifts.forEach(function(u){
-      u.type=classify(u,S,opts.otBuf);
-      addAgg(all,u);
-      if(u.type==='reg') addAgg(reg,u);
-      else if(u.type==='ot'){ addAgg(ot,u); otExtra+=u.hrs-S; }
-      else addAgg(sh,u);
-    });
-    if(all.email+all.chat===0) return;
-    res.push({email:em,name:a.name,lob:a.lob,S:S,shifts:shifts,all:all,reg:reg,ot:ot,short:sh,otExtra:otExtra,
-              status:a.status||'',from:a.from||'',rampStart:a.rampStart||null,lobStart:a.lobStart||null,ts:a.ts||null,seniorSince:a.seniorSince||null,rosterNote:a.rosterNote||''});
+    shifts.forEach(function(u){ if(!u.lobs.length) u.lobs=[a.lob]; u.lobs=LOB_ORDER.filter(function(l){return u.lobs.indexOf(l)>=0;}); u.lob=primaryLob(u.lobs,a.rosterLob); });
+    if(opts.lob) shifts=shifts.filter(function(u){ return u.lobs.indexOf(opts.lob)>=0; });
+    if(!shifts.length) return;
+    var x=aggShifts(shifts,S,opts.otBuf);
+    if(x.all.email+x.all.chat===0) return;
+    var set={}; shifts.forEach(function(u){ u.lobs.forEach(function(l){ set[l]=1; }); });
+    var lobs=LOB_ORDER.filter(function(l){return set[l];});
+    res.push({email:em,name:a.name,lob:opts.lob||primaryLob(lobs,a.rosterLob)||a.lob,lobs:lobs,curLobs:a.lobs,S:S,shifts:shifts,
+              all:x.all,reg:x.reg,ot:x.ot,short:x.short,otExtra:x.otExtra,
+              status:a.status||'',from:a.from||'',rampStart:a.rampStart||null,lobStart:a.lobStart||null,ts:a.ts||null,
+              seniorSince:a.seniorSince||null,rosterNote:a.rosterNote||'',rosterLob:a.rosterLob||null,agent:a});
   });
   res.sort(function(x,y){ var a=LOB_ORDER.indexOf(x.lob),b=LOB_ORDER.indexOf(y.lob); return a!==b?a-b:x.name.localeCompare(y.name); });
   return res;
 }
+// classify + aggregate a list of shifts (also used for per-LOB and per-month slices)
+function aggShifts(shifts,S,otBuf){
+  var all=emptyAgg(), reg=emptyAgg(), ot=emptyAgg(), sh=emptyAgg(), otExtra=0;
+  shifts.forEach(function(u){
+    u.type=classify(u,S,otBuf);
+    addAgg(all,u);
+    if(u.type==='reg') addAgg(reg,u);
+    else if(u.type==='ot'){ addAgg(ot,u); otExtra+=u.hrs-S; }
+    else addAgg(sh,u);
+  });
+  return {S:S,all:all,reg:reg,ot:ot,short:sh,otExtra:otExtra};
+}
+
+// ───────── QA & FCR (same sheets as the KPI dashboard) ─────────
+// FCR: daily FCR % rows on the FCR tab ("All Inboxes" = agent's overall FCR, per Lisa's rule). Month/period FCR =
+// average of the daily rates (matches the KPI dashboard and Lisa's pivot).
+function parseFCR(text){
+  var rows=parseCSV(text), hdr=-1;
+  for(var i=0;i<Math.min(rows.length,6);i++){ if(rows[i].indexOf('FCR %')>=0){hdr=i;break;} }
+  if(hdr<0) return null;
+  var H=rows[hdr], C=function(n){return H.indexOf(n);};
+  var cI=C('Inboxes Filter'), cN=C('Assigned Agent Name - Last Closed'), cD=C('Last Closed At Date'), cR=C('FCR %'), cE=C('Email');
+  var by={};
+  for(var i=hdr+1;i<rows.length;i++){ var r=rows[i];
+    var inb=(r[cI]||'').trim(); if(inb && inb!=='All Inboxes') continue;
+    var nm=(r[cN]||'').trim(), d=isoFromBucket(r[cD]), rt=parseFloat(r[cR]); if(!nm||!d||isNaN(rt)) continue;
+    var em=(r[cE]||'').trim().toLowerCase(), k=em.indexOf('@')>0? em : 'n:'+nk(NAME_ALIASES[nk(nm)]||nm);
+    (by[k]=by[k]||[]).push({d:d,r:rt});
+  }
+  return by;
+}
+// QA: the three QA tabs (main; Goread; Plixi/High Social/Cloutify). Only QA audits (not calibration). Score 0–100.
+function parseQA(texts){
+  var by={};
+  texts.forEach(function(text){ if(!text) return;
+    var rows=parseCSV(text), hdr=-1;
+    for(var i=0;i<Math.min(rows.length,4);i++){ if(rows[i].some(function(x){return (x||'').trim()==='Score';})){hdr=i;break;} }
+    if(hdr<0) return;
+    var H=rows[hdr].map(function(x){return (x||'').replace(/\s+/g,' ').trim();});
+    function F(re){ for(var j=0;j<H.length;j++) if(re.test(H[j])) return j; return -1; }
+    var cS=H.indexOf('Score'), cN=F(/^agent'?s? name/i), cT=F(/^(qa or calibration\??|audit type)$/i), cTs=F(/^timestamp$/i),
+        cZ=F(/^(zero tolerance policy|was there any zero tolerance)/i), cM=F(/^month year$/i); if(cM<0) cM=1;
+    if(/^zero tolerance policy:/i.test(H[cZ]||'')) cZ=-1;
+    for(var i=hdr+1;i<rows.length;i++){ var r=rows[i];
+      var sc=parseFloat(r[cS]); if(isNaN(sc)) continue;
+      var ty=(cT>=0?(r[cT]||''):'').trim(); if(ty && !/^(qa|focused\s*qa)/i.test(ty)) continue;
+      var em=(r[0]||'').trim().toLowerCase(), nm=(cN>=0?(r[cN]||''):'').trim();
+      var k=em.indexOf('@')>0? em : (nm? 'n:'+nk(NAME_ALIASES[nk(nm)]||nm) : null); if(!k) continue;
+      var mm=(r[cM]||'').trim().match(/^(\d{1,2})-(\d{4})$/), mon=null;
+      if(mm) mon=mm[2]+'-'+(mm[1].length<2?'0':'')+mm[1];
+      else { var d=isoFromBucket((r[cTs]||'').trim()); if(d) mon=d.slice(0,7); }
+      if(!mon) continue;
+      var z=(cZ>=0?(r[cZ]||''):'').trim(), ztp=!!z && !/^(na|n\/a|no|none|-)$/i.test(z) && z.indexOf('@')<0;
+      (by[k]=by[k]||[]).push({mon:mon,s:sc,ztp:ztp});
+    }
+  });
+  return by;
+}
+function attachQAFCR(data, fcr, qa){
+  Object.keys(data.agents).forEach(function(em){
+    var a=data.agents[em], keys=[em,'n:'+nk(a.name)], seen={};
+    a.fcrRows=[]; a.qaRows=[];
+    keys.forEach(function(k){ if(seen[k]) return; seen[k]=1;
+      if(fcr&&fcr[k]) a.fcrRows=a.fcrRows.concat(fcr[k]);
+      if(qa&&qa[k]) a.qaRows=a.qaRows.concat(qa[k]); });
+  });
+}
+function fcrIn(a,from,to){ var s=0,n=0; (a.fcrRows||[]).forEach(function(x){ if(x.d>=from&&x.d<=to){ s+=x.r; n++; } }); return n? {v:s/n,n:n} : null; }
+function qaIn(a,from,to){ var f=from.slice(0,7), t=to.slice(0,7), s=0,n=0,z=0; (a.qaRows||[]).forEach(function(x){ if(x.mon>=f&&x.mon<=t){ s+=x.s; n++; if(x.ztp) z++; } }); return n? {v:s/n/100,n:n,ztp:z} : null; }
 
 // derived metrics for an agent or a group
 function metrics(o){
@@ -473,12 +627,12 @@ function computeCompliance(rows, o){
   // Peer pace baseline: per LOB per day, median contacts/hr among all handling agents (shifts ≥4h)
   var all=summarise(DATA,{from:o.from,to:o.to,lob:'',shiftHrs:o.shiftHrs,otBuf:o.otBuf,goread9:o.goread9});
   var base={};
-  all.forEach(function(a){ a.shifts.forEach(function(u){ if(u.hrs>=4 && u.email+u.chat>0 && paceJudged(a,u.date)){ var k=a.lob+'|'+u.date; (base[k]=base[k]||[]).push((u.email+u.chat)/u.hrs); } }); });
+  all.forEach(function(a){ a.shifts.forEach(function(u){ if(u.hrs>=4 && u.email+u.chat>0 && paceJudged(a,u.date)){ u.lobs.forEach(function(l){ var k=l+'|'+u.date; (base[k]=base[k]||[]).push((u.email+u.chat)/u.hrs); }); } }); });
   var med={}; Object.keys(base).forEach(function(k){ if(base[k].length>=3) med[k]=median(base[k]); });
   // Team-wide long days: ≥75% of the LOB's working agents (and at least 5) went over shift+buffer on the same day.
   // Usually a directed backlog push, so these days aren't held against individuals (listed separately).
   var dayCnt={};
-  all.forEach(function(a){ a.shifts.forEach(function(u){ if(u.hrs<1) return; var k=a.lob+'|'+u.date; var d=(dayCnt[k]=dayCnt[k]||{n:0,x:0}); d.n++; if(u.hrs>a.S+o.otBuf) d.x++; }); });
+  all.forEach(function(a){ a.shifts.forEach(function(u){ if(u.hrs<1) return; u.lobs.forEach(function(l){ var k=l+'|'+u.date; var d=(dayCnt[k]=dayCnt[k]||{n:0,x:0}); d.n++; if(u.hrs>a.S+o.otBuf) d.x++; }); }); });
   var team={}; TEAM_DAYS=[];
   Object.keys(dayCnt).forEach(function(k){ var d=dayCnt[k]; if(d.x>=5 && d.x/d.n>=0.75){ team[k]=1; var p=k.split('|'); TEAM_DAYS.push({lob:p[0],date:p[1],n:d.n,x:d.x}); } });
   TEAM_DAYS.sort(function(a,b){ return a.date<b.date?-1:1; });
@@ -488,10 +642,10 @@ function computeCompliance(rows, o){
            relReg:null,relExt:null,flags:[],score:0,pattern:[]};
     var rr=[],re=[];
     sh.forEach(function(u,i){
-      var isTeam=!!team[a.lob+'|'+u.date];
+      var isTeam=!!team[(u.lob||a.lob)+'|'+u.date];
       var ext=u.hrs>S+o.otBuf && !isTeam;
       if(isTeam && u.hrs>S+o.otBuf) c.extTeam++;
-      if(ext){ c.ext++; if(!a.lobStart || u.date>=a.lobStart) c.extInLob++; }
+      if(ext){ c.ext++; if(u.lobs.some(function(l){return NO_OT_LOBS[l];})) c.extInLob++; }
       if(u.hrs>=12 && !isTeam) c.marathon++;
       if(!isTeam && u.hrs>c.longest){ c.longest=u.hrs; c.longestDate=u.date; }
       if(u.logins>=3) c.multiLogin++;
@@ -501,7 +655,7 @@ function computeCompliance(rows, o){
         var p=sh[i-1], pp=sh[i-2];
         if((p && (p.hrs<S-1 || dayDiff(p.endDate,u.date)-1>=3)) || (pp && pp.hrs<S-1 && dayDiff(pp.endDate,u.date)<=3)) c.afterLost++;
       }
-      var m=isTeam? null : med[a.lob+'|'+u.date];
+      var m=isTeam? null : med[(u.lob||a.lob)+'|'+u.date];
       if(!paceJudged(a,u.date)){ c.notJudged++; m=null; } else c.judged++;
       if(m && u.hrs>=4){ var v=((u.email+u.chat)/u.hrs)/m; (ext?re:(u.hrs>=S-1?rr:[])).push(v); }
     });
@@ -510,13 +664,12 @@ function computeCompliance(rows, o){
     Object.keys(W).forEach(function(k){ c.weeks++; if(W[k].d>=6) c.sixDay++; if(W[k].h>wkCap) c.overWk++; });
     function av(z){ return z.length? z.reduce(function(p,q){return p+q;},0)/z.length : null; }
     c.relReg=av(rr); c.relExt=re.length>=2?av(re):null;
-    var unapproved=!!NO_OT_LOBS[a.lob];
 
     // Flags (severity: hi=2, md=1)
     function F(lvl,txt){ c.flags.push({lvl:lvl,txt:txt}); c.score+=(lvl==='hi'?2:lvl==='md'?1:0); }
     var extPct=sh.length? c.ext/sh.length : 0;
     if(c.ext>=2){
-      var unN=unapproved?c.extInLob:0;
+      var unN=c.extInLob;
       var t=c.ext+' extended day'+(c.ext>1?'s':'')+' ('+Math.round(extPct*100)+'%)'+(unN?' · '+(unN===c.ext?'':unN+' ')+'OT not approved':'');
       F((unN && (unN/sh.length>=0.25||unN>=5))?'hi':'md',t);
     }
@@ -535,9 +688,13 @@ function computeCompliance(rows, o){
       var trn=td.reduce(function(s,d){return s+(d.away.Training||0)+(d.away.Coaching||0)+(d.away.Upskilling||0);},0);
       c.ts={days:td.length,slides:slides.length,moves:moves.length,missed:miss,returns:rets.length,unsp:unsp,train:trn};
       if(slides.length>=3){ var ex=slides[slides.length-1]; F(slides.length>=6?'hi':'md',slides.length+' start-time slides >1h (e.g. '+fmtD(ex.date)+' '+fmtClock(ex.startH)+' vs usual '+fmtClock(ex.norm)+')'); }
-      if(moves.length) F('lo','Schedule moved '+moves.map(function(m){return fmtD(m.date)+' → '+fmtClock(m.startH);}).join(', ')+' (confirm approved)');
+      if(moves.length && !a.ts.sched) F('lo','Schedule moved '+moves.map(function(m){return fmtD(m.date)+' → '+fmtClock(m.startH);}).join(', ')+' (confirm approved)');
       if(miss.length) F(miss.length>=2?'md':'lo',miss.length+' missed scheduled day'+(miss.length>1?'s':'')+' — check PTO: '+miss.map(fmtD).join(', '));
       if(rets.length>=3) F('md',rets.length+' days logged back in later (split shift / extra block)');
+      var offd=td.filter(function(d){return d.offDay;}), late=td.filter(function(d){return d.late;});
+      c.ts.offDays=offd.length; c.ts.late=late.length;
+      if(offd.length) F(offd.length>=2?'md':'lo',offd.length+' day'+(offd.length>1?'s':'')+' worked outside assigned days ('+offd.map(function(d){return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d.date+'T12:00:00Z').getUTCDay()]+' '+fmtD(d.date);}).join(', ')+')');
+      if(late.length>=3) F('lo',late.length+' late log-ins (15–60 min after assigned start)');
       if(unsp>=30) F('lo','Avg '+Math.round(unsp)+' min/day away with no reason');
     }
     if(c.extTeam) F('lo',c.extTeam+' team-wide long day'+(c.extTeam>1?'s':'')+' (not counted)');
@@ -571,15 +728,21 @@ var PATTERN_HELP={
 
 function fmtH(v){ return fh(v); }
 function fmtClock(h){ if(h==null) return '—'; h=((h%24)+24)%24; var H=Math.floor(h), M=Math.round((h-H)*60); if(M===60){H=(H+1)%24;M=0;} var ap=H>=12?'PM':'AM', h12=H%12||12; return h12+':'+(M<10?'0':'')+M+' '+ap; }
-var TS=null;
+var TS=null, TS_META=null;
+function tsStatusText(){
+  if(!TS){ $('tsStatus').textContent=''; return; }
+  var n=DATA? Object.keys(DATA.agents).filter(function(k){return DATA.agents[k].ts;}).length : 0;
+  $('tsStatus').innerHTML='✓ '+esc(TS_META&&TS_META.name||'timestamps')+' · '+fmtD(TS.from)+'–'+fmtD(TS.to)+(DATA?' · matched '+n:'')+(TS_META&&TS_META.restored?' · <span title="Restored from the saved snapshot">saved</span>':'');
+}
 function loadTsFile(f){
   if(!f) return; $('tsStatus').textContent='Reading '+f.name+'…';
   var rd=new FileReader();
-  rd.onload=function(){ try{ TS=parseTimestamps(rd.result); var n=DATA?attachTimestamps(DATA,TS):0;
-      $('tsStatus').innerHTML='✓ '+Object.keys(TS.agents).length+' agents · '+fmtD(TS.from)+'–'+fmtD(TS.to)+(DATA?' · matched '+n:''); render(); }
+  rd.onload=function(){ try{ TS=parseTimestamps(rd.result); TS_META={name:f.name,savedAt:Date.now()}; if(DATA) attachTimestamps(DATA,TS);
+      idbSet('ts',{text:rd.result,name:f.name,savedAt:Date.now()}); tsStatusText(); render(); }
     catch(e){ $('tsStatus').innerHTML='<span class="err">⚠ '+esc(e.message)+'</span>'; } };
   rd.readAsText(f);
 }
+function lobCell(lobs){ lobs=(lobs&&lobs.length)?lobs:[]; return lobs.map(function(l){ return '<span style="white-space:nowrap"><span class="dot" style="background:'+(LOB_COLORS[l]||'#999')+'"></span>'+esc(l)+'</span>'; }).join(' <span class="muted">+</span> ')||'<span class="muted">—</span>'; }
 function helpFor(p){ return PATTERN_HELP[p] || (/^Ramping/.test(p)? PATTERN_HELP['Ramping (new hire)'] : ''); }
 function statusTag(a){
   if(a.status==='senior') return ' <span class="b b-reg" title="'+esc(a.rosterNote)+'">Senior</span>';
@@ -587,13 +750,170 @@ function statusTag(a){
   if(a.status==='transfer') return ' <span class="b b-short" title="Started in '+esc(a.lob)+' '+(a.rampStart||'')+'">Tx from '+esc(a.from)+'</span>';
   return '';
 }
+// ───────── Month-over-month trends ─────────
+var TREND={cat:'',metric:'comb'}, CHARTS=[];
+var MON_N=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var TREND_METRICS={
+  comb:{l:'Combined / regular shift',f:'n'}, email:{l:'Emails / regular shift',f:'n'}, chat:{l:'Chats / regular shift',f:'n'},
+  rate:{l:'Combined per 8 logged hrs (all shifts)',f:'n'}, otpct:{l:'Share of shifts that are OT / offset',f:'p'},
+  hrs:{l:'Avg logged-in hrs per shift',f:'h'}, agents:{l:'Agents (headcount)',f:'i'}, qa:{l:'QA score (avg of audits)',f:'p'}, fcr:{l:'FCR (avg of agents\' daily FCR)',f:'p'}
+};
+function destroyCharts(){ CHARTS.forEach(function(c){ try{c.destroy();}catch(e){} }); CHARTS=[]; }
+function monthList(endIso,n){ var y=+endIso.slice(0,4), m=+endIso.slice(5,7), out=[]; for(var i=n-1;i>=0;i--){ var mm=m-i, yy=y; while(mm<=0){mm+=12;yy--;} out.push(yy+'-'+String(mm).padStart(2,'0')); } return out; }
+function monLabel(k,partialMon){ return MON_N[+k.slice(5)-1]+' \''+k.slice(2,4)+(k===partialMon?' (MTD)':''); }
+function fmtMetric(v,f){ if(v==null||isNaN(v)) return '—'; if(f==='p') return (v*100).toFixed(1)+'%'; if(f==='h') return v.toFixed(1)+'h'; if(f==='i') return String(Math.round(v)); return v.toFixed(1); }
+function fmtDelta(cur,prev,f){
+  if(cur==null||prev==null) return {t:'—',c:''};
+  if(f==='p'){ var d=(cur-prev)*100; return {t:(d>0?'+':'')+d.toFixed(1)+' pts',c:d>0.05?'d-up':d<-0.05?'d-dn':''}; }
+  if(!prev) return {t:'—',c:''};
+  var r=cur/prev-1; return {t:(r>0?'+':'')+Math.round(r*100)+'%',c:r>0.005?'d-up':r<-0.005?'d-dn':''};
+}
+function newCell(){ return {n:0,hrs:0,hrs8:0,tot:0,ot:0,reg:0,regE:0,regC:0,regT:0,ag:{},qs:0,qn:0,fs:0,fn:0}; }
+function cellVal(c,k){
+  switch(k){
+    case 'comb': return c.reg? c.regT/c.reg : null;
+    case 'email': return c.reg? c.regE/c.reg : null;
+    case 'chat': return c.reg? c.regC/c.reg : null;
+    case 'rate': return c.hrs8? c.tot/(c.hrs8/8) : null;
+    case 'otpct': return c.n? c.ot/c.n : null;
+    case 'hrs': return c.n? c.hrs/c.n : null;
+    case 'agents': var n=Object.keys(c.ag).length; return n||null;
+    case 'qa': return c.qn? c.qs/c.qn : null;
+    case 'fcr': return c.fn? c.fs/c.fn : null;
+  }
+  return null;
+}
+// 12-month window ending at the selected "To" date; ignores the LOB filter (the trend has its own category/LOB drill-down)
+function trendRows(o){
+  var months=monthList(o.to,12), o12={from:months[0]+'-01',to:o.to,lob:'',shiftHrs:o.shiftHrs,otBuf:o.otBuf,goread9:o.goread9};
+  var R=summarise(DATA,o12); R.forEach(function(a){ a.m=metrics(a); });
+  if($('hideLow').checked) R=R.filter(function(a){ return (a.m.allRate||0)>=5; });
+  return {months:months,rows:R};
+}
+function buildTrend(T, cat){
+  var C=cat? CATS.filter(function(c){return c.name===cat;})[0] : null;
+  var ents=C? C.lobs.slice() : CATS.map(function(c){return c.name;});
+  var E={}; ents.forEach(function(e){ E[e]={}; T.months.forEach(function(m){ E[e][m]=newCell(); }); });
+  function entsOf(lobs){
+    if(!C) return CATS.filter(function(c){ return lobs.some(function(l){return c.lobs.indexOf(l)>=0;}); }).map(function(c){return c.name;});
+    return lobs.filter(function(l){return ents.indexOf(l)>=0;});
+  }
+  T.rows.forEach(function(a){
+    var touched={};
+    a.shifts.forEach(function(u){ var mon=u.date.slice(0,7);
+      entsOf(u.lobs).forEach(function(e){ var c=E[e][mon]; if(!c) return;
+        c.n++; c.hrs+=u.hrs; c.hrs8+=u.hrs*(8/a.S); c.tot+=u.email+u.chat; c.ag[a.email]=1;
+        if(u.type==='ot') c.ot++;
+        if(u.type==='reg'){ c.reg++; c.regE+=u.email; c.regC+=u.chat; c.regT+=u.email+u.chat; }
+        (touched[mon]=touched[mon]||{})[e]=1; }); });
+    (a.agent.qaRows||[]).forEach(function(x){ var t=touched[x.mon]; if(t) Object.keys(t).forEach(function(e){ E[e][x.mon].qs+=x.s/100; E[e][x.mon].qn++; }); });
+    (a.agent.fcrRows||[]).forEach(function(x){ var mon=x.d.slice(0,7), t=touched[mon]; if(t) Object.keys(t).forEach(function(e){ E[e][mon].fs+=x.r; E[e][mon].fn++; }); });
+  });
+  return {ents:ents, E:E, color:function(e){ return C? (LOB_COLORS[e]||'#999') : CATS.filter(function(c){return c.name===e;})[0].color; }};
+}
+// End-of-line direct labels (≤4 series): a dot in the series colour + the name in text ink
+var endLabels={id:'endLabels',afterDatasetsDraw:function(ch){
+  var ds=ch.data.datasets; if(ds.length>4) return; var ctx=ch.ctx; ctx.save(); ctx.font='600 11px -apple-system,Segoe UI,sans-serif'; ctx.textBaseline='middle';
+  ds.forEach(function(d,i){ var meta=ch.getDatasetMeta(i); if(meta.hidden) return; var pts=meta.data, j=d.data.length-1; while(j>=0&&d.data[j]==null) j--; if(j<0) return;
+    var p=pts[j]; ctx.fillStyle=d.borderColor; ctx.beginPath(); ctx.arc(p.x+10,p.y,3,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#475569'; ctx.fillText(d.label,p.x+16,p.y); });
+  ctx.restore(); }};
+function lineChart(cv, labels, series, fmt, direct){
+  if(typeof Chart==='undefined'||!cv) return;
+  CHARTS.push(new Chart(cv,{type:'line',data:{labels:labels,datasets:series.map(function(d){ return {label:d.label,data:d.data,borderColor:d.color,backgroundColor:d.color,
+      borderWidth:2,pointRadius:3,pointHoverRadius:6,pointBorderColor:'#fff',pointBorderWidth:1.5,pointHitRadius:12,spanGaps:false,tension:0}; })},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{right:direct&&series.length<=4?110:8}},interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',align:'start',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,boxHeight:8,color:'#475569',font:{size:11}}},
+        tooltip:{callbacks:{label:function(c){ return ' '+c.dataset.label+': '+fmtMetric(c.parsed.y,fmt); }}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:10}}},
+        y:{beginAtZero:fmt!=='p',grid:{color:'#eef2f7'},border:{display:false},ticks:{color:'#94a3b8',font:{size:10},callback:function(v){ return fmtMetric(v,fmt); }}}}},
+    plugins:direct?[endLabels]:[]}));
+}
+function barChart(cv, labels, data, color, label, fmt){
+  if(typeof Chart==='undefined'||!cv) return;
+  CHARTS.push(new Chart(cv,{type:'bar',data:{labels:labels,datasets:[{label:label,data:data,backgroundColor:color,borderRadius:{topLeft:4,topRight:4},borderSkipped:'bottom',maxBarThickness:26}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){ return ' '+label+': '+fmtMetric(c.parsed.y,fmt); }}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:10}}},y:{beginAtZero:true,grid:{color:'#eef2f7'},border:{display:false},ticks:{color:'#94a3b8',font:{size:10}}}}}}));
+}
+function renderTrend(){
+  var box=$('trendBox'); if(!box||!DATA) return;
+  CHARTS=CHARTS.filter(function(c){ if(c.canvas && c.canvas.id==='trendCv'){ try{c.destroy();}catch(e){} return false; } return true; });
+  var o=opts(), T=trendRows(o), B=buildTrend(T,TREND.cat), M=TREND_METRICS[TREND.metric], partial=(o.to.slice(8)!==String(new Date(Date.UTC(+o.to.slice(0,4),+o.to.slice(5,7),0)).getUTCDate()))?o.to.slice(0,7):null;
+  var labels=T.months.map(function(m){return monLabel(m,partial);});
+  var h='<div class="sec-title">Month-over-Month Trend</div><div class="sec-sub">12 months ending '+fmtDL(o.to)+'. Pick a category to see its LOBs. A shared agent counts in every LOB they covered that month. QA/FCR = audits and daily FCR of the agents who worked the LOB that month.</div>';
+  h+='<div class="card"><div class="trend-head"><div class="chips">'+
+    '<button class="chip'+(TREND.cat===''?' on':'')+'" data-cat="">All categories</button>'+
+    CATS.map(function(c){ return '<button class="chip'+(TREND.cat===c.name?' on':'')+'" data-cat="'+c.name+'"><span class="dot" style="background:'+c.color+'"></span>'+c.name+' <span style="opacity:.7;font-weight:400">('+c.lobs.length+')</span></button>'; }).join('')+
+    '</div><div class="ctl" style="display:flex;align-items:center;gap:6px"><label style="margin:0">Metric</label><select id="trMetric">'+
+    Object.keys(TREND_METRICS).map(function(k){ return '<option value="'+k+'"'+(k===TREND.metric?' selected':'')+'>'+TREND_METRICS[k].l+'</option>'; }).join('')+'</select></div></div>';
+  h+='<div class="chartbox"><canvas id="trendCv" aria-label="'+esc(M.l)+' by month"></canvas></div>';
+  // table view (always present)
+  h+='<div style="overflow:auto;border-top:1px solid var(--border)"><table><thead><tr><th class="l" style="cursor:default">'+(TREND.cat?esc(TREND.cat)+' LOB':'Category')+'</th>'+
+    T.months.map(function(m){return '<th style="cursor:default">'+monLabel(m,partial)+'</th>';}).join('')+'<th class="bl" style="cursor:default">MoM</th></tr></thead><tbody>';
+  var series=[];
+  B.ents.forEach(function(e){
+    var vals=T.months.map(function(m){ return cellVal(B.E[e][m],TREND.metric); });
+    if(vals.every(function(v){return v==null;})) return;
+    series.push({label:e,data:vals.map(function(v){return v==null?null:+v.toFixed(4);}),color:B.color(e)});
+    var last=vals.length-1, prev=last-1, d=fmtDelta(vals[last],vals[prev],M.f);
+    h+='<tr><td class="l"><span class="dot" style="background:'+B.color(e)+'"></span>'+esc(e)+'</td>'+vals.map(function(v){return '<td>'+fmtMetric(v,M.f)+'</td>';}).join('')+'<td class="bl '+d.c+'" title="Latest month vs the month before">'+d.t+'</td></tr>';
+  });
+  if(!series.length) h+='<tr><td class="l muted" colspan="'+(T.months.length+2)+'" style="padding:14px">No data for this selection.</td></tr>';
+  h+='</tbody></table></div></div>';
+  box.innerHTML=h;
+  lineChart($('trendCv'),labels,series,M.f,true);
+  Array.prototype.forEach.call(box.querySelectorAll('.chip'),function(b){ b.onclick=function(){ TREND.cat=b.getAttribute('data-cat'); renderTrend(); }; });
+  $('trMetric').onchange=function(){ TREND.metric=this.value; renderTrend(); };
+}
+// Agent's own month-by-month history (12 months ending at "To"), for performance reviews
+function agentMonthly(a,o){
+  var months=monthList(o.to,12), from=months[0]+'-01';
+  var sh=buildShifts(a.agent.days,a.S).filter(function(u){return u.date>=from && u.date<=o.to;});
+  sh.forEach(function(u){ if(!u.lobs.length) u.lobs=[a.lob]; });
+  var out=months.map(function(m){
+    var ms=sh.filter(function(u){return u.date.slice(0,7)===m;}), x=aggShifts(ms,a.S,o.otBuf), mm=metrics(x);
+    var set={}; ms.forEach(function(u){ u.lobs.forEach(function(l){ set[l]=1; }); });
+    var mEnd=addDays((m.slice(5)==='12'?(+m.slice(0,4)+1)+'-01':m.slice(0,4)+'-'+String(+m.slice(5)+1).padStart(2,'0'))+'-01',-1);
+    return {mon:m,x:x,m:mm,lobs:LOB_ORDER.filter(function(l){return set[l];}),qa:qaIn(a.agent,m+'-01',mEnd),fcr:fcrIn(a.agent,m+'-01',mEnd)};
+  });
+  return out;
+}
+function renderAgentMoM(a){
+  var o=opts(), M=agentMonthly(a,o), partial=o.to.slice(0,7), S=a.S;
+  var rows=M.filter(function(r){ return r.x.all.n || r.qa || r.fcr; });
+  var h='<div class="sec-title" style="margin-top:14px">Month-over-Month <span class="muted" style="font-weight:400;font-size:11px">for performance reviews · last 12 months ending '+fmtDL(o.to)+'</span></div>';
+  if(!rows.length) return h+'<div class="note" style="margin-top:0">No activity in the last 12 months.</div>';
+  h+='<div class="grid2" style="margin-bottom:10px"><div class="card"><div class="sec-sub" style="padding:10px 14px 0;margin:0"><b style="color:var(--text)">Combined per regular shift</b> · emails + chats on a normal '+S+'-hr day</div><div class="chartbox sm"><canvas id="momCv1"></canvas></div></div>'+
+     '<div class="card"><div class="sec-sub" style="padding:10px 14px 0;margin:0"><b style="color:var(--text)">QA &amp; FCR</b> · monthly average</div><div class="chartbox sm"><canvas id="momCv2"></canvas></div></div></div>';
+  h+='<div class="card" style="margin-bottom:12px"><table><thead><tr><th class="l" style="cursor:default">Month</th><th class="l" style="cursor:default">LOB(s)</th><th style="cursor:default">Shifts</th><th style="cursor:default">Reg / OT / Short</th><th style="cursor:default">Avg logged</th>'+
+    '<th class="bl" style="cursor:default">Emails / reg</th><th style="cursor:default">Chats / reg</th><th style="cursor:default">Combined / reg</th><th style="cursor:default">MoM</th><th style="cursor:default">Per '+S+'h (all)</th><th style="cursor:default">OT pace</th>'+
+    '<th class="bl" style="cursor:default">QA</th><th style="cursor:default">FCR</th></tr></thead><tbody>';
+  var prev=null;
+  rows.forEach(function(r){
+    var d=prev? fmtDelta(r.m.regComb,prev.m.regComb,'n') : {t:'—',c:''};
+    h+='<tr><td class="l"><b>'+monLabel(r.mon,partial===r.mon && o.to.slice(8)!=='31'?partial:null)+'</b></td><td class="l">'+lobCell(r.lobs)+'</td><td>'+r.x.all.n+'</td>'+
+      '<td>'+r.x.reg.n+' / '+(r.x.ot.n?'<span class="b b-ot">'+r.x.ot.n+'</span>':'0')+' / '+r.x.short.n+'</td><td>'+(r.x.all.n?fh(r.x.all.hrs/r.x.all.n):'—')+'</td>'+
+      '<td class="bl">'+f1(r.m.regEmail)+'</td><td>'+f1(r.m.regChat)+'</td><td><b>'+f1(r.m.regComb)+'</b></td><td class="'+d.c+'">'+d.t+'</td><td>'+f1(r.m.allRate)+'</td><td>'+pct(r.m.pace)+'</td>'+
+      '<td class="bl">'+qaCell(r.qa)+'</td><td>'+fcrCell(r.fcr)+'</td></tr>';
+    if(r.x.all.n) prev=r;
+  });
+  h+='</tbody></table></div>';
+  setTimeout(function(){
+    var labels=rows.map(function(r){return monLabel(r.mon);});
+    barChart($('momCv1'),labels,rows.map(function(r){return r.m.regComb==null?null:+r.m.regComb.toFixed(1);}),LOB_COLORS[a.lob]||'#2a78d6','Combined / regular shift','n');
+    lineChart($('momCv2'),labels,[{label:'QA',data:rows.map(function(r){return r.qa?+r.qa.v.toFixed(4):null;}),color:'#2a78d6'},
+                                   {label:'FCR',data:rows.map(function(r){return r.fcr?+r.fcr.v.toFixed(4):null;}),color:'#eb6834'}],'p',true);
+  },0);
+  return h;
+}
+
 function render(){
   if(!DATA) return;
   var o=opts();
   if(!o.from||!o.to||o.from>o.to){ $('main').innerHTML='<div class="loading err">Please pick a valid date range.</div>'; return; }
   $('periodPill').textContent=fmtDL(o.from)+' – '+fmtDL(o.to);
   ROWS=summarise(DATA,o);
-  ROWS.forEach(function(a){ a.m=metrics(a); });
+  ROWS.forEach(function(a){ a.m=metrics(a); a.qaP=qaIn(a.agent,o.from,o.to); a.fcrP=fcrIn(a.agent,o.from,o.to);
+    a.m.qa=a.qaP?a.qaP.v:null; a.m.fcr=a.fcrP?a.fcrP.v:null; });
   var hidden=0;
   if($('hideLow').checked){ ROWS=ROWS.filter(function(a){ var keep=(a.m.allRate||0)>=5; if(!keep) hidden++; return keep; }); }
   if(SORT.k){ ROWS.sort(function(x,y){ var a=sortVal(x,SORT.k), b=sortVal(y,SORT.k);
@@ -614,9 +934,14 @@ function render(){
     kpi('OT pace vs regular',pct(GM.pace),'Each agent vs their own regular avg · above 0% = faster on OT days')+
   '</div>';
 
+  html+='<div id="trendBox"></div>';
+
   // LOB rollup
-  var byLob={}; ROWS.forEach(function(a){ (byLob[a.lob]=byLob[a.lob]||[]).push(a); });
-  html+='<div class="sec-title">LOB Summary</div><div class="sec-sub">Averages per shift. Regular = '+(S-1)+'–'+(S+o.otBuf)+' hrs logged in'+(o.goread9?' (Goread '+8+'–'+(9+o.otBuf)+' hrs)':'')+'.</div>';
+  var byLob={}, shared=0;
+  ROWS.forEach(function(a){ if(a.lobs.length>1) shared++;
+    a.lobs.forEach(function(l){ if(o.lob && l!==o.lob) return;
+      var sl=aggShifts(a.shifts.filter(function(u){return u.lobs.indexOf(l)>=0;}),a.S,o.otBuf); sl.m=metrics(sl); (byLob[l]=byLob[l]||[]).push(sl); }); });
+  html+='<div class="sec-title">LOB Summary</div><div class="sec-sub">Averages per shift. Regular = '+(S-1)+'–'+(S+o.otBuf)+' hrs logged in'+(o.goread9?' (Goread '+8+'–'+(9+o.otBuf)+' hrs)':'')+'. LOB = the inboxes the agent was assigned to that day'+(shared?'; '+shared+' agent'+(shared>1?'s':'')+' covered more than one LOB and count in each':'')+'.</div>';
   html+='<div class="card"><table><thead><tr>'+
     '<th class="l" style="cursor:default">LOB</th><th style="cursor:default">Agents</th><th style="cursor:default">Shifts</th><th style="cursor:default">Regular</th><th style="cursor:default">OT</th><th style="cursor:default">Short</th>'+
     '<th class="bl" style="cursor:default">Emails / reg shift</th><th style="cursor:default">Chats / reg shift</th><th style="cursor:default">Combined / reg shift</th>'+
@@ -639,7 +964,7 @@ function render(){
   flagged.forEach(function(a){
     var c=a.comp, sevTxt={H:'HIGH',M:'MEDIUM',L:'LOW'}[c.sev];
     html+='<tr class="ag'+(SEL===a.email?' sel':'')+'" data-email="'+esc(a.email)+'"><td class="l"><span class="sev sev-'+c.sev+'">'+sevTxt+'</span></td><td class="l"><b>'+esc(a.name)+'</b>'+statusTag(a)+'</td>'+
-      '<td class="l"><span class="dot" style="background:'+(LOB_COLORS[a.lob]||'#999')+'"></span>'+esc(a.lob)+'</td>'+
+      '<td class="l">'+lobCell(a.lobs)+'</td>'+
       '<td class="l wrapc">'+(c.pattern.length?c.pattern.map(function(p){var ctx=/^Ramping|^Senior/.test(p); return '<span title="'+esc(helpFor(p))+'"'+(ctx?' class="muted"':'')+'>'+(ctx?'ⓘ '+p:'<b>'+p+'</b>')+'</span>';}).join('<br>'):'<span class="muted">—</span>')+'</td>'+
       '<td class="l wrapc">'+c.flags.map(function(f){return '<span class="flag f-'+f.lvl+'">'+esc(f.txt)+'</span>';}).join('')+'</td>'+
       '<td>'+(c.relReg!=null?Math.round(c.relReg*100)+'%':'—')+' / '+(c.relExt!=null?'<span class="'+(c.relExt<(c.relReg||1)-0.1?'down':'')+'">'+Math.round(c.relExt*100)+'%</span>':'—')+'</td></tr>';
@@ -649,26 +974,29 @@ function render(){
   // Agent table
   html+='<div class="sec-title">Agent Detail</div><div class="sec-sub">Click any agent to see their shift-by-shift log. Click a column header to sort.'+(hidden?' '+hidden+' non-handling user'+(hidden>1?'s':'')+' hidden (under 5 contacts per 8 hrs).':'')+'</div>';
   html+='<div class="card" style="max-height:640px"><table id="agTbl"><thead><tr>'+
-    '<th class="l" colspan="2" style="cursor:default"></th><th class="grp" colspan="4">Shifts</th><th class="grp" colspan="3">Regular shift avg (actual)</th><th class="grp" colspan="3">OT / offset days</th><th class="grp" colspan="3">All shifts, per '+S+' hrs</th></tr><tr>'+
+    '<th class="l" colspan="2" style="cursor:default"></th><th class="grp" colspan="4">Shifts</th><th class="grp" colspan="3">Regular shift avg (actual)</th><th class="grp" colspan="3">OT / offset days</th><th class="grp" colspan="3">All shifts, per '+S+' hrs</th><th class="grp" colspan="2">Quality</th></tr><tr>'+
     th('name','Agent','l')+th('lob','LOB','l')+th('n','Total','bl')+th('nReg','Reg')+th('nOT','OT')+th('nShort','Short')+
     th('regEmail','Emails','bl')+th('regChat','Chats')+th('regComb','Combined')+
     th('otComb','Avg / day','bl')+th('otRate','Per '+S+'h')+th('pace','Pace')+
-    th('allEmailRate','Emails','bl')+th('allChatRate','Chats')+th('allRate','Combined')+
+    th('allEmailRate','Emails','bl')+th('allChatRate','Chats')+th('allRate','Combined')+th('qa','QA','bl')+th('fcr','FCR')+
     '</tr></thead><tbody>';
-  if(!ROWS.length) html+='<tr><td colspan="15" class="l muted" style="padding:20px">No agent activity in this range.</td></tr>';
+  if(!ROWS.length) html+='<tr><td colspan="17" class="l muted" style="padding:20px">No agent activity in this range.</td></tr>';
   ROWS.forEach(function(a,i){
     var m=a.m;
     html+='<tr class="ag'+(SEL===a.email?' sel':'')+'" data-i="'+i+'">'+
       '<td class="l"><b>'+esc(a.name)+'</b>'+statusTag(a)+(a.S!==S?' <span class="muted" title="Shift length used">('+a.S+'h)</span>':'')+'</td>'+
-      '<td class="l"><span class="dot" style="background:'+(LOB_COLORS[a.lob]||'#999')+'"></span>'+esc(a.lob)+'</td>'+
+      '<td class="l">'+lobCell(a.lobs)+'</td>'+
       '<td class="bl">'+a.all.n+'</td><td>'+a.reg.n+'</td><td>'+(a.ot.n?'<span class="b b-ot">'+a.ot.n+'</span>':'0')+'</td><td>'+(a.short.n||'<span class="muted">0</span>')+'</td>'+
       '<td class="bl">'+f1(m.regEmail)+'</td><td>'+f1(m.regChat)+'</td><td><b>'+f1(m.regComb)+'</b></td>'+
       '<td class="bl">'+f1(m.otComb)+'</td><td>'+f1(m.otRate)+'</td><td>'+pct(m.pace)+'</td>'+
-      '<td class="bl">'+f1(m.allEmailRate)+'</td><td>'+f1(m.allChatRate)+'</td><td>'+f1(m.allRate)+'</td></tr>';
+      '<td class="bl">'+f1(m.allEmailRate)+'</td><td>'+f1(m.allChatRate)+'</td><td>'+f1(m.allRate)+'</td>'+
+      '<td class="bl">'+qaCell(a.qaP)+'</td><td>'+fcrCell(a.fcrP)+'</td></tr>';
   });
   html+='</tbody></table></div>';
   html+='<div id="detail"></div>';
+  destroyCharts();
   $('main').innerHTML=html;
+  renderTrend();
 
   Array.prototype.forEach.call(document.querySelectorAll('#agTbl tr.ag'),function(tr){
     tr.onclick=function(){ var a=ROWS[+tr.getAttribute('data-i')]; SEL=(SEL===a.email)?null:a.email; render(); if(SEL) $('detail').scrollIntoView({behavior:'smooth',block:'start'}); };
@@ -687,6 +1015,8 @@ function sortVal(a,k){
   if(k==='n') return a.all.n; if(k==='nReg') return a.reg.n; if(k==='nOT') return a.ot.n; if(k==='nShort') return a.short.n;
   return a.m[k];
 }
+function qaCell(q){ if(!q) return '<span class="muted" title="No QA audits in this period">—</span>'; return '<span title="'+q.n+' audit'+(q.n>1?'s':'')+(q.ztp?' · '+q.ztp+' with a Zero Tolerance finding':'')+'">'+(q.v*100).toFixed(1)+'%'+(q.ztp?' <span class="down">⚠</span>':'')+'</span> <span class="muted" style="font-size:10px">('+q.n+')</span>'; }
+function fcrCell(f){ if(!f) return '<span class="muted" title="No FCR rows in this period">—</span>'; return '<span title="Average of '+f.n+' daily FCR rates (all inboxes)">'+(f.v*100).toFixed(1)+'%</span>'; }
 function th(k,label,cls){ var arrow=SORT.k===k?(SORT.dir>0?' ▲':' ▼'):''; return '<th data-k="'+k+'" class="'+(cls||'')+'">'+label+arrow+'</th>'; }
 function kpi(l,v,s){ return '<div class="kpi"><div class="k-lbl">'+l+'</div><div class="k-val">'+v+'</div><div class="k-sub">'+s+'</div></div>'; }
 function lobRow(l,n,g,m,tot){
@@ -697,11 +1027,13 @@ function lobRow(l,n,g,m,tot){
 
 function renderDetail(a){
   var S=a.S, m=a.m;
-  var h='<div class="sec-title"><span class="dot" style="background:'+(LOB_COLORS[a.lob]||'#999')+'"></span>'+esc(a.name)+' — Shift Log</div>'+
-    '<div class="sec-sub">'+a.lob+' · '+S+'-hr shift · Regular avg '+f1(m.regComb)+' combined/shift'+(a.ot.n?' · OT days avg '+f1(m.otComb)+' ('+f1(m.otRate)+' per '+S+'h, pace '+pct(m.pace)+')':'')+' · '+fh(a.otExtra)+' beyond shift</div>';
+  var h='<div class="sec-title"><span class="dot" style="background:'+(LOB_COLORS[a.lob]||'#999')+'"></span>'+esc(a.name)+statusTag(a)+'</div>'+
+    '<div class="sec-sub">'+a.lobs.join(' + ')+' · '+S+'-hr shift · Regular avg '+f1(m.regComb)+' combined/shift'+(a.ot.n?' · OT days avg '+f1(m.otComb)+' ('+f1(m.otRate)+' per '+S+'h, pace '+pct(m.pace)+')':'')+' · '+fh(a.otExtra)+' beyond shift</div>';
+  h+=renderAgentMoM(a);
+  h+='<div class="sec-title" style="margin-top:14px">Selected period · '+fmtDL(opts().from)+' – '+fmtDL(opts().to)+'</div>';
   var c=a.comp;
   if(c && c.pattern.length){
-    h+='<div class="note" style="margin-top:0;margin-bottom:10px">'+c.pattern.map(function(p){return '<b>'+p+'.</b> '+esc(helpFor(p));}).join('<br>')+(a.lobStart?'<br><span class="muted">In '+esc(a.lob)+' since '+fmtDL(a.lobStart)+(a.rampStart?' · ramp window '+RAMP_DAYS+' days (to '+fmtDL(addDays(a.rampStart,RAMP_DAYS-1))+')':'')+'. Earlier days were in another LOB and aren\'t judged on '+esc(a.lob)+' pace.</span>':'')+(a.seniorSince?'<br><span class="muted">Senior since '+fmtDL(a.seniorSince)+'. '+esc(a.rosterNote)+'</span>':'')+'</div>';
+    h+='<div class="note" style="margin-top:0;margin-bottom:10px">'+c.pattern.map(function(p){return '<b>'+p+'.</b> '+esc(helpFor(p));}).join('<br>')+(a.lobStart?'<br><span class="muted">In '+esc(a.rosterLob||a.lob)+' since '+fmtDL(a.lobStart)+(a.rampStart?' · ramp window '+RAMP_DAYS+' days (to '+fmtDL(addDays(a.rampStart,RAMP_DAYS-1))+')':'')+'.</span>':'')+(a.seniorSince?'<br><span class="muted">Senior since '+fmtDL(a.seniorSince)+'. '+esc(a.rosterNote)+'</span>':'')+'</div>';
   }
   // Week-by-week grid (Mon–Sun, PT calendar days)
   var W={}; a.shifts.forEach(function(u){ var k=wkStart(u.date); var w=(W[k]=W[k]||{cells:[null,null,null,null,null,null,null],h:0,o:0,d:0});
@@ -723,13 +1055,16 @@ function renderDetail(a){
     var o2=opts(), td=a.ts.days.filter(function(d){return d.date>=o2.from && d.date<=o2.to;}), miss=a.ts.missed.filter(function(d){return d>=o2.from&&d<=o2.to;});
     var rowsT=td.map(function(d){return {k:d.date,d:d};}).concat(miss.map(function(m){return {k:m,m:true};})).sort(function(x,y){return x.k<y.k?1:-1;});
     h+='<div class="sec-title" style="margin-top:14px">Log-in timeline <span class="muted" style="font-weight:400;font-size:11px">from Gladly Agent Timestamps · Pacific Time</span></div>';
+    if(a.ts.sched) h+='<div class="note" style="margin:0 0 8px"><b>Assigned schedule: '+esc(a.ts.sched.label)+'</b> since '+fmtDL(a.ts.sched.from)+'. '+esc(a.ts.sched.note||'')+' From that date, start times and days are judged against this schedule.</div>';
     h+='<div class="card" style="margin-bottom:12px;max-height:520px"><table><thead><tr><th class="l" style="cursor:default">Date</th><th class="l" style="cursor:default">Logged in</th><th class="l" style="cursor:default">Logged out</th><th style="cursor:default">Logged-in hrs</th><th style="cursor:default">Lunch</th><th style="cursor:default">Break</th><th style="cursor:default">Training / coaching</th><th style="cursor:default">Other away</th><th class="l" style="cursor:default">Notes</th></tr></thead><tbody>';
     rowsT.forEach(function(r){
-      if(r.m){ h+='<tr><td class="l">'+fmtD(r.k)+' '+['Su','Mo','Tu','We','Th','Fr','Sa'][new Date(r.k+'T12:00:00Z').getUTCDay()]+'</td><td class="l" colspan="7"><span class="flag f-md">No log-in on a usual work day — check PTO</span></td><td></td></tr>'; return; }
+      if(r.m){ h+='<tr><td class="l">'+fmtD(r.k)+' '+['Su','Mo','Tu','We','Th','Fr','Sa'][new Date(r.k+'T12:00:00Z').getUTCDay()]+'</td><td class="l" colspan="7"><span class="flag f-md">No log-in on a scheduled / usual work day — check PTO</span></td><td></td></tr>'; return; }
       var d=r.d, aw=d.away, tr=(aw.Training||0)+(aw.Coaching||0)+(aw.Upskilling||0), oth=0;
       Object.keys(aw).forEach(function(k){ if(['Lunch','Break','Training','Coaching','Upskilling'].indexOf(k)<0) oth+=aw[k]; });
       var notes=[];
-      if(d.slide) notes.push('<span class="flag f-md">Started '+(d.dev>0?'+':'')+d.dev.toFixed(1)+'h vs usual '+fmtClock(d.norm)+'</span>');
+      if(d.slide) notes.push('<span class="flag f-md">Started '+(d.dev>0?'+':'')+d.dev.toFixed(1)+'h vs '+(d.sched?'assigned ':'usual ')+fmtClock(d.norm)+'</span>');
+      if(d.late) notes.push('<span class="flag f-lo">Late '+Math.round(d.dev*60)+' min</span>');
+      if(d.offDay) notes.push('<span class="flag f-md">Not an assigned work day</span>');
       if(d.move) notes.push('<span class="flag f-lo">Schedule changed from '+fmtClock(d.norm)+'</span>');
       if(d.returns) notes.push('<span class="flag f-lo">Logged back in later ×'+d.returns+'</span>');
       if(d.logged>S+opts().otBuf) notes.push('<span class="flag f-md">'+fmtH(d.logged)+' logged</span>');
@@ -757,42 +1092,78 @@ function exportCSV(){
   var o=opts(), S=o.shiftHrs;
   var head=['Agent','LOB','Shift hrs','Total shifts','Regular shifts','OT shifts','Short shifts','OT hrs beyond shift',
     'Emails / reg shift','Chats / reg shift','Combined / reg shift','OT day avg combined','OT rate per '+S+'h','OT pace vs regular %',
-    'All shifts emails per '+S+'h','All shifts chats per '+S+'h','All shifts combined per '+S+'h'];
+    'All shifts emails per '+S+'h','All shifts chats per '+S+'h','All shifts combined per '+S+'h','QA %','QA audits','FCR %'];
   function r1(v){ return v==null||isNaN(v)?'':(Math.round(v*10)/10); }
   var lines=[head.join(',')];
   ROWS.forEach(function(a){ var m=a.m;
-    lines.push(['"'+a.name.replace(/"/g,'""')+'"',a.lob,a.S,a.all.n,a.reg.n,a.ot.n,a.short.n,r1(a.otExtra),r1(m.regEmail),r1(m.regChat),r1(m.regComb),
-      r1(m.otComb),r1(m.otRate),m.pace==null?'':Math.round(m.pace*100),r1(m.allEmailRate),r1(m.allChatRate),r1(m.allRate)].join(','));
+    lines.push(['"'+a.name.replace(/"/g,'""')+'"','"'+a.lobs.join(' + ')+'"',a.S,a.all.n,a.reg.n,a.ot.n,a.short.n,r1(a.otExtra),r1(m.regEmail),r1(m.regChat),r1(m.regComb),
+      r1(m.otComb),r1(m.otRate),m.pace==null?'':Math.round(m.pace*100),r1(m.allEmailRate),r1(m.allChatRate),r1(m.allRate),a.qaP?r1(a.qaP.v*100):'',a.qaP?a.qaP.n:'',a.fcrP?r1(a.fcrP.v*100):''].join(','));
   });
   var blob=new Blob([lines.join('\n')],{type:'text/csv'}), url=URL.createObjectURL(blob), el=document.createElement('a');
   el.href=url; el.download='shift-performance_'+o.from+'_to_'+o.to+'.csv'; document.body.appendChild(el); el.click(); el.remove();
   setTimeout(function(){URL.revokeObjectURL(url);},1000);
 }
 
+// ───────── Saved snapshot (IndexedDB, this browser only) ─────────
+// Every successful live load is saved, so the next visit opens instantly with the last data while the live refresh
+// runs. The uploaded Agent Timestamps file is saved too. Nothing leaves the browser.
+var IDB_NAME='shift_perf_snapshot_v1', SNAP=null;
+function idbOpen(){ return new Promise(function(res,rej){ try{ var r=indexedDB.open(IDB_NAME,1);
+  r.onupgradeneeded=function(){ r.result.createObjectStore('kv'); }; r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); }; }catch(e){ rej(e); } }); }
+function idbGet(k){ return idbOpen().then(function(db){ return new Promise(function(res){ try{ var q=db.transaction('kv','readonly').objectStore('kv').get(k);
+  q.onsuccess=function(){ res(q.result||null); }; q.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }).catch(function(){ return null; }); }
+function idbSet(k,v){ return idbOpen().then(function(db){ return new Promise(function(res){ try{ var tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k);
+  tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ res(false); }; }catch(e){ res(false); } }); }).catch(function(){ return false; }); }
+function fmtStamp(ms){ var d=new Date(ms); return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
+
+function applySnapshot(sn){
+  DATA=extractAgentDays(parseCSV(sn.gladly));
+  attachQAFCR(DATA, sn.fcr? parseFCR(sn.fcr):null, parseQA(sn.qa||[]));
+  DATA.hasQA=!!(sn.qa&&sn.qa.some(Boolean)); DATA.hasFCR=!!sn.fcr;
+  if(TS) attachTimestamps(DATA,TS);
+  var lobs={}; Object.keys(DATA.agents).forEach(function(k){ (DATA.agents[k].lobs||[]).forEach(function(l){ lobs[l]=1; }); });
+  var cur=$('lobSel').value;
+  $('lobSel').innerHTML='<option value="">All LOBs</option>'+LOB_ORDER.filter(function(l){return lobs[l];}).map(function(l){return '<option'+(l===cur?' selected':'')+'>'+l+'</option>';}).join('');
+  if($('preset').value!=='custom') applyPreset();
+  tsStatusText();
+  render();
+}
+var SHEETS_FCR_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1422680454&single=true&output=csv';
+var SHEETS_QA_URLS=[
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1381065263&single=true&output=csv', // QA main (PS, CI, Follows)
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSQqqQt5W3UvEvpi1oeLNo9TvTuVTJd-0I_01D5e6xkvV3fJ5ILKHqLmOtvOgSxz3cC77HRgDVyg6n/pub?gid=1209230234&single=true&output=csv', // Goread QA
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSeQRp3nRG-wmesyi92QfWskCdCMXNGivUeMES44LpZ3YWx_QHY5ux2t7RwT_n-5GcZYBrh8q2B0y2c/pub?gid=1110854295&single=true&output=csv'  // Plixi + High Social + Cloutify QA
+];
 function fetchWithTimeout(url,ms){
   var ctrl=new AbortController(), t=setTimeout(function(){ctrl.abort();},ms);
   return fetch(url+(url.indexOf('?')>=0?'&':'?')+'_t='+Date.now(),{signal:ctrl.signal,cache:'no-store'})
     .then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .catch(function(e){ clearTimeout(t); throw e; });
 }
+function fetchRetry(url,stagger){
+  return new Promise(function(r){ setTimeout(r,stagger||0); })
+    .then(function(){ return fetchWithTimeout(url,60000); })
+    .catch(function(){ return fetchWithTimeout(url,90000); });
+}
 function load(){
-  $('status').textContent='⏳ Loading live Gladly data…'; $('refreshBtn').disabled=true;
-  var t0=Date.now();
-  fetchWithTimeout(SHEETS_AGENT_URL,60000)
-    .catch(function(){ $('status').textContent='⏳ Retrying…'; return fetchWithTimeout(SHEETS_AGENT_URL,90000); })
-    .then(function(text){
-      DATA=extractAgentDays(parseCSV(text));
-      var lobs={}; Object.keys(DATA.agents).forEach(function(k){ if(DATA.agents[k].lob) lobs[DATA.agents[k].lob]=1; });
-      var cur=$('lobSel').value;
-      $('lobSel').innerHTML='<option value="">All LOBs</option>'+LOB_ORDER.filter(function(l){return lobs[l];}).map(function(l){return '<option'+(l===cur?' selected':'')+'>'+l+'</option>';}).join('');
-      if(TS) attachTimestamps(DATA,TS);
-      if($('preset').value!=='custom') applyPreset();
-      $('status').innerHTML='🔗 Live · data through <b>'+fmtDL(DATA.maxDate)+'</b> (PT) · '+((Date.now()-t0)/1000).toFixed(0)+'s';
-      render();
+  $('status').innerHTML=(SNAP?'📦 Snapshot from <b>'+fmtStamp(SNAP.savedAt)+'</b> · ':'')+'⏳ refreshing live data…'; $('refreshBtn').disabled=true;
+  var t0=Date.now(), opt=function(p){ return p.catch(function(){ return null; }); };
+  Promise.all([fetchRetry(SHEETS_AGENT_URL,0), opt(fetchRetry(SHEETS_FCR_URL,500)),
+               opt(fetchRetry(SHEETS_QA_URLS[0],900)), opt(fetchRetry(SHEETS_QA_URLS[1],1200)), opt(fetchRetry(SHEETS_QA_URLS[2],1500))])
+    .then(function(r){
+      var old=SNAP||{qa:[]};
+      var sn={gladly:r[0], fcr:r[1]||old.fcr||null, qa:[r[2]||(old.qa||[])[0]||null, r[3]||(old.qa||[])[1]||null, r[4]||(old.qa||[])[2]||null], savedAt:Date.now()};
+      var miss=[]; if(!r[1]) miss.push('FCR'); if(!r[2]||!r[3]||!r[4]) miss.push('QA');
+      SNAP=sn; applySnapshot(sn);
+      idbSet('snap',sn).then(function(ok){
+        $('status').innerHTML='🔗 Live · data through <b>'+fmtDL(DATA.maxDate)+'</b> (PT) · '+((Date.now()-t0)/1000).toFixed(0)+'s'+
+          (miss.length?' · <span class="err" title="Showing the last saved copy for these">⚠ '+miss.join(' & ')+' refresh failed</span>':' · QA & FCR ✓')+(ok?' · snapshot saved':'');
+      });
     })
     .catch(function(e){
-      $('status').innerHTML='<span class="err">⚠ Could not load the Gladly sheet ('+esc(e.message||e)+')</span>';
-      if(!DATA) $('main').innerHTML='<div class="loading err">⚠ Live data could not be loaded. Click 🔄 Refresh to try again.</div>';
+      if(DATA) $('status').innerHTML='<span class="err">⚠ Live refresh failed ('+esc(e.message||e)+')</span> · showing snapshot from <b>'+fmtStamp(SNAP.savedAt)+'</b>';
+      else { $('status').innerHTML='<span class="err">⚠ Could not load the Gladly sheet ('+esc(e.message||e)+')</span>';
+             $('main').innerHTML='<div class="loading err">⚠ Live data could not be loaded. Click 🔄 Refresh to try again.</div>'; }
     })
     .then(function(){ $('refreshBtn').disabled=false; });
 }
@@ -804,7 +1175,10 @@ $('refreshBtn').onclick=load;
 $('exportBtn').onclick=exportCSV;
 $('tsFile').onchange=function(){ loadTsFile(this.files[0]); this.value=''; };
 applyPreset();
-load();
+// Open instantly from the saved snapshot (if any), then refresh live
+idbGet('ts').then(function(t){ if(t&&t.text){ try{ TS=parseTimestamps(t.text); TS_META={name:t.name,savedAt:t.savedAt,restored:true}; }catch(e){} } return idbGet('snap'); })
+  .then(function(sn){ if(sn&&sn.gladly){ SNAP=sn; try{ applySnapshot(sn); }catch(e){ SNAP=null; } } })
+  .then(load, load);
 </script>
 </body>
 </html>
